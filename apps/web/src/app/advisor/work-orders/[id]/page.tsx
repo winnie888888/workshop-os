@@ -24,23 +24,25 @@ export default function WorkOrderWorkspace() {
   async function transition(to: WorkOrderStatus) {
     setBusy(true); setError(null);
     try { await api.workOrders.transition(id, to); await mutate(); }
-    catch (e) { setError(e instanceof ApiError ? e.message : 'Transition failed'); }
+    catch (e) { setError(e instanceof ApiError ? e.message : 'Sprememba stanja ni uspela'); }
     finally { setBusy(false); }
   }
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
-  if (!wo) return <Card className="p-6 text-steel">Work order not found.</Card>;
+  if (!wo) return <Card className="p-6 text-muted">Delovni nalog ni najden.</Card>;
 
   const editable = !['invoiced', 'closed', 'cancelled'].includes(wo.status);
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <button onClick={() => router.push('/advisor')} className="text-sm font-semibold text-steel">‹ Today</button>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-lg font-bold">{wo.number ?? 'DRAFT'}</span>
-          <StatusChip tone={statusTone(wo.status)}>{statusLabel(wo.status)}</StatusChip>
-        </div>
+      <nav className="flex items-center gap-2 text-xs font-semibold text-muted">
+        <button onClick={() => router.push('/advisor')} className="hover:text-brand">Delovni nalogi</button>
+        <span className="text-muted2">/</span>
+        <span className="num text-ink">{wo.number ?? 'OSNUTEK'}</span>
+      </nav>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-extrabold tracking-tight text-ink">Delovni nalog <span className="num">{wo.number ?? ''}</span></h1>
+        <StatusChip tone={statusTone(wo.status)}>{statusLabel(wo.status)}</StatusChip>
       </div>
 
       {error && <ProblemBanner message={error} />}
@@ -61,19 +63,19 @@ export default function WorkOrderWorkspace() {
       {/* Action row — legal transitions + issue path */}
       <div className="flex flex-wrap items-center gap-3">
         {wo.status === 'ready' && (
-          <Button tone="go" size="lg" onClick={() => router.push(`/advisor/invoices/issue/${id}`)}>Issue invoice →</Button>
+          <Button tone="go" size="lg" onClick={() => router.push(`/advisor/invoices/issue/${id}`)}>Izstavi račun →</Button>
         )}
         {wo.status === 'awaiting_approval' && (
-          <Button tone="hold" onClick={() => transition('in_progress')} disabled={busy}>Mark approved → resume</Button>
+          <Button tone="hold" onClick={() => transition('in_progress')} disabled={busy}>Odobreno → nadaljuj</Button>
         )}
         {wo.status === 'in_progress' && (
-          <Button tone="info" onClick={() => transition('ready')} disabled={busy}>Mark ready</Button>
+          <Button tone="info" onClick={() => transition('ready')} disabled={busy}>Označi pripravljeno</Button>
         )}
         {wo.status === 'open' && (
-          <Button tone="info" onClick={() => transition('in_progress')} disabled={busy}>Start</Button>
+          <Button tone="info" onClick={() => transition('in_progress')} disabled={busy}>Začni</Button>
         )}
         {editable && (
-          <Button tone="stop" onClick={() => transition('cancelled')} disabled={busy} className="ml-auto">Cancel</Button>
+          <Button tone="stop" onClick={() => transition('cancelled')} disabled={busy} className="ml-auto">Prekliči</Button>
         )}
       </div>
     </div>
@@ -93,9 +95,9 @@ function OverdueBanner({ customerId }: { customerId: string }) {
   const severe = data.buckets.d61_90 !== '0' || data.buckets.d90_plus !== '0';
   return (
     <div className={`rounded-tool border px-4 py-3 text-sm font-semibold ${severe ? 'border-stop/40 bg-stop/10 text-stop' : 'border-hold/40 bg-hold/10 text-hold'}`}>
-      ⚠ This customer has {data.formatted.total} outstanding
-      {data.buckets.d90_plus !== '0' && `, including ${data.formatted.d90_plus} over 90 days`}.
-      Review credit before adding work.
+      ⚠ Stranka ima odprtih obveznosti {data.formatted.total}
+      {data.buckets.d90_plus !== '0' && `, od tega ${data.formatted.d90_plus} nad 90 dni`}.
+      Preveri kreditno izpostavljenost pred dodajanjem dela.
     </div>
   );
 }
@@ -104,13 +106,18 @@ function CustomerBlock({ workOrderId }: { workOrderId: string }) {
   const { data } = useSWR(['nalog', workOrderId], () => api.workOrders.nalog(workOrderId).catch(() => null));
   const d = data as any;
   return (
-    <Card className="p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Customer</h3>
-      <p className="mt-1 font-display text-lg font-bold">{d?.issuedFor?.customer ?? '—'}</p>
-      {d?.issuedFor?.vatId && (
-        <p className="text-sm text-steel">VAT {d.issuedFor.vatId} <SoftChip tone="go">on file</SoftChip></p>
-      )}
-      {d?.issuedFor?.address && <p className="text-sm text-steel">{d.issuedFor.address}</p>}
+    <Card className="flex items-start gap-3 p-4">
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-brandweak text-brand">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-[0.7rem] font-bold uppercase tracking-wide text-muted2">Stranka</h3>
+        <p className="mt-0.5 text-lg font-bold text-ink">{d?.issuedFor?.customer ?? '—'}</p>
+        {d?.issuedFor?.vatId && (
+          <p className="mt-0.5 flex items-center gap-2 text-sm text-muted"><span className="num">DDV {d.issuedFor.vatId}</span> <SoftChip tone="go">v evidenci</SoftChip></p>
+        )}
+        {d?.issuedFor?.address && <p className="text-sm text-muted">{d.issuedFor.address}</p>}
+      </div>
     </Card>
   );
 }
@@ -119,15 +126,20 @@ function VehicleBlock({ workOrderId, odometer }: { workOrderId: string; odometer
   const { data } = useSWR(['nalog', workOrderId], () => api.workOrders.nalog(workOrderId).catch(() => null));
   const v = (data as any)?.vehicle;
   return (
-    <Card className="p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Vehicle</h3>
-      {v ? (
-        <>
-          <p className="mt-1 font-display text-lg font-bold">{v.makeModel}</p>
-          <p className="font-mono text-sm text-steel">{v.plate} · VIN {v.vin}</p>
-          <p className="text-sm text-steel">Odometer {odometer?.toLocaleString() ?? '—'} km</p>
-        </>
-      ) : <p className="mt-1 text-steel">No vehicle linked</p>}
+    <Card className="flex items-start gap-3 p-4">
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-brandweak text-brand">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V9l2-4h11l3 4v6a2 2 0 0 1-2 2M5 17v2M19 17v2"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg>
+      </span>
+      <div className="min-w-0">
+        <h3 className="text-[0.7rem] font-bold uppercase tracking-wide text-muted2">Vozilo</h3>
+        {v ? (
+          <>
+            <p className="mt-0.5 text-lg font-bold text-ink">{v.makeModel}</p>
+            <p className="num text-sm text-muted">{v.plate} · VIN {v.vin}</p>
+            <p className="text-sm text-muted">Števec <span className="num">{odometer?.toLocaleString() ?? '—'}</span> km</p>
+          </>
+        ) : <p className="mt-0.5 text-muted">Ni povezanega vozila</p>}
+      </div>
     </Card>
   );
 }
@@ -137,7 +149,7 @@ function ComplaintBlock({ workOrderId }: { workOrderId: string }) {
   const complaint = (data as any)?.complaint;
   return (
     <Card className="p-4">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Complaint</h3>
+      <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Opis težave</h3>
       <p className="mt-1 text-base">{complaint || '—'}</p>
     </Card>
   );
@@ -168,7 +180,7 @@ function MechanicAssign({
       await api.workOrders.assign(workOrderId, value || null);
       onChanged();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not assign mechanic');
+      setError(e instanceof ApiError ? e.message : 'Mehanika ni bilo mogoče dodeliti');
     } finally {
       setBusy(false);
     }
@@ -179,9 +191,9 @@ function MechanicAssign({
   return (
     <Card className="flex items-center justify-between gap-4 p-4">
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Assigned mechanic</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Dodeljen mehanik</h3>
         <p className="mt-1 font-display text-lg font-bold">
-          {current ? current.name : <span className="text-steel">Unassigned</span>}
+          {current ? current.name : <span className="text-muted">Nedodeljeno</span>}
         </p>
         {error && <p className="mt-1 text-sm font-semibold text-stop">{error}</p>}
       </div>
@@ -190,10 +202,10 @@ function MechanicAssign({
           value={assignedMechanicId ?? ''}
           disabled={busy}
           onChange={(e) => assign(e.target.value)}
-          className="min-h-tap min-w-48 rounded-tool border-2 border-line bg-panel px-3 text-tap
-            focus:border-info focus:outline-none"
+          className="min-h-tap min-w-48 rounded-tool border border-linestrong bg-surface px-3 text-base
+            focus:border-brandring focus:outline-none"
         >
-          <option value="">Unassigned</option>
+          <option value="">Nedodeljeno</option>
           {(mechanics ?? []).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
       )}
@@ -218,12 +230,12 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line p-4">
-        <h3 className="font-display text-lg font-bold">Lines</h3>
+        <h3 className="font-display text-lg font-bold">Postavke</h3>
         {editable && (
           <div className="flex gap-2">
-            <Button tone="info" onClick={() => { setAdding('labour'); setPicking(false); setEditingId(null); }}>+ Labour</Button>
-            <Button tone="go" onClick={() => { setPicking(true); setAdding(null); setEditingId(null); }}>+ Part from stock</Button>
-            <Button tone="neutral" onClick={() => { setAdding('part'); setPicking(false); setEditingId(null); }}>+ Other part</Button>
+            <Button tone="info" onClick={() => { setAdding('labour'); setPicking(false); setEditingId(null); }}>+ Delo</Button>
+            <Button tone="go" onClick={() => { setPicking(true); setAdding(null); setEditingId(null); }}>+ Del iz zaloge</Button>
+            <Button tone="neutral" onClick={() => { setAdding('part'); setPicking(false); setEditingId(null); }}>+ Drug del</Button>
           </div>
         )}
       </div>
@@ -240,11 +252,11 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
       )}
 
       <table className="w-full text-sm">
-        <thead className="bg-floor text-left text-xs uppercase tracking-wide text-steel">
+        <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-steel">
           <tr>
-            <th className="p-3">#</th><th className="p-3">Type</th><th className="p-3">Description</th>
-            <th className="p-3 text-right">Qty</th><th className="p-3 text-right">Unit</th>
-            <th className="p-3 text-right">Net</th><th className="p-3 text-right">VAT</th>
+            <th className="p-3">#</th><th className="p-3">Vrsta</th><th className="p-3">Opis</th>
+            <th className="p-3 text-right">Količina</th><th className="p-3 text-right">Cena/EM</th>
+            <th className="p-3 text-right">Neto</th><th className="p-3 text-right">DDV</th>
             <th className="p-3"></th>
           </tr>
         </thead>
@@ -258,8 +270,8 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
             ) : (
               <tr key={l.id} className="border-t border-line">
                 <td className="p-3 font-mono">{l.lineNo}</td>
-                <td className="p-3"><SoftChip tone={l.type === 'labour' ? 'info' : 'neutral'}>{l.type}</SoftChip></td>
-                <td className="p-3">{l.description}{l.issued && <span className="ml-2 text-xs text-go">fitted</span>}</td>
+                <td className="p-3"><SoftChip tone={l.type === 'labour' ? 'info' : 'neutral'}>{l.type === 'labour' ? 'Delo' : 'Del'}</SoftChip></td>
+                <td className="p-3">{l.description}{l.issued && <span className="ml-2 text-xs text-go">vgrajeno</span>}</td>
                 <td className="p-3 text-right font-mono">{l.quantity}</td>
                 <td className="p-3 text-right font-mono">{formatMoneyMinor(l.unitPriceMinor, wo.currency)}</td>
                 <td className="p-3 text-right font-mono">{formatMoneyMinor(l.netMinor, wo.currency)}</td>
@@ -267,7 +279,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
                 <td className="p-3 text-right">
                   {editable && !l.issued && !l.reservedLocationId && (
                     <button onClick={() => { setEditingId(l.id); setAdding(null); }}
-                      className="mr-3 text-sm font-semibold text-info">edit</button>
+                      className="mr-3 text-sm font-semibold text-brand">uredi</button>
                   )}
                   {editable && !l.issued && (
                     <RemoveLineButton wo={wo} lineId={l.id} onRemoved={onChanged} onError={setError} />
@@ -277,7 +289,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
             )
           ))}
           {wo.lines.length === 0 && (
-            <tr><td colSpan={8} className="p-6 text-center text-steel">No lines yet. Add labour and parts to build the job.</td></tr>
+            <tr><td colSpan={8} className="p-6 text-center text-steel">Ni postavk. Dodaj delo in dele za sestavo naloga.</td></tr>
           )}
           {adding && (
             <LineAddRow wo={wo} kind={adding}
@@ -286,15 +298,15 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
               onError={setError} />
           )}
         </tbody>
-        <tfoot className="border-t-2 border-ink/10 bg-floor">
+        <tfoot className="border-t border-line bg-surface2">
           <tr className="font-bold">
-            <td className="p-3" colSpan={5}>Totals</td>
+            <td className="p-3" colSpan={5}>Vsote</td>
             <td className="p-3 text-right font-mono">{formatMoneyMinor(wo.totalNetMinor, wo.currency)}</td>
             <td className="p-3 text-right font-mono">{formatMoneyMinor(wo.totalVatMinor, wo.currency)}</td>
             <td></td>
           </tr>
           <tr>
-            <td className="p-3 text-right text-steel" colSpan={6}>Total incl. VAT</td>
+            <td className="p-3 text-right text-steel" colSpan={6}>Za plačilo (z DDV)</td>
             <td className="p-3 text-right font-mono text-lg font-bold" colSpan={2}>{formatMoneyMinor(wo.totalGrossMinor, wo.currency)}</td>
           </tr>
         </tfoot>
@@ -321,7 +333,7 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
   // Labour is "hours × rate"; a part is "quantity × unit price". The field
   // labels differ but both map to the same {quantity, unitPriceMinor} the
   // backend's addLine expects, so the server prices them identically.
-  const [description, setDescription] = useState(kind === 'labour' ? 'Labour' : '');
+  const [description, setDescription] = useState(kind === 'labour' ? 'Delo' : '');
   const [qty, setQty] = useState(kind === 'labour' ? '1' : '1');
   const [unit, setUnit] = useState('');
   const [vat, setVat] = useState('22');
@@ -329,7 +341,7 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
 
   async function add() {
     const unitMinor = eurosToMinor(unit);
-    if (!description.trim() || unitMinor === null) { onError('Enter a description and a valid price.'); return; }
+    if (!description.trim() || unitMinor === null) { onError('Vnesi opis in veljavno ceno.'); return; }
     setBusy(true); onError(null);
     try {
       await api.workOrders.addLine(wo.id, {
@@ -342,7 +354,7 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
       });
       onAdded();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Could not add the line');
+      onError(e instanceof ApiError ? e.message : 'Postavke ni bilo mogoče dodati');
       setBusy(false);
     }
   }
@@ -350,30 +362,30 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
   return (
     <tr className="border-t border-line bg-info/5">
       <td className="p-2 text-center font-mono text-steel">+</td>
-      <td className="p-2"><SoftChip tone={kind === 'labour' ? 'info' : 'neutral'}>{kind}</SoftChip></td>
+      <td className="p-2"><SoftChip tone={kind === 'labour' ? 'info' : 'neutral'}>{kind === 'labour' ? 'Delo' : 'Del'}</SoftChip></td>
       <td className="p-2">
         <input value={description} onChange={(e) => setDescription(e.target.value)}
-          placeholder={kind === 'labour' ? 'e.g. Brake overhaul' : 'e.g. Brake pad set'}
-          className="w-full rounded border-2 border-line bg-panel px-2 py-2 focus:border-info focus:outline-none" />
+          placeholder={kind === 'labour' ? 'npr. Pregled zavor' : 'npr. Komplet zavornih ploščic'}
+          className="w-full rounded border border-linestrong bg-surface px-2 py-2 focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2">
         <input value={qty} inputMode="decimal" onChange={(e) => setQty(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-          className="w-16 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none"
-          title={kind === 'labour' ? 'hours' : 'quantity'} />
+          className="w-16 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none"
+          title={kind === 'labour' ? 'ure' : 'količina'} />
       </td>
       <td className="p-2">
         <input value={unit} inputMode="decimal" onChange={(e) => setUnit(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
           placeholder={kind === 'labour' ? '€/h' : '€'}
-          className="w-20 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none" />
+          className="w-20 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
         <input value={vat} inputMode="decimal" onChange={(e) => setVat(e.target.value.replace(/[^0-9.]/g, ''))}
-          className="w-14 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none" />
+          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2 text-right">
-        <button onClick={add} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'add'}</button>
-        <button onClick={onCancel} className="font-semibold text-steel">cancel</button>
+        <button onClick={add} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'dodaj'}</button>
+        <button onClick={onCancel} className="font-semibold text-steel">prekliči</button>
       </td>
     </tr>
   );
@@ -390,7 +402,7 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
 
   async function save() {
     const unitMinor = eurosToMinor(unit);
-    if (!description.trim() || unitMinor === null) { onError('Enter a description and a valid price.'); return; }
+    if (!description.trim() || unitMinor === null) { onError('Vnesi opis in veljavno ceno.'); return; }
     setBusy(true); onError(null);
     try {
       await api.workOrders.updateLine(wo.id, line.id, {
@@ -398,7 +410,7 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
       });
       onSaved();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Could not save the line');
+      onError(e instanceof ApiError ? e.message : 'Postavke ni bilo mogoče shraniti');
       setBusy(false);
     }
   }
@@ -406,27 +418,27 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
   return (
     <tr className="border-t border-line bg-hold/5">
       <td className="p-2 font-mono">{line.lineNo}</td>
-      <td className="p-2"><SoftChip tone={line.type === 'labour' ? 'info' : 'neutral'}>{line.type}</SoftChip></td>
+      <td className="p-2"><SoftChip tone={line.type === 'labour' ? 'info' : 'neutral'}>{line.type === 'labour' ? 'Delo' : 'Del'}</SoftChip></td>
       <td className="p-2">
         <input value={description} onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded border-2 border-line bg-panel px-2 py-2 focus:border-info focus:outline-none" />
+          className="w-full rounded border border-linestrong bg-surface px-2 py-2 focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2">
         <input value={qty} inputMode="decimal" onChange={(e) => setQty(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-          className="w-16 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none" />
+          className="w-16 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2">
         <input value={unit} inputMode="decimal" onChange={(e) => setUnit(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-          className="w-20 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none" />
+          className="w-20 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
         <input value={vat} inputMode="decimal" onChange={(e) => setVat(e.target.value.replace(/[^0-9.]/g, ''))}
-          className="w-14 rounded border-2 border-line bg-panel px-2 py-2 text-right font-mono focus:border-info focus:outline-none" />
+          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
       <td className="p-2 text-right">
-        <button onClick={save} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'save'}</button>
-        <button onClick={onCancel} className="font-semibold text-steel">cancel</button>
+        <button onClick={save} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'shrani'}</button>
+        <button onClick={onCancel} className="font-semibold text-steel">prekliči</button>
       </td>
     </tr>
   );
@@ -439,10 +451,10 @@ function RemoveLineButton({ wo, lineId, onRemoved, onError }: {
   async function remove() {
     setBusy(true); onError(null);
     try { await api.workOrders.removeLine(wo.id, lineId); onRemoved(); }
-    catch (e) { onError(e instanceof ApiError ? e.message : 'Could not remove the line'); setBusy(false); }
+    catch (e) { onError(e instanceof ApiError ? e.message : 'Postavke ni bilo mogoče odstraniti'); setBusy(false); }
   }
   return (
-    <button onClick={remove} disabled={busy} className="text-sm font-semibold text-stop">{busy ? '…' : 'remove'}</button>
+    <button onClick={remove} disabled={busy} className="text-sm font-semibold text-stop">{busy ? '…' : 'odstrani'}</button>
   );
 }
 
@@ -474,10 +486,10 @@ function PartsPicker({ wo, onCancel, onAdded, onError }: {
   );
 
   async function add() {
-    if (!selected) { onError('Choose a part from the catalogue first.'); return; }
-    if (!locationId) { onError('Choose a location to reserve the part from.'); return; }
+    if (!selected) { onError('Najprej izberi del iz kataloga.'); return; }
+    if (!locationId) { onError('Izberi lokacijo za rezervacijo dela.'); return; }
     const n = parseInt(qty, 10);
-    if (!Number.isInteger(n) || n <= 0) { onError('Quantity must be a whole number of pieces.'); return; }
+    if (!Number.isInteger(n) || n <= 0) { onError('Količina mora biti celo število kosov.'); return; }
     setBusy(true); onError(null);
     try {
       await api.workOrders.addLine(wo.id, {
@@ -492,26 +504,26 @@ function PartsPicker({ wo, onCancel, onAdded, onError }: {
       });
       onAdded();
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : 'Could not add the part');
+      onError(e instanceof ApiError ? e.message : 'Dela ni bilo mogoče dodati');
       setBusy(false);
     }
   }
 
   return (
-    <div className="rounded-tool border-2 border-go/30 bg-go/5 p-3">
+    <div className="rounded-tool border border-go/30 bg-go/5 p-3">
       <div className="mb-2 flex items-center justify-between">
-        <h4 className="text-sm font-bold uppercase tracking-wide text-steel">Add part from stock</h4>
-        <button onClick={onCancel} className="text-sm font-semibold text-steel">cancel</button>
+        <h4 className="text-sm font-bold uppercase tracking-wide text-steel">Dodaj del iz zaloge</h4>
+        <button onClick={onCancel} className="text-sm font-semibold text-steel">prekliči</button>
       </div>
 
       {!selected ? (
         <div>
           <input value={q} onChange={(e) => setQ(e.target.value)} autoFocus
-            placeholder="Search catalogue by name, SKU or OEM ref…"
-            className="w-full rounded-tool border-2 border-line bg-panel px-3 py-2 focus:border-info focus:outline-none" />
-          <div className="mt-2 max-h-56 overflow-auto rounded-tool border border-line bg-panel">
+            placeholder="Iskanje po nazivu, SKU ali OEM…"
+            className="w-full rounded-tool border border-linestrong bg-surface px-3 py-2 focus:border-brandring focus:outline-none" />
+          <div className="mt-2 max-h-56 overflow-auto rounded-tool border border-line bg-surface">
             {(results ?? []).length === 0 ? (
-              <p className="p-3 text-sm text-steel">No matching catalogue parts.</p>
+              <p className="p-3 text-sm text-steel">Ni ustreznih delov v katalogu.</p>
             ) : (results ?? []).map((it: any) => (
               <button key={it.id} onClick={() => { setSelected(it); onError(null); }}
                 className="flex w-full items-center justify-between border-b border-line px-3 py-2 text-left last:border-0 hover:bg-floor">
@@ -526,31 +538,31 @@ function PartsPicker({ wo, onCancel, onAdded, onError }: {
         </div>
       ) : (
         <div>
-          <div className="flex items-center justify-between rounded-tool border border-line bg-panel px-3 py-2">
+          <div className="flex items-center justify-between rounded-tool border border-line bg-surface px-3 py-2">
             <span className="font-semibold">{selected.name}{selected.sku && <span className="ml-2 font-mono text-xs text-steel">{selected.sku}</span>}</span>
-            <button onClick={() => { setSelected(null); setLocationId(''); }} className="text-sm font-semibold text-info">change</button>
+            <button onClick={() => { setSelected(null); setLocationId(''); }} className="text-sm font-semibold text-info">zamenjaj</button>
           </div>
 
           <div className="mt-3">
-            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">Reserve from location</span>
+            <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">Rezerviraj z lokacije</span>
             {!stock ? (
-              <p className="text-sm text-steel">Loading stock…</p>
+              <p className="text-sm text-steel">Nalagam zalogo…</p>
             ) : (stock as any[]).length === 0 ? (
-              <p className="text-sm font-semibold text-hold">No stock on hand for this part anywhere. Receive it first, or use “Other part”.</p>
+              <p className="text-sm font-semibold text-hold">Tega dela ni nikjer na zalogi. Najprej ga prevzemi ali uporabi »Drug del«.</p>
             ) : (
               <div className="flex flex-col gap-1">
                 {(stock as any[]).map((s) => {
                   const avail = s.available ?? (s.onHand - s.reserved);
                   return (
                     <label key={s.locationId}
-                      className={`flex cursor-pointer items-center justify-between rounded-tool border-2 px-3 py-2 ${locationId === s.locationId ? 'border-info bg-info/5' : 'border-line bg-panel'}`}>
+                      className={`flex cursor-pointer items-center justify-between rounded-tool border px-3 py-2 ${locationId === s.locationId ? 'border-info bg-info/5' : 'border-line bg-surface'}`}>
                       <span className="flex items-center gap-2">
                         <input type="radio" name="loc" checked={locationId === s.locationId}
                           onChange={() => setLocationId(s.locationId)} disabled={avail <= 0} />
                         <span className="font-mono text-xs">{s.locationId.slice(0, 8)}</span>
                       </span>
                       <span className={`text-sm font-semibold ${avail > 0 ? 'text-go' : 'text-stop'}`}>
-                        {avail} available <span className="text-steel">({s.onHand} on hand, {s.reserved} reserved)</span>
+                        {avail} na voljo <span className="text-muted2">({s.onHand} skupaj, {s.reserved} rezervirano)</span>
                       </span>
                     </label>
                   );
@@ -561,13 +573,13 @@ function PartsPicker({ wo, onCancel, onAdded, onError }: {
 
           <div className="mt-3 flex items-end justify-between gap-3">
             <label className="block">
-              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">Quantity</span>
+              <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">Količina</span>
               <input value={qty} inputMode="numeric"
                 onChange={(e) => setQty(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-24 rounded-tool border-2 border-line bg-panel px-3 py-2 text-right font-mono focus:border-info focus:outline-none" />
+                className="w-24 rounded-tool border border-linestrong bg-surface px-3 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
             </label>
             <Button tone="go" onClick={add} disabled={busy || !locationId}>
-              {busy ? <Spinner /> : 'Add & reserve'}
+              {busy ? <Spinner /> : 'Dodaj in rezerviraj'}
             </Button>
           </div>
         </div>

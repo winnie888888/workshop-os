@@ -31,17 +31,17 @@ export function DemoShare() {
     setCanNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
   }, []);
 
-  const message = `Try the A-SPRINT Workshop OS demo — open this on your phone, no setup needed: ${url}`;
+  const message = `Preizkusi prikaz A-SPRINT Workshop OS — odpri na telefonu, brez namestitve: ${url}`;
   const enc = encodeURIComponent(message);
   const encUrl = encodeURIComponent(url);
 
   const viber = `viber://forward?text=${enc}`;
   const whatsapp = `https://wa.me/?text=${enc}`;
-  const email = `mailto:?subject=${encodeURIComponent('A-SPRINT Workshop OS demo')}&body=${enc}`;
+  const email = `mailto:?subject=${encodeURIComponent('Prikaz A-SPRINT Workshop OS')}&body=${enc}`;
 
   async function nativeShare() {
     try {
-      await navigator.share({ title: 'A-SPRINT Workshop OS', text: 'Try the Workshop OS demo', url });
+      await navigator.share({ title: 'A-SPRINT Workshop OS', text: 'Preizkusi prikaz Workshop OS', url });
     } catch { /* user dismissed — no-op */ }
   }
 
@@ -55,37 +55,37 @@ export function DemoShare() {
 
   return (
     <Card className="p-4">
-      <h2 className="mb-1 font-display text-lg font-bold">Share this demo</h2>
-      <p className="mb-3 text-sm text-steel">Send the link in one tap — the person who receives it just opens it.</p>
+      <h2 className="mb-1 text-lg font-bold text-ink">Deli ta prikaz</h2>
+      <p className="mb-3 text-sm text-muted">Pošlji povezavo v enem dotiku — prejemnik jo samo odpre.</p>
 
       <div className="grid grid-cols-3 gap-2">
-        <a href={viber} className="tool-tap flex flex-col items-center gap-1 rounded-tool border-2 border-line py-3 font-display font-bold">
-          <span className="text-2xl">💜</span><span className="text-xs">Viber</span>
+        <a href={viber} className="flex flex-col items-center gap-1.5 rounded-tool border border-line py-3 font-bold text-ink transition hover:border-brandring hover:bg-floor">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#7360f2' }} /><span className="text-xs">Viber</span>
         </a>
         <a href={whatsapp} target="_blank" rel="noreferrer"
-          className="tool-tap flex flex-col items-center gap-1 rounded-tool border-2 border-line py-3 font-display font-bold">
-          <span className="text-2xl">🟢</span><span className="text-xs">WhatsApp</span>
+          className="flex flex-col items-center gap-1.5 rounded-tool border border-line py-3 font-bold text-ink transition hover:border-brandring hover:bg-floor">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: '#25d366' }} /><span className="text-xs">WhatsApp</span>
         </a>
         <a href={email}
-          className="tool-tap flex flex-col items-center gap-1 rounded-tool border-2 border-line py-3 font-display font-bold">
-          <span className="text-2xl">✉️</span><span className="text-xs">Email</span>
+          className="flex flex-col items-center gap-1.5 rounded-tool border border-line py-3 font-bold text-ink transition hover:border-brandring hover:bg-floor">
+          <span className="h-2.5 w-2.5 rounded-full bg-brand" /><span className="text-xs">E-pošta</span>
         </a>
       </div>
 
       <div className="mt-2 flex gap-2">
         {canNativeShare && (
           <button onClick={nativeShare}
-            className="tool-tap flex-1 rounded-tool bg-info py-2 font-display font-bold text-white">
-            Share…
+            className="min-h-tap flex-1 rounded-tool bg-brand py-2 font-bold text-white transition hover:bg-brand600">
+            Deli…
           </button>
         )}
         <button onClick={copy}
-          className="tool-tap flex-1 rounded-tool border-2 border-line py-2 font-display font-bold">
-          {copied ? 'Copied ✓' : 'Copy link'}
+          className="min-h-tap flex-1 rounded-tool border border-linestrong py-2 font-bold text-ink transition hover:bg-floor">
+          {copied ? 'Kopirano ✓' : 'Kopiraj povezavo'}
         </button>
       </div>
 
-      {url && <p className="mt-2 break-all text-center text-xs text-steel">{url}</p>}
+      {url && <p className="mt-2 break-all text-center text-xs text-muted2">{url}</p>}
     </Card>
   );
 }
