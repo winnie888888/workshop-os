@@ -19,20 +19,20 @@ export default function PortalHistory() {
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-3">
-        <h1 className="font-display text-2xl font-extrabold">Service history</h1>
+        <h1 className="text-2xl font-extrabold">Zgodovina servisov</h1>
         {isLoading ? (
-          <p className="text-sm text-steel">Loading…</p>
+          <p className="text-sm text-muted">Nalaganje…</p>
         ) : (history ?? []).length === 0 ? (
-          <PortalCard><p className="text-sm text-steel">No completed jobs yet.</p></PortalCard>
+          <PortalCard><p className="text-sm text-muted">Še ni zaključenih nalogov.</p></PortalCard>
         ) : (
           history!.map((w: any) => (
             <Link key={w.id} href={`/portal/work-orders/${w.id}`}>
               <PortalCard>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-bold">{w.makeModel ?? 'Vehicle'}{w.plate && <span className="ml-1 font-mono text-sm text-steel">· {w.plate}</span>}</p>
-                    <p className="line-clamp-1 text-sm text-steel">{w.complaint}</p>
-                    <p className="mt-1 text-xs text-steel">{w.number ? `Order ${w.number}` : ''} · {w.statusLabel}</p>
+                    <p className="font-bold">{w.makeModel ?? 'Vozilo'}{w.plate && <span className="ml-1 num text-sm text-muted">· {w.plate}</span>}</p>
+                    <p className="line-clamp-1 text-sm text-muted">{w.complaint}</p>
+                    <p className="mt-1 text-xs text-muted">{w.number ? `Nalog ${w.number}` : ''} · {w.statusLabel}</p>
                   </div>
                   <span className="shrink-0 text-sm font-semibold"><Money minor={w.totalGrossMinor} currency={w.currency} /></span>
                 </div>
@@ -43,9 +43,9 @@ export default function PortalHistory() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-xl font-extrabold">Documents</h2>
+        <h2 className="text-xl font-extrabold">Dokumenti</h2>
         {(documents ?? []).length === 0 ? (
-          <PortalCard><p className="text-sm text-steel">No documents yet.</p></PortalCard>
+          <PortalCard><p className="text-sm text-muted">Še ni dokumentov.</p></PortalCard>
         ) : (
           documents!.map((d: any) => {
             // The download path is relative to the API; build the absolute URL
@@ -56,9 +56,9 @@ export default function PortalHistory() {
                 <PortalCard className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{d.title}</p>
-                    <p className="text-xs text-steel">{d.date ?? ''}</p>
+                    <p className="text-xs text-muted">{d.date ?? ''}</p>
                   </div>
-                  <span className="text-sm font-semibold text-info">PDF ›</span>
+                  <span className="text-sm font-semibold text-brand">PDF ›</span>
                 </PortalCard>
               </a>
             );

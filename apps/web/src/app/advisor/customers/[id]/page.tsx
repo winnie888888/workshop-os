@@ -9,11 +9,8 @@ import { displayPlate, formatMoneyMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 
 /*
- * The customer hub. This is the screen that ties the customer to everything
- * connected to them — their vehicles, their outstanding balance, and the
- * actions that start real work (add a vehicle, open a job). It is the natural
- * home base an advisor returns to, and it resolves the readiness-review gap
- * that vehicles were only ever listed per customer with nowhere to see them.
+ * The customer hub — ties the customer to their vehicles, outstanding balance,
+ * and the actions that start real work (add a vehicle, open a job).
  */
 export default function CustomerHub() {
   const { id } = useParams<{ id: string }>();
@@ -23,23 +20,26 @@ export default function CustomerHub() {
   const { data: vehicles } = useSWR(['cust-vehicles', id], () => api.assets.list(id).catch(() => []));
   const { data: ar } = useSWR(['cust-ar', id], () => api.customerReceivables(id).catch(() => null));
 
-  if (!customer) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
+  if (!customer) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
+
+  const arTotal = ar ? (ar.formatted?.total || formatMoneyMinor(ar.buckets.total)) : '';
+  const ar90 = ar ? (ar.formatted?.d90_plus || formatMoneyMinor(ar.buckets.d90_plus)) : '';
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
-      <button onClick={() => router.push('/advisor/customers')} className="self-start text-sm font-semibold text-steel">‹ Customers</button>
+    <div className="mx-auto flex max-w-5xl flex-col gap-5">
+      <button onClick={() => router.push('/advisor/customers')} className="self-start text-sm font-semibold text-muted hover:text-brand">‹ Stranke</button>
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">{customer.name}</h1>
-          <p className="text-sm text-steel">
-            {customer.country}{customer.vatId ? ` · VAT ${customer.vatId}` : ''}
-            {customer.paymentTermsDays != null ? ` · ${customer.paymentTermsDays}-day terms` : ''}
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">{customer.name}</h1>
+          <p className="text-sm text-muted">
+            {customer.country}{customer.vatId ? ` · ID za DDV ${customer.vatId}` : ''}
+            {customer.paymentTermsDays != null ? ` · plačilni rok ${customer.paymentTermsDays} dni` : ''}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/advisor/customers/${id}/edit`}><Button tone="neutral">Edit</Button></Link>
-          <Link href={`/advisor/work-orders/new?customerId=${id}`}><Button tone="info">+ New job</Button></Link>
+          <Link href={`/advisor/customers/${id}/edit`}><Button tone="neutral">Uredi</Button></Link>
+          <Link href={`/advisor/work-orders/new?customerId=${id}`}><Button tone="info">+ Nov nalog</Button></Link>
         </div>
       </div>
 
@@ -50,12 +50,12 @@ export default function CustomerHub() {
       {ar && ar.buckets.total !== '0' && (
         <Card className={`p-4 ${ar.buckets.d61_90 !== '0' || ar.buckets.d90_plus !== '0' ? 'border-stop/40 bg-stop/5' : ''}`}>
           <div className="flex items-center justify-between">
-            <span className="font-display font-bold">Outstanding balance</span>
-            <span className="font-mono text-lg font-bold">{ar.formatted.total}</span>
+            <span className="font-bold text-ink">Odprta terjatev</span>
+            <span className="num text-lg font-extrabold text-ink">{arTotal}</span>
           </div>
           {(ar.buckets.d61_90 !== '0' || ar.buckets.d90_plus !== '0') && (
             <p className="mt-1 text-sm font-semibold text-stop">
-              {ar.formatted.d90_plus} is 90+ days overdue — review credit before adding work.
+              {ar90} je zapadlo nad 90 dni — pred novim delom preveri boniteto.
             </p>
           )}
         </Card>
@@ -63,30 +63,30 @@ export default function CustomerHub() {
 
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-line p-4">
-          <h2 className="font-display text-lg font-bold">Vehicles</h2>
+          <h2 className="text-base font-bold text-ink">Vozila</h2>
           <Link href={`/advisor/customers/${id}/vehicles/new`}>
-            <Button tone="info">+ Add vehicle</Button>
+            <Button tone="info">+ Dodaj vozilo</Button>
           </Link>
         </div>
         {!vehicles ? (
-          <div className="flex justify-center p-6"><Spinner className="text-info" /></div>
+          <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
         ) : vehicles.length === 0 ? (
-          <p className="p-6 text-center text-steel">No vehicles yet. Add the first one to open a job for it.</p>
+          <p className="p-8 text-center text-muted">Še ni vozil. Dodaj prvo, da zanj odpreš nalog.</p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-floor text-left text-xs uppercase tracking-wide text-steel">
-              <tr><th className="p-3">Plate</th><th className="p-3">Make / model</th><th className="p-3">VIN</th>
-                <th className="p-3">Type</th><th className="p-3"></th></tr>
+            <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+              <tr><th className="p-3 font-bold">Tablica</th><th className="p-3 font-bold">Znamka / model</th><th className="p-3 font-bold">VIN</th>
+                <th className="p-3 font-bold">Tip</th><th className="p-3"></th></tr>
             </thead>
             <tbody>
               {(vehicles as any[]).map((v) => (
-                <tr key={v.id} className="border-t border-line hover:bg-floor">
-                  <td className="p-3 font-mono font-bold">{v.plate ? displayPlate(v.plate) : '—'}</td>
-                  <td className="p-3">{[v.make, v.model].filter(Boolean).join(' ') || '—'}</td>
-                  <td className="p-3 font-mono text-xs">{v.vin ?? '—'}</td>
+                <tr key={v.id} className="border-t border-line hover:bg-surface2">
+                  <td className="num p-3 font-bold text-ink">{v.plate ? displayPlate(v.plate) : '—'}</td>
+                  <td className="p-3 text-ink">{[v.make, v.model].filter(Boolean).join(' ') || '—'}</td>
+                  <td className="num p-3 text-xs text-muted">{v.vin ?? '—'}</td>
                   <td className="p-3"><SoftChip tone="neutral">{v.type ?? '—'}</SoftChip></td>
                   <td className="p-3 text-right">
-                    <Link href={`/advisor/vehicles/${v.id}/edit`} className="text-sm font-semibold text-info">edit</Link>
+                    <Link href={`/advisor/vehicles/${v.id}/edit`} className="text-sm font-semibold text-brand">uredi</Link>
                   </td>
                 </tr>
               ))}
@@ -99,12 +99,9 @@ export default function CustomerHub() {
 }
 
 /* ----------------------------------------------------------------------------
- * VAT status & validation (Phase 4C). For a VAT-liable customer with a VAT id,
- * this card shows whether the id is validated — and lets the advisor validate
- * it. Validation is what unlocks reverse charge for cross-border EU invoices,
- * so the card explains that consequence plainly. Two paths: a VIES check (when
- * the deployment has it wired) and an audited manual confirmation that requires
- * a note describing what was verified.
+ * VAT status & validation. For a VAT-liable customer with a VAT id, this card
+ * shows whether the id is validated and lets the advisor validate it (VIES or
+ * an audited manual confirmation requiring a note).
  * -------------------------------------------------------------------------- */
 function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () => void }) {
   const [mode, setMode] = useState<null | 'manual'>(null);
@@ -121,14 +118,14 @@ function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () =
     try {
       const r = await api.customers.validateVat(customer.id, { mode: m, note: m === 'manual' ? note.trim() : undefined });
       if (r.validated) {
-        setResult(`Validated via ${r.source}${r.viesName ? ` — ${r.viesName}` : ''}.`);
+        setResult(`Potrjeno prek ${r.source}${r.viesName ? ` — ${r.viesName}` : ''}.`);
         setMode(null); setNote('');
         onChanged();
       } else {
-        setError(r.reason || 'Validation did not confirm the VAT id.');
+        setError(r.reason || 'Preverjanje ni potrdilo ID za DDV.');
       }
     } catch (e: any) {
-      setError(e?.message || 'Validation failed');
+      setError(e?.message || 'Preverjanje ni uspelo');
     } finally {
       setBusy(false);
     }
@@ -138,24 +135,24 @@ function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () =
     <Card className={`p-4 ${validated ? 'border-go/40 bg-go/5' : 'border-hold/40 bg-hold/5'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wide text-steel">VAT ID status</h3>
-          <p className="mt-1 flex items-center gap-2 font-display text-lg font-bold">
-            <span className="font-mono">{customer.vatId}</span>
+          <h3 className="text-xs font-bold uppercase tracking-wide text-muted2">Status ID za DDV</h3>
+          <p className="mt-1 flex items-center gap-2 text-lg font-bold text-ink">
+            <span className="num">{customer.vatId}</span>
             {validated
-              ? <SoftChip tone="go">validated{source ? ` · ${source}` : ''}</SoftChip>
-              : <SoftChip tone="hold">not validated</SoftChip>}
+              ? <SoftChip tone="go">potrjen{source ? ` · ${source}` : ''}</SoftChip>
+              : <SoftChip tone="hold">ni potrjen</SoftChip>}
           </p>
           {!validated && (
-            <p className="mt-1 text-sm text-steel">
-              Cross-border EU invoices can only be reverse-charged once this VAT ID is validated.
-              Until then, issuing is blocked for an EU business customer in another country.
+            <p className="mt-1 text-sm text-muted">
+              Čezmejni računi v EU lahko uporabijo obrnjeno davčno obveznost šele po potrditvi tega ID za DDV.
+              Do takrat je izdaja za EU poslovnega kupca iz druge države blokirana.
             </p>
           )}
         </div>
         {!validated && mode === null && (
           <div className="flex flex-col gap-2">
-            <Button tone="go" onClick={() => run('vies')} disabled={busy}>Check via VIES</Button>
-            <Button tone="neutral" onClick={() => { setMode('manual'); setError(null); }} disabled={busy}>Confirm manually</Button>
+            <Button tone="go" onClick={() => run('vies')} disabled={busy}>Preveri prek VIES</Button>
+            <Button tone="neutral" onClick={() => { setMode('manual'); setError(null); }} disabled={busy}>Potrdi ročno</Button>
           </div>
         )}
       </div>
@@ -164,19 +161,19 @@ function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () =
       {result && <p className="mt-3 rounded-tool bg-go/10 px-3 py-2 text-sm font-semibold text-go">{result}</p>}
 
       {mode === 'manual' && (
-        <div className="mt-4 rounded-tool border-2 border-line bg-panel p-3">
-          <p className="mb-2 text-sm font-semibold">Manual confirmation</p>
-          <p className="mb-2 text-xs text-steel">
-            Attest what you verified (e.g. checked the VIES portal, customer VAT certificate on file).
-            This is recorded against your name in the audit log.
+        <div className="mt-4 rounded-tool border border-line bg-surface p-3">
+          <p className="mb-2 text-sm font-semibold text-ink">Ročna potrditev</p>
+          <p className="mb-2 text-xs text-muted">
+            Navedi, kaj si preveril (npr. preverjen portal VIES, potrdilo o DDV stranke v evidenci).
+            Zabeleži se ob tvojem imenu v revizijski sledi.
           </p>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2}
-            placeholder="e.g. VIES portal checked 2026-06-07; certificate on file"
-            className="w-full rounded-tool border-2 border-line bg-floor p-2 text-sm focus:border-info focus:outline-none" />
+            placeholder="npr. VIES portal preverjen 2026-06-07; potrdilo v evidenci"
+            className="w-full rounded-tool border border-line bg-surface2 p-2 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brandring" />
           <div className="mt-2 flex justify-end gap-2">
-            <Button tone="neutral" onClick={() => { setMode(null); setNote(''); }}>Cancel</Button>
+            <Button tone="neutral" onClick={() => { setMode(null); setNote(''); }}>Prekliči</Button>
             <Button tone="go" onClick={() => run('manual')} disabled={busy || note.trim().length < 3}>
-              {busy ? <Spinner /> : 'Confirm & record'}
+              {busy ? <Spinner /> : 'Potrdi in zabeleži'}
             </Button>
           </div>
         </div>

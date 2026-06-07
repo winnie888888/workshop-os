@@ -46,7 +46,7 @@ function NewJobInner() {
   );
 
   async function create() {
-    if (!customerId) { setError('Choose a customer first.'); return; }
+    if (!customerId) { setError('Najprej izberi stranko.'); return; }
     setBusy(true); setError(null);
     try {
       const wo = await api.workOrders.create({
@@ -59,25 +59,25 @@ function NewJobInner() {
       });
       router.push(`/advisor/work-orders/${wo.id}`);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not create the work order');
+      setError(e instanceof ApiError ? e.message : 'Naloga ni bilo mogoče ustvariti');
       setBusy(false);
     }
   }
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
-      <h1 className="font-display text-2xl font-extrabold tracking-tight">New job</h1>
+      <h1 className="font-display text-2xl font-extrabold tracking-tight">Nov nalog</h1>
       {error && <ProblemBanner message={error} />}
 
       <Card className="flex flex-col gap-4 p-5">
-        <Select label="Customer" value={customerId} onChange={(v) => { setCustomerId(v); setAssetId(''); }}
-          options={[{ value: '', label: 'Select a customer…' },
+        <Select label="Stranka" value={customerId} onChange={(v) => { setCustomerId(v); setAssetId(''); }}
+          options={[{ value: '', label: 'Izberi stranko…' },
             ...((customers ?? []) as any[]).map((c) => ({ value: c.id, label: c.name ?? c.id }))]} />
 
         {customerId && (
           <div>
-            <Select label="Vehicle (optional)" value={assetId} onChange={setAssetId}
-              options={[{ value: '', label: 'No vehicle / add later' },
+            <Select label="Vozilo (neobvezno)" value={assetId} onChange={setAssetId}
+              options={[{ value: '', label: 'Brez vozila / dodaj kasneje' },
                 ...((vehicles ?? []) as any[]).map((a) => ({ value: a.id, label: `${a.plate ?? a.id} — ${[a.make, a.model].filter(Boolean).join(' ')}` }))]} />
             {vehicles && (vehicles as any[]).length === 0 && (
               <p className="mt-1 text-xs text-steel">
@@ -88,18 +88,18 @@ function NewJobInner() {
           </div>
         )}
 
-        <Textarea label="Complaint (opis napake)" value={complaint} onChange={setComplaint}
-          placeholder="What did the customer report?" />
+        <Textarea label="Opis napake" value={complaint} onChange={setComplaint}
+          placeholder="Kaj je stranka prijavila?" />
 
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Odometer (km)" value={odometer} onChange={setOdometer} numeric />
-          <Input label="Customer PO (optional)" value={customerPo} onChange={setCustomerPo} />
+          <Input label="Števec (km)" value={odometer} onChange={setOdometer} numeric />
+          <Input label="Naročilnica stranke (neobvezno)" value={customerPo} onChange={setCustomerPo} />
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button tone="neutral" onClick={() => router.push('/advisor')}>Cancel</Button>
+          <Button tone="neutral" onClick={() => router.push('/advisor')}>Prekliči</Button>
           <Button tone="info" size="lg" onClick={create} disabled={busy || !customerId}>
-            {busy ? <Spinner /> : 'Open work order'}
+            {busy ? <Spinner /> : 'Odpri nalog'}
           </Button>
         </div>
       </Card>
@@ -153,4 +153,3 @@ export default function NewJob() {
     </Suspense>
   );
 }
-

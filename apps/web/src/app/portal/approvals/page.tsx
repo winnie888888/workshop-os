@@ -30,7 +30,7 @@ export default function PortalApprovals() {
       setNote(''); setNoteFor(null);
       await mutate(); // refresh so the item moves to its decided state
     } catch (e) {
-      setError(e instanceof PortalApiError ? e.message : 'Could not record your decision. Please try again.');
+      setError(e instanceof PortalApiError ? e.message : 'Odločitve ni bilo mogoče zabeležiti. Poskusite znova.');
     } finally {
       setBusyId(null);
     }
@@ -41,12 +41,12 @@ export default function PortalApprovals() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl font-extrabold">Approvals</h1>
+      <h1 className="text-2xl font-extrabold">Odobritve</h1>
 
       {isLoading ? (
-        <p className="text-sm text-steel">Loading…</p>
+        <p className="text-sm text-muted">Nalaganje…</p>
       ) : (all ?? []).length === 0 ? (
-        <PortalCard><p className="text-sm text-steel">Nothing needs your approval right now.</p></PortalCard>
+        <PortalCard><p className="text-sm text-muted">Trenutno ni ničesar za odobritev.</p></PortalCard>
       ) : (
         <>
           {error && <p className="rounded-xl bg-stop/10 p-3 text-sm font-semibold text-stop">{error}</p>}
@@ -55,18 +55,18 @@ export default function PortalApprovals() {
             <PortalCard key={a.id} className="border-2 border-hold">
               <div className="mb-1 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wide text-hold">
-                  {a.kind === 'estimate' ? 'Estimate' : 'Additional work'}
+                  {a.kind === 'estimate' ? 'Predračun' : 'Dodatno delo'}
                 </span>
-                <span className="text-xs text-steel">Order {a.workOrderNumber}</span>
+                <span className="text-xs text-muted">Nalog {a.workOrderNumber}</span>
               </div>
               <h2 className="mb-3 font-bold">{a.title}</h2>
 
               {/* The proposed items so the customer sees exactly what they approve. */}
-              <div className="mb-3 flex flex-col divide-y divide-line rounded-xl bg-floor p-3">
+              <div className="mb-3 flex flex-col divide-y divide-line rounded-xl bg-surface2 p-3">
                 {(a.proposedItems ?? []).map((it: any, i: number) => (
                   <div key={i} className="flex items-center justify-between gap-2 py-1.5 text-sm">
-                    <span>{it.description}{Number(it.quantity) !== 1 && <span className="text-steel"> × {it.quantity}</span>}</span>
-                    <span className="font-mono">
+                    <span>{it.description}{Number(it.quantity) !== 1 && <span className="text-muted"> × {it.quantity}</span>}</span>
+                    <span className="num">
                       <Money minor={Number(it.unitPriceMinor) * Number(it.quantity)} currency={a.currency} />
                     </span>
                   </div>
@@ -74,26 +74,26 @@ export default function PortalApprovals() {
               </div>
 
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm text-steel">Total (incl. VAT)</span>
+                <span className="text-sm text-muted">Skupaj (z DDV)</span>
                 <span className="text-lg font-bold"><Money minor={a.amountGrossMinor} currency={a.currency} /></span>
               </div>
 
               {noteFor === a.id && (
                 <textarea value={note} onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add a note for the workshop (optional)…" rows={2}
-                  className="mb-3 w-full rounded-xl border border-line bg-panel p-3 text-sm focus:border-info focus:outline-none" />
+                  placeholder="Dodajte opombo za delavnico (neobvezno)…" rows={2}
+                  className="mb-3 w-full rounded-xl border border-line bg-surface p-3 text-sm focus:border-brand focus:outline-none" />
               )}
 
               <div className="flex gap-3">
                 <button onClick={() => respond(a.id, 'approved')} disabled={busyId === a.id}
                   className="flex-1 rounded-xl bg-go py-3 font-bold text-white active:scale-[0.98] disabled:opacity-50">
-                  {busyId === a.id ? '…' : 'Approve'}
+                  {busyId === a.id ? '…' : 'Odobri'}
                 </button>
                 <button
                   onClick={() => { if (noteFor === a.id) respond(a.id, 'declined'); else { setNoteFor(a.id); } }}
                   disabled={busyId === a.id}
                   className="flex-1 rounded-xl border border-stop py-3 font-bold text-stop active:scale-[0.98] disabled:opacity-50">
-                  {noteFor === a.id ? 'Confirm decline' : 'Decline'}
+                  {noteFor === a.id ? 'Potrdi zavrnitev' : 'Zavrni'}
                 </button>
               </div>
             </PortalCard>
@@ -101,16 +101,16 @@ export default function PortalApprovals() {
 
           {answered.length > 0 && (
             <section>
-              <h2 className="mb-2 mt-2 text-sm font-bold uppercase tracking-wide text-steel">Past decisions</h2>
+              <h2 className="mb-2 mt-2 text-sm font-bold uppercase tracking-wide text-muted">Pretekle odločitve</h2>
               <div className="flex flex-col gap-3">
                 {answered.map((a: any) => (
                   <PortalCard key={a.id}>
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold">{a.title}</p>
-                        <p className="text-xs text-steel">Order {a.workOrderNumber}</p>
+                        <p className="text-xs text-muted">Nalog {a.workOrderNumber}</p>
                       </div>
-                      <StatusPill status={a.status} label={a.status === 'approved' ? 'Approved' : a.status === 'declined' ? 'Declined' : a.status} />
+                      <StatusPill status={a.status} label={a.status === 'approved' ? 'Odobreno' : a.status === 'declined' ? 'Zavrnjeno' : a.status} />
                     </div>
                   </PortalCard>
                 ))}

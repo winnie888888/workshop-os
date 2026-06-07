@@ -49,7 +49,7 @@ export default function CreateCustomer() {
       // job) is right there.
       router.push(`/advisor/customers/${created.id}`);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Could not create the customer');
+      setError(e instanceof ApiError ? e.message : 'Stranke ni bilo mogoče ustvariti');
       setBusy(false);
     }
   }
@@ -57,44 +57,44 @@ export default function CreateCustomer() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <button onClick={() => router.push('/advisor/customers')} className="self-start text-sm font-semibold text-steel">‹ Customers</button>
-      <h1 className="font-display text-2xl font-extrabold tracking-tight">New customer</h1>
+      <h1 className="font-display text-2xl font-extrabold tracking-tight">Nova stranka</h1>
       {error && <ProblemBanner message={error} />}
 
       <Card className="flex flex-col gap-4 p-5">
-        <TextField label="Name" value={form.name} onChange={(v) => set('name', v)} required placeholder="e.g. Prevozi Novak d.o.o." />
+        <TextField label="Naziv" value={form.name} onChange={(v) => set('name', v)} required placeholder="npr. Prevozi Novak d.o.o." />
 
         <div className="grid grid-cols-2 gap-4">
-          <SelectField label="Type" value={form.type} onChange={(v) => set('type', v)}
-            options={[{ value: 'company', label: 'Company' }, { value: 'individual', label: 'Individual' }]} />
-          <SelectField label="Country" value={form.country} onChange={(v) => set('country', v)} options={COUNTRY_OPTIONS} required />
+          <SelectField label="Tip" value={form.type} onChange={(v) => set('type', v)}
+            options={[{ value: 'company', label: 'Podjetje' }, { value: 'individual', label: 'Fizična oseba' }]} />
+          <SelectField label="Država" value={form.country} onChange={(v) => set('country', v)} options={COUNTRY_OPTIONS} required />
         </div>
 
-        <CheckboxField label="VAT-registered business" checked={form.vatLiable} onChange={(v) => set('vatLiable', v)}
-          hint="Determines whether cross-border invoices use reverse charge." />
+        <CheckboxField label="Zavezanec za DDV" checked={form.vatLiable} onChange={(v) => set('vatLiable', v)}
+          hint="Določa, ali čezmejni računi uporabijo obrnjeno davčno obveznost." />
 
         {form.vatLiable && (
-          <TextField label="VAT ID" value={form.vatId} onChange={(v) => set('vatId', v)} mono uppercase
-            required={needsVatId} placeholder="e.g. SI12345678"
-            hint="Country prefix + number. Required for EU reverse-charge billing." />
+          <TextField label="ID za DDV" value={form.vatId} onChange={(v) => set('vatId', v)} mono uppercase
+            required={needsVatId} placeholder="npr. SI12345678"
+            hint="Predpona države + številka. Potrebno za obračun obrnjene obveznosti v EU." />
         )}
 
-        <TextAreaField label="Address" value={form.address} onChange={(v) => set('address', v)} rows={2} />
+        <TextAreaField label="Naslov" value={form.address} onChange={(v) => set('address', v)} rows={2} />
         <div className="grid grid-cols-2 gap-4">
-          <TextField label="Post code" value={form.postCode} onChange={(v) => set('postCode', v)} />
-          <TextField label="City" value={form.city} onChange={(v) => set('city', v)} />
+          <TextField label="Poštna št." value={form.postCode} onChange={(v) => set('postCode', v)} />
+          <TextField label="Kraj" value={form.city} onChange={(v) => set('city', v)} />
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <NumberField label="Payment terms (days)" value={form.paymentTermsDays} onChange={(v) => set('paymentTermsDays', v)} />
-          <SelectField label="Currency" value={form.currency} onChange={(v) => set('currency', v)}
+          <NumberField label="Plačilni rok (dni)" value={form.paymentTermsDays} onChange={(v) => set('paymentTermsDays', v)} />
+          <SelectField label="Valuta" value={form.currency} onChange={(v) => set('currency', v)}
             options={[{ value: 'EUR', label: 'EUR' }]} />
-          <NumberField label="Discount %" value={form.discountPct} onChange={(v) => set('discountPct', v)} />
+          <NumberField label="Popust %" value={form.discountPct} onChange={(v) => set('discountPct', v)} />
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button tone="neutral" onClick={() => router.push('/advisor/customers')}>Cancel</Button>
+          <Button tone="neutral" onClick={() => router.push('/advisor/customers')}>Prekliči</Button>
           <Button tone="info" size="lg" onClick={save} disabled={busy || !canSave}>
-            {busy ? <Spinner /> : 'Create customer'}
+            {busy ? <Spinner /> : 'Ustvari stranko'}
           </Button>
         </div>
       </Card>

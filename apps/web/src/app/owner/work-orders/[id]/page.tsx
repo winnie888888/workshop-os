@@ -19,35 +19,35 @@ export default function OwnerInsight() {
   const { data, isLoading, error } = useSWR(['insight', id], () => api.reports.workOrderInsights(id));
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
-  if (error || !data) return <Card className="m-6 p-6 text-steel">No insight available for this job.</Card>;
+  if (error || !data) return <Card className="m-6 p-6 text-muted">Za ta nalog ni vpogleda.</Card>;
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-4 p-6">
-      <button onClick={() => router.push('/owner')} className="self-start text-sm font-semibold text-steel">‹ Dashboard</button>
-      <h1 className="font-display text-2xl font-extrabold tracking-tight">
-        Labour insight · {data.workOrder.number ?? data.workOrder.id.slice(0, 8)}
+      <button onClick={() => router.push('/owner')} className="self-start text-sm font-semibold text-muted">‹ Nadzorna plošča</button>
+      <h1 className="text-2xl font-extrabold tracking-tight">
+        Vpogled v delo · {data.workOrder.number ?? data.workOrder.id.slice(0, 8)}
       </h1>
 
       {/* Three hours, side by side — the whole point of the rule. */}
       <div className="grid grid-cols-3 gap-4">
-        <HourTile label="Actual (clocked)" value={data.hours.actual} tone="neutral" />
-        <HourTile label="Standard (book)" value={data.hours.standard} tone="info" />
-        <HourTile label="Billed" value={data.hours.billed} tone="go" />
+        <HourTile label="Dejansko (ura)" value={data.hours.actual} tone="neutral" />
+        <HourTile label="Normativ (knjiga)" value={data.hours.standard} tone="info" />
+        <HourTile label="Zaračunano" value={data.hours.billed} tone="go" />
       </div>
 
       <Card className="p-5">
         <div className="grid grid-cols-2 gap-4">
-          <Metric label="Efficiency" value={data.efficiency != null ? `${Math.round(data.efficiency * 100)}%` : '—'} />
-          <Metric label="Margin" value={data.profitability.margin} accent />
-          <Metric label="Billed revenue" value={data.profitability.billedRevenue} />
-          <Metric label="Labour cost" value={data.profitability.labourCost} />
+          <Metric label="Učinkovitost" value={data.efficiency != null ? `${Math.round(data.efficiency * 100)}%` : '—'} />
+          <Metric label="Marža" value={data.profitability.margin} accent />
+          <Metric label="Zaračunan prihodek" value={data.profitability.billedRevenue} />
+          <Metric label="Strošek dela" value={data.profitability.labourCost} />
         </div>
       </Card>
 
       <div className="flex flex-col gap-2">
-        <h2 className="font-display text-lg font-bold">Flags</h2>
+        <h2 className="text-lg font-bold">Zastavice</h2>
         {data.flags.length === 0 ? (
-          <Card className="border-go/40 bg-go/10 p-4 text-go">No anomalies. Healthy job.</Card>
+          <Card className="border-go/40 bg-go/10 p-4 text-go">Brez nepravilnosti. Zdrav nalog.</Card>
         ) : (
           data.flags.map((f, i) => (
             <div key={i} className={`rounded-tool border px-4 py-3 ${flagClass(f.severity)}`}>
@@ -65,13 +65,13 @@ export default function OwnerInsight() {
       {data.narrative && (
         <Card className="border-info/40 bg-info/5 p-5">
           <div className="mb-2 flex items-center gap-2">
-            <SoftChip tone="info">AI analysis</SoftChip>
-            <span className="text-xs uppercase tracking-wide text-steel">priority: {data.narrative.priority}</span>
+            <SoftChip tone="info">AI analiza</SoftChip>
+            <span className="text-xs uppercase tracking-wide text-muted">prioriteta: {data.narrative.priority}</span>
           </div>
           <p className="text-base">{data.narrative.summary}</p>
-          <p className="mt-3 text-xs text-steel">
-            Generated explanation of the deterministic flags above — for the owner to read or dismiss.
-            It does not change any figure.
+          <p className="mt-3 text-xs text-muted">
+            Generirana razlaga zgornjih zastavic — za branje ali opustitev.
+            Ne spremeni nobene številke.
           </p>
         </Card>
       )}
@@ -80,11 +80,11 @@ export default function OwnerInsight() {
 }
 
 function HourTile({ label, value, tone }: { label: string; value: number; tone: 'neutral' | 'info' | 'go' }) {
-  const bg = tone === 'go' ? 'bg-go/10 text-go' : tone === 'info' ? 'bg-info/10 text-info' : 'bg-steel/10 text-steel';
+  const bg = tone === 'go' ? 'bg-go/10 text-go' : tone === 'info' ? 'bg-info/10 text-info' : 'bg-steel/10 text-muted';
   return (
     <div className={`rounded-tool p-4 ${bg}`}>
       <p className="text-xs font-bold uppercase tracking-wide opacity-80">{label}</p>
-      <p className="mt-1 font-mono text-3xl font-bold">{value.toFixed(2)}<span className="text-base">h</span></p>
+      <p className="mt-1 num text-3xl font-bold">{value.toFixed(2)}<span className="text-base">h</span></p>
     </div>
   );
 }
@@ -92,8 +92,8 @@ function HourTile({ label, value, tone }: { label: string; value: number; tone: 
 function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-wide text-steel">{label}</p>
-      <p className={`mt-1 font-mono text-xl font-bold ${accent ? 'text-go' : ''}`}>{value}</p>
+      <p className="text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
+      <p className={`mt-1 num text-xl font-bold ${accent ? 'text-go' : ''}`}>{value}</p>
     </div>
   );
 }

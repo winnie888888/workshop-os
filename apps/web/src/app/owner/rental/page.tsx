@@ -45,7 +45,7 @@ export default function RentalPage() {
       const [v, c] = await Promise.all([api.rental.listVehicles(), api.customers.list()]);
       setVehicles(v); setCustomers(c);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load rental data');
+      setError(e instanceof Error ? e.message : 'Podatkov o najemu ni bilo mogoče naložiti');
     } finally { setLoading(false); }
   }
   useEffect(() => { refresh(); }, []);
@@ -54,12 +54,12 @@ export default function RentalPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-extrabold">Vehicle rental</h1>
-          <p className="text-sm text-steel">Motorhomes, cars and replacement vehicles — reserve, hand over, return, invoice.</p>
+          <h1 className="text-2xl font-extrabold">Najem vozil</h1>
+          <p className="text-sm text-muted">Avtodomi, avtomobili in nadomestna vozila — rezervacija, predaja, vračilo, račun.</p>
         </div>
         {stage !== 'home' && (
           <Button tone="neutral" size="sm" onClick={() => { setStage('home'); setContract(null); setCharges(null); setInvoice(null); refresh(); }}>
-            ← Back
+            ← Nazaj
           </Button>
         )}
       </div>
@@ -123,19 +123,19 @@ function RentalHome({ vehicles, onNewVehicle, onReserve }: { vehicles: any[]; on
   return (
     <>
       <div className="flex gap-2">
-        <Button tone="go" full onClick={onReserve}>New reservation</Button>
-        <Button tone="neutral" full onClick={onNewVehicle}>Add vehicle</Button>
+        <Button tone="go" full onClick={onReserve}>Nova rezervacija</Button>
+        <Button tone="neutral" full onClick={onNewVehicle}>Dodaj vozilo</Button>
       </div>
       <div className="flex flex-col gap-2">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Fleet ({vehicles.length})</div>
-        {vehicles.length === 0 && <Card className="p-4 text-sm text-steel">No rental vehicles yet. Add your first one.</Card>}
+        <div className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">Vozni park ({vehicles.length})</div>
+        {vehicles.length === 0 && <Card className="p-4 text-sm text-muted">Še ni vozil za najem. Dodajte prvo.</Card>}
         {vehicles.map((v) => (
           <Card key={v.id} className="flex items-center justify-between p-3">
             <div>
-              <div className="font-display font-bold">{[v.make, v.model].filter(Boolean).join(' ') || v.plate}</div>
-              <div className="text-sm text-steel">{v.plate} · {v.category} · {eur(Number(v.daily_rate_minor))}/day</div>
+              <div className="font-bold">{[v.make, v.model].filter(Boolean).join(' ') || v.plate}</div>
+              <div className="text-sm text-muted">{v.plate} · {catLabel(v.category)} · {eur(Number(v.daily_rate_minor))}/dan</div>
             </div>
-            <SoftChip tone={v.status === 'available' ? 'go' : v.status === 'rented' ? 'hold' : 'neutral'}>{v.status}</SoftChip>
+            <SoftChip tone={v.status === 'available' ? 'go' : v.status === 'rented' ? 'hold' : 'neutral'}>{rentStatus(v.status)}</SoftChip>
           </Card>
         ))}
       </div>
@@ -143,15 +143,23 @@ function RentalHome({ vehicles, onNewVehicle, onReserve }: { vehicles: any[]; on
   );
 }
 
+function catLabel(c: string): string {
+  const m: Record<string, string> = { motorhome: 'Avtodom', car: 'Avtomobil', replacement: 'Nadomestno', van: 'Kombi', service: 'Servisno', other: 'Drugo' };
+  return m[c] ?? c;
+}
+function rentStatus(s: string): string {
+  return s === 'available' ? 'na voljo' : s === 'rented' ? 'oddano' : s === 'maintenance' ? 'vzdrževanje' : s;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">{label}</span>
+      <span className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">{label}</span>
       {children}
     </label>
   );
 }
-const inputCls = 'rounded-tool border-2 border-line px-3 py-2 text-base';
+const inputCls = 'rounded-tool border border-line px-3 py-2 text-base';
 
 function NewVehicleForm({ onCreated, onError }: { onCreated: () => void; onError: (m: string) => void }) {
   const [f, setF] = useState<any>({ category: 'motorhome', plate: '', make: '', model: '', dailyRateMinor: 12000, includedKmPerDay: 250, perKmRateMinor: 30, perFuelEighthMinor: 1800, cleaningFeeMinor: 5000, lateFeePerDayMinor: 15000, depositMinor: 80000, deductibleMinor: 40000 });
@@ -162,33 +170,33 @@ function NewVehicleForm({ onCreated, onError }: { onCreated: () => void; onError
       onChange={(e) => set(k, Math.round(Number(e.target.value) * 100))} />
   );
   async function submit() {
-    if (!f.plate) { onError('Plate is required'); return; }
+    if (!f.plate) { onError('Tablica je obvezna'); return; }
     setBusy(true);
     try { await api.rental.createVehicle(f); onCreated(); }
-    catch (e) { onError(e instanceof Error ? e.message : 'Could not create vehicle'); }
+    catch (e) { onError(e instanceof Error ? e.message : 'Vozila ni bilo mogoče ustvariti'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">Add rental vehicle</div>
-      <Field label="Category">
+      <div className="text-lg font-bold">Dodaj vozilo za najem</div>
+      <Field label="Kategorija">
         <select className={inputCls} value={f.category} onChange={(e) => set('category', e.target.value)}>
-          <option value="motorhome">Motorhome</option><option value="car">Car</option>
-          <option value="replacement">Replacement</option><option value="van">Van</option>
-          <option value="service">Service</option><option value="other">Other</option>
+          <option value="motorhome">Avtodom</option><option value="car">Avtomobil</option>
+          <option value="replacement">Nadomestno</option><option value="van">Kombi</option>
+          <option value="service">Servisno</option><option value="other">Drugo</option>
         </select>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Plate"><input className={inputCls} value={f.plate} onChange={(e) => set('plate', e.target.value)} /></Field>
-        <Field label="Make"><input className={inputCls} value={f.make} onChange={(e) => set('make', e.target.value)} /></Field>
+        <Field label="Tablica"><input className={inputCls} value={f.plate} onChange={(e) => set('plate', e.target.value)} /></Field>
+        <Field label="Znamka"><input className={inputCls} value={f.make} onChange={(e) => set('make', e.target.value)} /></Field>
         <Field label="Model"><input className={inputCls} value={f.model} onChange={(e) => set('model', e.target.value)} /></Field>
-        <Field label="Daily rate (€)">{euros('dailyRateMinor')}</Field>
-        <Field label="Included km/day"><input className={inputCls} type="number" value={f.includedKmPerDay} onChange={(e) => set('includedKmPerDay', Number(e.target.value))} /></Field>
-        <Field label="Extra km rate (€)">{euros('perKmRateMinor')}</Field>
-        <Field label="Deposit (€)">{euros('depositMinor')}</Field>
-        <Field label="Deductible (€)">{euros('deductibleMinor')}</Field>
+        <Field label="Dnevna cena (€)">{euros('dailyRateMinor')}</Field>
+        <Field label="Vključeni km/dan"><input className={inputCls} type="number" value={f.includedKmPerDay} onChange={(e) => set('includedKmPerDay', Number(e.target.value))} /></Field>
+        <Field label="Cena dodatnih km (€)">{euros('perKmRateMinor')}</Field>
+        <Field label="Varščina (€)">{euros('depositMinor')}</Field>
+        <Field label="Odbitna franšiza (€)">{euros('deductibleMinor')}</Field>
       </div>
-      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Save vehicle'}</Button>
+      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Shranjevanje…' : 'Shrani vozilo'}</Button>
     </Card>
   );
 }
@@ -203,7 +211,7 @@ function ReserveForm({ vehicles, customers, onReserved, onError }: { vehicles: a
   const [pickup, setPickup] = useState('A-SPRINT Črnomelj');
   const [busy, setBusy] = useState(false);
   async function submit() {
-    if (!vehicleId || !customerId) { onError('Pick a vehicle and a customer'); return; }
+    if (!vehicleId || !customerId) { onError('Izberite vozilo in stranko'); return; }
     setBusy(true);
     try {
       const res = await api.rental.reserve({
@@ -213,28 +221,28 @@ function ReserveForm({ vehicles, customers, onReserved, onError }: { vehicles: a
         pickupLocation: pickup, returnLocation: pickup,
       });
       onReserved(res);
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not reserve'); }
+    } catch (e) { onError(e instanceof Error ? e.message : 'Rezervacija ni uspela'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">New reservation</div>
-      <Field label="Vehicle">
+      <div className="text-lg font-bold">Nova rezervacija</div>
+      <Field label="Vozilo">
         <select className={inputCls} value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
           {available.map((v) => <option key={v.id} value={v.id}>{[v.make, v.model].filter(Boolean).join(' ')} · {v.plate}</option>)}
         </select>
       </Field>
-      <Field label="Customer">
+      <Field label="Stranka">
         <select className={inputCls} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
           {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="From"><input className={inputCls} type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} /></Field>
-        <Field label="To"><input className={inputCls} type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} /></Field>
+        <Field label="Od"><input className={inputCls} type="date" value={startAt} onChange={(e) => setStartAt(e.target.value)} /></Field>
+        <Field label="Do"><input className={inputCls} type="date" value={endAt} onChange={(e) => setEndAt(e.target.value)} /></Field>
       </div>
-      <Field label="Pickup / return location"><input className={inputCls} value={pickup} onChange={(e) => setPickup(e.target.value)} /></Field>
-      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Checking availability…' : 'Reserve'}</Button>
+      <Field label="Lokacija prevzema / vračila"><input className={inputCls} value={pickup} onChange={(e) => setPickup(e.target.value)} /></Field>
+      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Preverjanje razpoložljivosti…' : 'Rezerviraj'}</Button>
     </Card>
   );
 }
@@ -254,22 +262,22 @@ function ContractForm({ reservation, vehicles, customers, onCreated, onError }: 
         latePolicy: `${eur(Number(v?.late_fee_per_day_minor ?? 0))} per started day late`,
       });
       onCreated(contract);
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not create contract'); }
+    } catch (e) { onError(e instanceof Error ? e.message : 'Pogodbe ni bilo mogoče ustvariti'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">Create contract</div>
+      <div className="text-lg font-bold">Ustvari pogodbo</div>
       <div className="rounded-tool bg-floor p-3 text-sm">
-        <div><span className="text-steel">Customer:</span> {c?.name}</div>
-        <div><span className="text-steel">Vehicle:</span> {[v?.make, v?.model].filter(Boolean).join(' ')} ({v?.plate})</div>
-        <div><span className="text-steel">Deposit:</span> {eur(Number(v?.deposit_minor ?? 0))} · <span className="text-steel">Deductible:</span> {eur(Number(v?.deductible_minor ?? 0))}</div>
+        <div><span className="text-muted">Customer:</span> {c?.name}</div>
+        <div><span className="text-muted">Vehicle:</span> {[v?.make, v?.model].filter(Boolean).join(' ')} ({v?.plate})</div>
+        <div><span className="text-muted">Deposit:</span> {eur(Number(v?.deposit_minor ?? 0))} · <span className="text-muted">Deductible:</span> {eur(Number(v?.deductible_minor ?? 0))}</div>
       </div>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={casco} onChange={(e) => setCasco(e.target.checked)} />
         <span className="text-sm">Comprehensive (casco) insurance — caps renter liability at the deductible</span>
       </label>
-      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Creating…' : 'Create contract'}</Button>
+      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Ustvarjanje…' : 'Ustvari pogodbo'}</Button>
     </Card>
   );
 }
@@ -278,7 +286,7 @@ function FuelPicker({ value, onChange }: { value: number; onChange: (v: number) 
   return (
     <div className="flex items-center gap-2">
       <input type="range" min={0} max={8} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1" />
-      <span className="w-10 text-right font-display font-bold">{fuelLabel(value)}</span>
+      <span className="w-10 text-right font-bold">{fuelLabel(value)}</span>
     </div>
   );
 }
@@ -292,27 +300,27 @@ function HandoverForm({ contract, onHandedOver, onError }: { contract: any; onHa
   async function onSig(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     const res = await uploadDocument(file);
-    if (res.ok) { setSigId(res.attachmentId); setSigName(file.name); } else onError('Signature upload failed');
+    if (res.ok) { setSigId(res.attachmentId); setSigName(file.name); } else onError('Nalaganje podpisa ni uspelo');
   }
   async function submit() {
     setBusy(true);
     try {
       const c = await api.rental.handover(contract.id, { startMileageKm: mileage, startFuelEighths: fuel, signatureAttachmentId: sigId });
       onHandedOver(c);
-    } catch (e) { onError(e instanceof Error ? e.message : 'Handover failed'); }
+    } catch (e) { onError(e instanceof Error ? e.message : 'Predaja ni uspela'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">Handover · {contract.number}</div>
-      <p className="text-sm text-steel">Record the vehicle's condition as the customer drives away.</p>
-      <Field label="Starting mileage (km)"><input className={inputCls} type="number" value={mileage} onChange={(e) => setMileage(Number(e.target.value))} /></Field>
-      <Field label="Starting fuel"><FuelPicker value={fuel} onChange={setFuel} /></Field>
-      <Field label="Customer signature (photo)">
+      <div className="text-lg font-bold">Handover · {contract.number}</div>
+      <p className="text-sm text-muted">Record the vehicle's condition as the customer drives away.</p>
+      <Field label="Začetna kilometrina (km)"><input className={inputCls} type="number" value={mileage} onChange={(e) => setMileage(Number(e.target.value))} /></Field>
+      <Field label="Začetno gorivo"><FuelPicker value={fuel} onChange={setFuel} /></Field>
+      <Field label="Podpis stranke (foto)">
         <input type="file" accept="image/*" capture="environment" onChange={onSig} className="text-sm" />
       </Field>
       {sigName && <div className="text-xs text-go">Signature captured: {sigName}</div>}
-      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Saving…' : 'Confirm handover'}</Button>
+      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Shranjevanje…' : 'Potrdi predajo'}</Button>
     </Card>
   );
 }
@@ -333,12 +341,12 @@ function ReturnForm({ contract, onReturned, onError }: { contract: any; onReturn
     const file = e.target.files?.[0]; if (!file) return;
     const res = await uploadDocument(file);
     if (res.ok) { setPhotoIds((p) => [...p, res.attachmentId!]); setPhotoNames((p) => [...p, file.name]); }
-    else onError('Photo upload failed');
+    else onError('Nalaganje fotografije ni uspelo');
   }
   async function onSig(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return;
     const res = await uploadDocument(file);
-    if (res.ok) setSigId(res.attachmentId); else onError('Signature upload failed');
+    if (res.ok) setSigId(res.attachmentId); else onError('Nalaganje podpisa ni uspelo');
   }
   async function submit() {
     setBusy(true);
@@ -351,35 +359,35 @@ function ReturnForm({ contract, onReturned, onError }: { contract: any; onReturn
         signatureAttachmentId: sigId, damages,
       });
       onReturned(result);
-    } catch (e) { onError(e instanceof Error ? e.message : 'Return failed'); }
+    } catch (e) { onError(e instanceof Error ? e.message : 'Vračilo ni uspelo'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">Return · {contract.number}</div>
-      <p className="text-sm text-steel">Record the readings; the system computes the charges for you to review.</p>
-      <Field label="Return mileage (km)"><input className={inputCls} type="number" value={mileage} onChange={(e) => setMileage(Number(e.target.value))} /></Field>
-      <Field label="Return fuel"><FuelPicker value={fuel} onChange={setFuel} /></Field>
+      <div className="text-lg font-bold">Return · {contract.number}</div>
+      <p className="text-sm text-muted">Record the readings; the system computes the charges for you to review.</p>
+      <Field label="Kilometrina ob vračilu (km)"><input className={inputCls} type="number" value={mileage} onChange={(e) => setMileage(Number(e.target.value))} /></Field>
+      <Field label="Gorivo ob vračilu"><FuelPicker value={fuel} onChange={setFuel} /></Field>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={dirty} onChange={(e) => setDirty(e.target.checked)} />
-        <span className="text-sm">Returned dirty (cleaning fee applies)</span>
+        <span className="text-sm">Vrnjeno umazano (zaračuna se čiščenje)</span>
       </label>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={hasDamage} onChange={(e) => setHasDamage(e.target.checked)} />
-        <span className="text-sm">New damage</span>
+        <span className="text-sm">Nova škoda</span>
       </label>
       {hasDamage && (
         <div className="flex flex-col gap-2 rounded-tool bg-floor p-3">
-          <Field label="Damage description"><input className={inputCls} value={damageDesc} onChange={(e) => setDamageDesc(e.target.value)} /></Field>
-          <Field label="Estimated repair cost (€)"><input className={inputCls} type="number" value={damageCost / 100} onChange={(e) => setDamageCost(Math.round(Number(e.target.value) * 100))} /></Field>
-          <Field label="Damage photos"><input type="file" accept="image/*" capture="environment" onChange={onPhoto} className="text-sm" /></Field>
+          <Field label="Opis škode"><input className={inputCls} value={damageDesc} onChange={(e) => setDamageDesc(e.target.value)} /></Field>
+          <Field label="Ocenjen strošek popravila (€)"><input className={inputCls} type="number" value={damageCost / 100} onChange={(e) => setDamageCost(Math.round(Number(e.target.value) * 100))} /></Field>
+          <Field label="Fotografije škode"><input type="file" accept="image/*" capture="environment" onChange={onPhoto} className="text-sm" /></Field>
           {photoNames.length > 0 && <div className="text-xs text-go">{photoNames.length} photo(s) attached</div>}
         </div>
       )}
-      <Field label="Customer signature (photo)">
+      <Field label="Podpis stranke (foto)">
         <input type="file" accept="image/*" capture="environment" onChange={onSig} className="text-sm" />
       </Field>
-      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Computing charges…' : 'Complete return'}</Button>
+      <Button tone="go" full disabled={busy} onClick={submit}>{busy ? 'Računanje stroškov…' : 'Zaključi vračilo'}</Button>
     </Card>
   );
 }
@@ -389,40 +397,40 @@ function DonePanel({ contract, charges, invoice, onInvoiced, onError }: { contra
   async function invoiceIt() {
     setBusy(true);
     try { const res = await api.rental.generateInvoice(contract.id); onInvoiced(res.invoice ?? res); }
-    catch (e) { onError(e instanceof Error ? e.message : 'Could not generate invoice'); }
+    catch (e) { onError(e instanceof Error ? e.message : 'Računa ni bilo mogoče ustvariti'); }
     finally { setBusy(false); }
   }
   return (
     <Card className="flex flex-col gap-3 p-4">
-      <div className="font-display text-lg font-bold">Charges · {contract.number}</div>
+      <div className="text-lg font-bold">Stroški · {contract.number}</div>
       {charges ? (
         <>
           <div className="flex flex-col divide-y divide-line">
             {charges.lines?.map((l: any, i: number) => (
               <div key={i} className="flex items-center justify-between py-2 text-sm">
-                <span>{l.description}</span><span className="font-display font-bold">{eur(l.amountMinor)}</span>
+                <span>{l.description}</span><span className="font-bold">{eur(l.amountMinor)}</span>
               </div>
             ))}
           </div>
           <div className="rounded-tool bg-floor p-3 text-sm">
-            <div className="flex justify-between"><span className="text-steel">Subtotal (net)</span><span className="font-bold">{eur(charges.subtotalMinor)}</span></div>
-            <div className="flex justify-between"><span className="text-steel">Deposit applied</span><span>{eur(-charges.depositAppliedMinor)}</span></div>
-            <div className="flex justify-between"><span className="text-steel">Deposit refund</span><span>{eur(charges.depositRefundMinor)}</span></div>
-            <div className="mt-1 flex justify-between border-t border-line pt-1 text-base"><span className="font-bold">Balance due</span><span className="font-display font-extrabold">{eur(charges.balanceDueMinor)}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Vmesni seštevek (neto)</span><span className="font-bold">{eur(charges.subtotalMinor)}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Uporabljena varščina</span><span>{eur(-charges.depositAppliedMinor)}</span></div>
+            <div className="flex justify-between"><span className="text-muted">Vračilo varščine</span><span>{eur(charges.depositRefundMinor)}</span></div>
+            <div className="mt-1 flex justify-between border-t border-line pt-1 text-base"><span className="font-bold">Za plačilo</span><span className="font-extrabold">{eur(charges.balanceDueMinor)}</span></div>
           </div>
-          <p className="text-xs text-steel">VAT is applied by the invoicing engine when you issue the invoice.</p>
+          <p className="text-xs text-muted">DDV se obračuna ob izstavitvi računa.</p>
         </>
-      ) : <div className="text-sm text-steel">No charges recorded.</div>}
+      ) : <div className="text-sm text-muted">Ni zabeleženih stroškov.</div>}
 
       {invoice ? (
         <div className="rounded-tool bg-go/10 p-3 text-sm text-go">
           Invoice {invoice.number ?? ''} issued. It will sync to Minimax like any other invoice.
         </div>
       ) : (
-        <Button tone="go" full disabled={busy} onClick={invoiceIt}>{busy ? 'Issuing…' : 'Generate final invoice'}</Button>
+        <Button tone="go" full disabled={busy} onClick={invoiceIt}>{busy ? 'Izstavljanje…' : 'Izstavi končni račun'}</Button>
       )}
       <a href={api.rental.contractPdfUrl(contract.id)} target="_blank" rel="noreferrer"
-        className="tool-tap rounded-tool border-2 border-line px-4 py-2 text-center font-display font-bold">
+        className="tool-tap rounded-tool border border-line px-4 py-2 text-center font-bold">
         Open contract PDF
       </a>
     </Card>

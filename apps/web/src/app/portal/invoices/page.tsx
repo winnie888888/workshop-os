@@ -13,9 +13,9 @@ import { PortalCard, Money, StatusPill } from '../portal-ui';
  * customer) is flagged so the zero VAT is not mistaken for an error.
  */
 function paymentLabel(status: string): string {
-  return status === 'paid' ? 'Paid'
-    : status === 'partly_paid' ? 'Partly paid'
-    : status === 'overdue' ? 'Overdue' : 'Unpaid';
+  return status === 'paid' ? 'Plačan'
+    : status === 'partly_paid' ? 'Delno plačan'
+    : status === 'overdue' ? 'Zapadel' : 'Neplačan';
 }
 
 export default function PortalInvoices() {
@@ -23,12 +23,12 @@ export default function PortalInvoices() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-display text-2xl font-extrabold">Invoices</h1>
+      <h1 className="text-2xl font-extrabold">Računi</h1>
 
       {isLoading ? (
-        <p className="text-sm text-steel">Loading…</p>
+        <p className="text-sm text-muted">Nalaganje…</p>
       ) : (invoices ?? []).length === 0 ? (
-        <PortalCard><p className="text-sm text-steel">No invoices yet.</p></PortalCard>
+        <PortalCard><p className="text-sm text-muted">Še ni računov.</p></PortalCard>
       ) : (
         <div className="flex flex-col gap-3">
           {invoices!.map((i: any) => (
@@ -36,13 +36,13 @@ export default function PortalInvoices() {
               <PortalCard>
                 <div className="mb-2 flex items-start justify-between">
                   <div>
-                    <p className="font-bold">{i.number ? `Invoice ${i.number}` : 'Invoice'}</p>
-                    <p className="text-xs text-steel">{i.issueDate ?? '—'}{i.dueDate ? ` · due ${i.dueDate}` : ''}</p>
+                    <p className="font-bold">{i.number ? `Račun ${i.number}` : 'Račun'}</p>
+                    <p className="text-xs text-muted">{i.issueDate ?? '—'}{i.dueDate ? ` · zapadlost ${i.dueDate}` : ''}</p>
                   </div>
                   <StatusPill status={i.paymentStatus} label={paymentLabel(i.paymentStatus)} />
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-steel">{i.reverseCharge ? 'Reverse charge (0% VAT)' : 'incl. VAT'}</span>
+                  <span className="text-sm text-muted">{i.reverseCharge ? 'Obrnjena obveznost (0% DDV)' : 'z DDV'}</span>
                   <span className="text-lg font-bold"><Money minor={i.totalGrossMinor} currency={i.currency} /></span>
                 </div>
               </PortalCard>

@@ -18,10 +18,10 @@ import { PortalCard, StatusPill, Progress, Money } from '../../portal-ui';
 
 // The visible stages we map the internal status onto, in order.
 const STAGES = [
-  { key: 'open', label: 'Scheduled' },
-  { key: 'in_progress', label: 'In progress' },
-  { key: 'ready', label: 'Ready for collection' },
-  { key: 'invoiced', label: 'Invoiced' },
+  { key: 'open', label: 'Naročeno' },
+  { key: 'in_progress', label: 'V delu' },
+  { key: 'ready', label: 'Pripravljeno za prevzem' },
+  { key: 'invoiced', label: 'Zaračunano' },
 ];
 
 function stageIndex(status: string): number {
@@ -37,8 +37,8 @@ export default function PortalWorkOrderDetail() {
   const { data: wo, isLoading } = useSWR(id ? ['portal-wo', id] : null, () => portalApi.workOrder(id).catch(() => null));
   const { data: pending } = useSWR(id ? ['portal-wo-appr', id] : null, () => portalApi.approvals(true).catch(() => []));
 
-  if (isLoading) return <p className="text-sm text-steel">Loading…</p>;
-  if (!wo || !wo.id) return <PortalCard><p className="text-sm text-steel">Job not found.</p></PortalCard>;
+  if (isLoading) return <p className="text-sm text-muted">Nalaganje…</p>;
+  if (!wo || !wo.id) return <PortalCard><p className="text-sm text-muted">Naloga ni mogoče najti.</p></PortalCard>;
 
   // Any pending approval that belongs to THIS work order.
   const woPending = (pending ?? []).filter((a: any) => a.workOrderId === wo.id);
@@ -46,23 +46,23 @@ export default function PortalWorkOrderDetail() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href="/portal/work-orders" className="text-sm font-semibold text-info">‹ All jobs</Link>
+      <Link href="/portal/work-orders" className="text-sm font-semibold text-brand">‹ Vsi nalogi</Link>
 
       <div>
         <div className="mb-1 flex items-center justify-between gap-2">
-          <h1 className="font-display text-2xl font-extrabold">{wo.makeModel ?? 'Vehicle'}</h1>
+          <h1 className="text-2xl font-extrabold">{wo.makeModel ?? 'Vozilo'}</h1>
           <StatusPill status={wo.status} label={wo.statusLabel} />
         </div>
-        {wo.plate && <p className="font-mono text-steel">{wo.plate}</p>}
-        {wo.number && <p className="text-sm text-steel">Order {wo.number}</p>}
+        {wo.plate && <p className="num text-muted">{wo.plate}</p>}
+        {wo.number && <p className="text-sm text-muted">Nalog {wo.number}</p>}
       </div>
 
       {/* If extra work needs approval, surface it before anything else. */}
       {woPending.length > 0 && (
         <Link href="/portal/approvals">
           <div className="rounded-2xl border-2 border-hold bg-hold/10 p-4">
-            <p className="font-bold text-hold">Your approval is needed</p>
-            <p className="mt-1 text-sm">The workshop found additional work on this vehicle. Tap to review and approve.</p>
+            <p className="font-bold text-hold">Potrebna je vaša odobritev</p>
+            <p className="mt-1 text-sm">Delavnica je našla dodatno delo na vozilu. Tapnite za pregled in odobritev.</p>
           </div>
         </Link>
       )}
@@ -77,10 +77,10 @@ export default function PortalWorkOrderDetail() {
             return (
               <li key={s.key} className="flex items-center gap-3">
                 <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                  done ? 'bg-go text-white' : active ? 'bg-info text-white' : 'bg-floor text-steel'}`}>
+                  done ? 'bg-go text-white' : active ? 'bg-brand text-white' : 'bg-surface2 text-muted'}`}>
                   {done ? '✓' : i + 1}
                 </span>
-                <span className={`text-sm ${active ? 'font-bold text-ink' : done ? 'text-steel' : 'text-steel/60'}`}>{s.label}</span>
+                <span className={`text-sm ${active ? 'font-bold text-ink' : done ? 'text-muted' : 'text-muted/60'}`}>{s.label}</span>
               </li>
             );
           })}
@@ -89,11 +89,11 @@ export default function PortalWorkOrderDetail() {
 
       {/* What was reported and found. */}
       <PortalCard>
-        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-steel">Reported</h2>
+        <h2 className="mb-1 text-sm font-bold uppercase tracking-wide text-muted">Prijavljeno</h2>
         <p className="text-sm">{wo.complaint || '—'}</p>
         {wo.diagnosis && (
           <>
-            <h2 className="mb-1 mt-3 text-sm font-bold uppercase tracking-wide text-steel">Workshop findings</h2>
+            <h2 className="mb-1 mt-3 text-sm font-bold uppercase tracking-wide text-muted">Ugotovitve delavnice</h2>
             <p className="text-sm">{wo.diagnosis}</p>
           </>
         )}
@@ -102,21 +102,21 @@ export default function PortalWorkOrderDetail() {
       {/* Line items: plain descriptions + customer-facing price only. */}
       {(wo.lines ?? []).length > 0 && (
         <PortalCard>
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-steel">Work &amp; parts</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted">Delo &amp; deli</h2>
           <div className="flex flex-col divide-y divide-line">
             {wo.lines.map((l: any) => (
               <div key={l.lineNo} className="flex items-center justify-between gap-3 py-2">
                 <span className="flex items-center gap-2 text-sm">
                   {l.done && <span className="text-go">✓</span>}
                   {l.description}
-                  {Number(l.quantity) !== 1 && <span className="text-steel">× {l.quantity}</span>}
+                  {Number(l.quantity) !== 1 && <span className="text-muted">× {l.quantity}</span>}
                 </span>
                 <span className="shrink-0 text-sm font-semibold"><Money minor={l.grossMinor} currency={wo.currency} /></span>
               </div>
             ))}
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="font-bold">Total (incl. VAT)</span>
+            <span className="font-bold">Skupaj (z DDV)</span>
             <span className="font-bold"><Money minor={wo.totalGrossMinor} currency={wo.currency} /></span>
           </div>
         </PortalCard>

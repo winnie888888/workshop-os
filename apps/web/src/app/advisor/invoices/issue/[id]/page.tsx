@@ -29,37 +29,37 @@ export default function IssueInvoice() {
       router.push(`/advisor/invoices/${inv.id}`);
     } catch (e) {
       // The VAT engine's "needs confirmation" path arrives as a 409 conflict.
-      setError(e instanceof ApiError ? e.message : 'Could not issue invoice');
+      setError(e instanceof ApiError ? e.message : 'Računa ni bilo mogoče izstaviti');
       setBusy(false);
     }
   }
 
-  if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
-  if (!wo) return <Card className="p-6 text-steel">Work order not found.</Card>;
+  if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
+  if (!wo) return <Card className="p-6 text-muted">Naloga ni mogoče najti.</Card>;
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4">
-      <button onClick={() => router.back()} className="self-start text-sm font-semibold text-steel">‹ Back</button>
-      <h1 className="font-display text-2xl font-extrabold tracking-tight">Issue invoice for {wo.number}</h1>
+      <button onClick={() => router.back()} className="self-start text-sm font-semibold text-muted">‹ Nazaj</button>
+      <h1 className="text-2xl font-extrabold tracking-tight">Izstavi račun za {wo.number}</h1>
 
       {error && <ProblemBanner message={error} />}
 
       <Card className="p-5">
-        <Row label="Net" value={formatMoneyMinor(wo.totalNetMinor, wo.currency)} />
-        <Row label="VAT" value={formatMoneyMinor(wo.totalVatMinor, wo.currency)} />
+        <Row label="Neto" value={formatMoneyMinor(wo.totalNetMinor, wo.currency)} />
+        <Row label="DDV" value={formatMoneyMinor(wo.totalVatMinor, wo.currency)} />
         <div className="my-2 border-t border-line" />
-        <Row label="Total" value={formatMoneyMinor(wo.totalGrossMinor, wo.currency)} big />
-        <p className="mt-4 text-sm text-steel">
-          The VAT treatment is decided by the system from the customer and supply, and is
-          frozen onto the invoice. On issue this locks the document, pushes it to Minimax, and
-          sends the e-invoice. Issued invoices cannot be edited — corrections use a credit note.
+        <Row label="Skupaj" value={formatMoneyMinor(wo.totalGrossMinor, wo.currency)} big />
+        <p className="mt-4 text-sm text-muted">
+          Davčno obravnavo sistem določi iz stranke in dobave ter jo zamrzne na računu. Ob izstavitvi
+          se dokument zaklene, pošlje v Minimax in odda kot e-račun. Izdanih računov ni mogoče
+          urejati — popravki gredo prek dobropisa.
         </p>
       </Card>
 
       <div className="flex justify-end gap-3">
-        <Button tone="neutral" onClick={() => router.back()}>Cancel</Button>
+        <Button tone="neutral" onClick={() => router.back()}>Prekliči</Button>
         <Button tone="go" size="lg" onClick={issue} disabled={busy}>
-          {busy ? <Spinner /> : 'Issue invoice'}
+          {busy ? <Spinner /> : 'Izstavi račun'}
         </Button>
       </div>
     </div>
@@ -69,8 +69,8 @@ export default function IssueInvoice() {
 function Row({ label, value, big }: { label: string; value: string; big?: boolean }) {
   return (
     <div className="flex items-center justify-between py-1">
-      <span className={big ? 'font-display text-lg font-bold' : 'text-steel'}>{label}</span>
-      <span className={`font-mono ${big ? 'text-2xl font-bold' : ''}`}>{value}</span>
+      <span className={big ? 'text-lg font-bold text-ink' : 'text-muted'}>{label}</span>
+      <span className={`num ${big ? 'text-2xl font-bold' : ''}`}>{value}</span>
     </div>
   );
 }

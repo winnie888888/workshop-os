@@ -43,7 +43,7 @@ export default function OcrReceivingPage() {
     try {
       // 1) Upload the photographed document through the existing pipeline.
       const up = await uploadDocument(file);
-      if (!up.ok || !up.attachmentId) throw new Error(up.error ?? 'Upload failed');
+      if (!up.ok || !up.attachmentId) throw new Error(up.error ?? 'Nalaganje ni uspelo');
       // 2) Ask the server to extract + match into a DRAFT (never posts).
       const res = await api.goodsReceipts.ocrDraft({
         attachmentId: up.attachmentId, documentType: docType, defaultLocationId: DEFAULT_LOCATION_ID,
@@ -51,7 +51,7 @@ export default function OcrReceivingPage() {
       setResult(res);
       setPhase('review');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not read the document');
+      setError(err instanceof Error ? err.message : 'Dokumenta ni bilo mogoče prebrati');
       setPhase('capture');
     }
   }
@@ -63,7 +63,7 @@ export default function OcrReceivingPage() {
       await api.goodsReceipts.post(result.draft.id);
       setPhase('posted');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not post the receipt');
+      setError(err instanceof Error ? err.message : 'Prevzema ni bilo mogoče knjižiti');
       setPhase('review');
     }
   }
@@ -73,9 +73,9 @@ export default function OcrReceivingPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="font-display text-2xl font-extrabold">Receive a delivery</h1>
-        <p className="text-sm text-steel">Photograph the delivery note or supplier invoice. The system reads it and
-          prepares a draft — you check it and confirm. Nothing enters stock until you confirm.</p>
+        <h1 className="text-2xl font-extrabold">Prevzem dobave</h1>
+        <p className="text-sm text-muted">Fotografirajte dobavnico ali dobaviteljev račun. Sistem ga prebere in pripravi
+          osnutek — vi ga preverite in potrdite. Nič ne gre v zalogo, dokler ne potrdite.</p>
       </div>
 
       {error && <ProblemBanner message={error} />}
@@ -87,8 +87,8 @@ export default function OcrReceivingPage() {
       {phase === 'extracting' && (
         <Card className="flex flex-col items-center gap-3 p-10">
           <Spinner />
-          <p className="font-display text-lg font-bold">Reading the document…</p>
-          <p className="text-sm text-steel">Extracting supplier, items, quantities and prices.</p>
+          <p className="text-lg font-bold">Branje dokumenta…</p>
+          <p className="text-sm text-muted">Razbiranje dobavitelja, postavk, količin in cen.</p>
         </Card>
       )}
 
@@ -98,11 +98,11 @@ export default function OcrReceivingPage() {
 
       {phase === 'posted' && (
         <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <span className="text-4xl">✓</span>
-          <p className="font-display text-xl font-bold text-go">Stock received</p>
-          <p className="text-sm text-steel">The goods receipt was posted and stock updated through the standard
-            workflow. Moving-average cost was recalculated automatically.</p>
-          <Button tone="info" onClick={reset}>Receive another delivery</Button>
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-go/15 text-go"><svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 13l4 4L19 7"/></svg></span>
+          <p className="text-xl font-bold text-go">Zaloga prevzeta</p>
+          <p className="text-sm text-muted">Prevzem je bil knjižen in zaloga posodobljena po standardnem postopku.
+            Drseče povprečje nabavne cene je bilo samodejno preračunano.</p>
+          <Button tone="info" onClick={reset}>Prevzemi novo dobavo</Button>
         </Card>
       )}
     </div>
@@ -119,12 +119,12 @@ function CaptureCard({ docType, setDocType, onFile }: {
   return (
     <Card className="flex flex-col gap-4 p-4">
       <div>
-        <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-steel">Document type</span>
+        <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">Vrsta dokumenta</span>
         <div className="flex gap-2">
-          {([['delivery_note', 'Delivery note'], ['supplier_invoice', 'Supplier invoice']] as const).map(([v, label]) => (
+          {([['delivery_note', 'Dobavnica'], ['supplier_invoice', 'Dobaviteljev račun']] as const).map(([v, label]) => (
             <button key={v} onClick={() => setDocType(v)}
-              className={`flex-1 rounded-tool border-2 px-3 py-3 text-sm font-semibold transition
-                ${docType === v ? 'border-info bg-info/5 text-info' : 'border-line bg-panel text-steel'}`}>
+              className={`flex-1 rounded-tool border px-3 py-3 text-sm font-semibold transition
+                ${docType === v ? 'border-info bg-info/5 text-info' : 'border-line bg-panel text-muted'}`}>
               {label}
             </button>
           ))}
@@ -134,10 +134,10 @@ function CaptureCard({ docType, setDocType, onFile }: {
       {/* Camera capture via a file input bound to the device camera (same
           pattern the mechanic photo capture uses). */}
       <label className="tool-tap flex flex-col items-center justify-center gap-3 rounded-tool border-2
-        border-dashed border-ink/20 bg-floor p-10 text-center">
-        <span className="text-4xl">📷</span>
-        <span className="font-display text-xl font-bold">Photograph the document</span>
-        <span className="text-sm text-steel">or tap to choose a photo / PDF</span>
+        border-dashed border-ink/20 bg-surface2 p-10 text-center">
+        <svg viewBox="0 0 24 24" className="h-10 w-10 text-muted2" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 9a2 2 0 0 1 2-2h2l1.5-2h7L19 7h0a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <span className="text-xl font-bold">Fotografiraj dokument</span>
+        <span className="text-sm text-muted">ali tapni za izbiro fotografije / PDF</span>
         <input type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={onFile} />
       </label>
     </Card>
@@ -156,53 +156,53 @@ function ReviewPanel({ result, posting, onPost, onCancel }: {
   return (
     <div className="flex flex-col gap-4">
       {needsReview && (
-        <div className="rounded-tool border-2 border-hold bg-hold/10 p-3 text-sm font-semibold text-hold">
-          ⚠ Some fields need your attention before this is correct. Highlighted items below were read with low
-          confidence or could not be matched — check them against the paper.
+        <div className="rounded-tool border border-hold bg-hold/10 p-3 text-sm font-semibold text-hold">
+          Nekatera polja potrebujejo vašo pozornost. Spodaj označene postavke so bile prebrane z nizko
+          zanesljivostjo ali jih ni bilo mogoče uskladiti — preverite jih s papirjem.
         </div>
       )}
 
       {/* Supplier + document header */}
       <Card className="flex flex-col gap-3 p-4">
-        <Row label="Supplier" tone={supplierMatch?.supplierId ? 'ok' : 'warn'}>
+        <Row label="Dobavitelj" tone={supplierMatch?.supplierId ? 'ok' : 'warn'}>
           {supplierMatch?.supplierId
             ? <span className="font-semibold">{supplierMatch.reason}</span>
-            : <span className="font-semibold text-hold">No supplier matched — choose one before posting</span>}
+            : <span className="font-semibold text-hold">Dobavitelj ni prepoznan — izberite pred knjiženjem</span>}
         </Row>
-        <Row label="Purchase order" tone={poMatch?.purchaseOrderId ? 'ok' : 'muted'}>
-          {poMatch?.purchaseOrderId ? poMatch.reason : 'Receiving without a purchase order'}
+        <Row label="Naročilnica" tone={poMatch?.purchaseOrderId ? 'ok' : 'muted'}>
+          {poMatch?.purchaseOrderId ? poMatch.reason : 'Prevzem brez naročilnice'}
         </Row>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <Field label="Document #" value={extraction?.deliveryNoteNumber ?? extraction?.documentNumber} />
-          <Field label="Date" value={extraction?.date} />
+          <Field label="Št. dokumenta" value={extraction?.deliveryNoteNumber ?? extraction?.documentNumber} />
+          <Field label="Datum" value={extraction?.date} />
         </div>
       </Card>
 
       {/* Lines */}
       <div className="flex flex-col gap-2">
-        <h2 className="font-display text-lg font-bold">Lines</h2>
+        <h2 className="text-lg font-bold">Postavke</h2>
         {(lines ?? []).map((l: any) => <LineCard key={l.index} line={l} />)}
       </div>
 
       {/* Action */}
       <Card className="flex flex-col gap-3 p-4">
         {!canPost && (
-          <p className="text-sm text-steel">
+          <p className="text-sm text-muted">
             {draft?.id
-              ? 'At least one line is ready, but resolve the flagged items first if they belong on this receipt.'
-              : 'This document could not be turned into a draft automatically. Resolve the supplier and lines, then receive it manually.'}
+              ? 'Vsaj ena postavka je pripravljena; najprej uredite označene, če sodijo na ta prevzem.'
+              : 'Dokumenta ni bilo mogoče samodejno pretvoriti v osnutek. Uredite dobavitelja in postavke ter prevzemite ročno.'}
           </p>
         )}
         {canPost && (
-          <p className="text-sm text-steel">
-            {draftableLines.length} line{draftableLines.length === 1 ? '' : 's'} ready to receive. Posting updates stock
-            and recalculates moving-average cost through the standard workflow.
+          <p className="text-sm text-muted">
+            {draftableLines.length} postavk pripravljenih za prevzem. Knjiženje posodobi zalogo
+            in preračuna drseče povprečje nabavne cene po standardnem postopku.
           </p>
         )}
         <div className="flex gap-2">
-          <Button tone="neutral" onClick={onCancel}>Start over</Button>
+          <Button tone="neutral" onClick={onCancel}>Začni znova</Button>
           <Button tone="go" onClick={onPost} disabled={!canPost || posting}>
-            {posting ? <Spinner /> : 'Confirm & receive stock'}
+            {posting ? <Spinner /> : 'Potrdi in prevzemi'}
           </Button>
         </div>
       </Card>
@@ -213,11 +213,11 @@ function ReviewPanel({ result, posting, onPost, onCancel }: {
 function LineCard({ line }: { line: any }) {
   const flagged = (line.reviewFlags ?? []).length > 0;
   return (
-    <Card className={`flex flex-col gap-2 p-3 ${flagged ? 'border-2 border-hold' : ''}`}>
+    <Card className={`flex flex-col gap-2 p-3 ${flagged ? 'border border-hold' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold">{line.description ?? '(no description read)'}</div>
-          <div className="font-mono text-xs text-steel">
+          <div className="truncate font-semibold">{line.description ?? '(opis ni prebran)'}</div>
+          <div className="num text-xs text-muted">
             {[line.supplierSku, line.oemRef].filter(Boolean).join(' · ') || '—'}
           </div>
         </div>
@@ -225,14 +225,14 @@ function LineCard({ line }: { line: any }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-sm">
-        <Field label="Qty" value={line.quantity != null ? String(line.quantity) : null} warn={line.quantityWhole == null} />
-        <Field label="Unit price" value={line.unitPriceMinor != null ? formatMoneyMinor(line.unitPriceMinor) : null} warn={line.unitPriceMinor == null || lowConf(line)} />
-        <Field label="VAT" value={line.vatRatePct != null ? `${line.vatRatePct}%` : null} />
+        <Field label="Količina" value={line.quantity != null ? String(line.quantity) : null} warn={line.quantityWhole == null} />
+        <Field label="Cena/enoto" value={line.unitPriceMinor != null ? formatMoneyMinor(line.unitPriceMinor) : null} warn={line.unitPriceMinor == null || lowConf(line)} />
+        <Field label="DDV" value={line.vatRatePct != null ? `${line.vatRatePct}%` : null} />
       </div>
 
       {flagged && (
         <ul className="flex flex-col gap-1 rounded-tool bg-hold/10 p-2 text-xs font-semibold text-hold">
-          {line.reviewFlags.map((f: string, i: number) => <li key={i}>⚠ {f}</li>)}
+          {line.reviewFlags.map((f: string, i: number) => <li key={i}>{f}</li>)}
         </ul>
       )}
     </Card>
@@ -241,9 +241,9 @@ function LineCard({ line }: { line: any }) {
 
 function MatchBadge({ match }: { match: any }) {
   const map: Record<string, { label: string; cls: string }> = {
-    matched: { label: 'Matched', cls: 'bg-go/10 text-go' },
-    unmatched: { label: 'Confirm', cls: 'bg-hold/10 text-hold' },
-    new_item: { label: 'New item', cls: 'bg-stop/10 text-stop' },
+    matched: { label: 'Ujema', cls: 'bg-go/10 text-go' },
+    unmatched: { label: 'Potrdi', cls: 'bg-hold/10 text-hold' },
+    new_item: { label: 'Nova postavka', cls: 'bg-stop/10 text-stop' },
   };
   const m = map[match?.status] ?? map.new_item;
   return <span className={`shrink-0 rounded px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${m.cls}`}>{m.label}</span>;
@@ -260,7 +260,7 @@ function Row({ label, tone, children }: { label: string; tone: 'ok' | 'warn' | '
   return (
     <div className="flex items-center gap-2">
       <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />
-      <span className="w-28 shrink-0 text-xs font-bold uppercase tracking-wide text-steel">{label}</span>
+      <span className="w-28 shrink-0 text-xs font-bold uppercase tracking-wide text-muted">{label}</span>
       <span className="min-w-0 flex-1 text-sm">{children}</span>
     </div>
   );
@@ -269,9 +269,9 @@ function Row({ label, tone, children }: { label: string; tone: 'ok' | 'warn' | '
 function Field({ label, value, warn }: { label: string; value: string | null | undefined; warn?: boolean }) {
   return (
     <div>
-      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">{label}</div>
-      <div className={`font-mono ${warn ? 'rounded bg-hold/15 px-1 font-bold text-hold' : ''}`}>
-        {value ?? <span className="text-stop">unread</span>}
+      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">{label}</div>
+      <div className={`num ${warn ? 'rounded bg-hold/15 px-1 font-bold text-hold' : ''}`}>
+        {value ?? <span className="text-stop">ni prebrano</span>}
       </div>
     </div>
   );

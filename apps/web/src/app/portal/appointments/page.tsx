@@ -26,7 +26,7 @@ export default function PortalAppointments() {
   const [sent, setSent] = useState(false);
 
   async function submit() {
-    if (!description.trim()) { setError('Please describe what you need.'); return; }
+    if (!description.trim()) { setError('Opišite, kaj potrebujete.'); return; }
     setBusy(true); setError(null);
     try {
       await portalApi.requestAppointment({
@@ -37,7 +37,7 @@ export default function PortalAppointments() {
       setSent(true); setDescription(''); setDate(''); setAssetId('');
       await mutate();
     } catch (e) {
-      setError(e instanceof PortalApiError ? e.message : 'Could not send your request. Please try again.');
+      setError(e instanceof PortalApiError ? e.message : 'Zahteve ni bilo mogoče poslati. Poskusite znova.');
     } finally {
       setBusy(false);
     }
@@ -45,21 +45,21 @@ export default function PortalAppointments() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="font-display text-2xl font-extrabold">Book a service</h1>
+      <h1 className="text-2xl font-extrabold">Najava servisa</h1>
 
       {sent && (
         <div className="rounded-2xl border-2 border-go bg-go/10 p-4">
-          <p className="font-bold text-go">Request sent</p>
-          <p className="mt-1 text-sm">The workshop will be in touch to confirm a time. You can see the request below.</p>
+          <p className="font-bold text-go">Zahteva poslana</p>
+          <p className="mt-1 text-sm">Delavnica vas bo kontaktirala za potrditev termina. Zahtevo vidite spodaj.</p>
         </div>
       )}
 
       <PortalCard className="flex flex-col gap-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold text-steel">Vehicle</span>
+          <span className="mb-1 block text-sm font-semibold text-muted">Vozilo</span>
           <select value={assetId} onChange={(e) => setAssetId(e.target.value)}
-            className="w-full rounded-xl border border-line bg-panel px-4 py-3 focus:border-info focus:outline-none">
-            <option value="">— Select a vehicle (optional) —</option>
+            className="w-full rounded-xl border border-line bg-surface px-4 py-3 focus:border-brand focus:outline-none">
+            <option value="">— Izberite vozilo (neobvezno) —</option>
             {(vehicles ?? []).map((v: any) => (
               <option key={v.id} value={v.id}>{[v.make, v.model].filter(Boolean).join(' ')} · {v.plate}</option>
             ))}
@@ -67,37 +67,37 @@ export default function PortalAppointments() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold text-steel">Preferred date</span>
+          <span className="mb-1 block text-sm font-semibold text-muted">Želeni datum</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-line bg-panel px-4 py-3 focus:border-info focus:outline-none" />
+            className="w-full rounded-xl border border-line bg-surface px-4 py-3 focus:border-brand focus:outline-none" />
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold text-steel">What do you need?</span>
+          <span className="mb-1 block text-sm font-semibold text-muted">Kaj potrebujete?</span>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-            placeholder="e.g. 120,000 km service, brake noise on the front axle…"
-            className="w-full rounded-xl border border-line bg-panel px-4 py-3 focus:border-info focus:outline-none" />
+            placeholder="npr. servis pri 120.000 km, zvok zavor na sprednji osi…"
+            className="w-full rounded-xl border border-line bg-surface px-4 py-3 focus:border-brand focus:outline-none" />
         </label>
 
         {error && <p className="text-sm font-semibold text-stop">{error}</p>}
 
         <button onClick={submit} disabled={busy}
-          className="min-h-[52px] rounded-xl bg-info text-base font-bold text-white active:scale-[0.98] disabled:opacity-50">
-          {busy ? 'Sending…' : 'Send request'}
+          className="min-h-[52px] rounded-xl bg-brand text-base font-bold text-white active:scale-[0.98] disabled:opacity-50">
+          {busy ? 'Pošiljanje…' : 'Pošlji zahtevo'}
         </button>
       </PortalCard>
 
       {(requests ?? []).length > 0 && (
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-steel">Your requests</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Vaše zahteve</h2>
           {requests!.map((r: any) => (
             <PortalCard key={r.id} className="flex items-center justify-between">
               <div>
-                <p className="font-semibold">{r.description || 'Service request'}</p>
-                <p className="text-xs text-steel">{r.preferred_date ? `Preferred: ${r.preferred_date}` : 'No date given'}</p>
+                <p className="font-semibold">{r.description || 'Zahteva za servis'}</p>
+                <p className="text-xs text-muted">{r.preferred_date ? `Želeni: ${r.preferred_date}` : 'Brez datuma'}</p>
               </div>
               <StatusPill status={r.status === 'scheduled' ? 'ready' : r.status === 'declined' ? 'declined' : 'open'}
-                label={r.status === 'scheduled' ? 'Scheduled' : r.status === 'declined' ? 'Declined' : 'Requested'} />
+                label={r.status === 'scheduled' ? 'Načrtovano' : r.status === 'declined' ? 'Zavrnjeno' : 'Zahtevano'} />
             </PortalCard>
           ))}
         </section>
