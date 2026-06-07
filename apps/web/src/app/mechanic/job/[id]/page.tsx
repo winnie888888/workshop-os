@@ -11,7 +11,7 @@ import { addPendingAttachment, pendingAttachmentCount } from '@/lib/attachments'
 import { uploadPhoto, uploadVoiceNote } from '@/lib/uploads';
 import { formatClock } from '@/lib/format';
 import { useNow } from '@/lib/hooks';
-import { Button, Card, Sheet, Spinner, Stepper, TileButton } from '@/components/ui';
+import { Button, Card, Sheet, Spinner, Stepper } from '@/components/ui';
 
 /*
  * The Job screen. Top: the vehicle + complaint brief (read-only). Centre: the
@@ -67,29 +67,33 @@ export default function JobScreen() {
   }
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
-  if (!wo) return <Card className="p-6 text-center text-steel">Job not found.</Card>;
+  if (!wo) return <Card className="p-6 text-center text-muted">Nalog ni najden.</Card>;
 
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={() => router.push('/mechanic')} className="self-start text-sm font-semibold text-steel">‹ Jobs</button>
+      <button onClick={() => router.push('/mechanic')} className="self-start text-sm font-semibold text-white/70">‹ Nalogi</button>
 
       <VehicleBrief workOrderId={id} />
 
       <ClockControl running={running} workOrderId={id} onToggle={toggleClock} />
 
       <div className="grid grid-cols-2 gap-3">
-        <TileButton tone="info" icon={<span className="text-2xl">📷</span>} label="Photo" badge={attachments || undefined} onClick={() => setSheet('photo')} />
-        <TileButton tone="info" icon={<span className="text-2xl">🎤</span>} label="Note" onClick={() => setSheet('note')} />
-        <TileButton tone="neutral" icon={<span className="text-2xl">🔩</span>} label="Part" onClick={() => setSheet('part')} />
-        <TileButton tone="go" icon={<span className="text-2xl">✓</span>} label="Done" onClick={markDone} />
+        <ActionTile color="#2563eb" label="Foto" badge={attachments || undefined} onClick={() => setSheet('photo')}
+          icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>} />
+        <ActionTile color="#d97706" label="Opomba" onClick={() => setSheet('note')}
+          icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>} />
+        <ActionTile color="#7c3aed" label="Del" onClick={() => setSheet('part')}
+          icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 1 5.4-5.4l-2.7 2.7-2.3-.4-.4-2.3 2.7-2.7Z"/></svg>} />
+        <ActionTile color="#16a34a" label="Zaključi" onClick={markDone}
+          icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg>} />
       </div>
 
       <button
         onClick={flagExtraWork}
-        className="mt-1 flex items-center justify-center gap-2 rounded-tool border-2 border-hold/40
-          bg-hold/10 px-4 py-3 font-display font-bold text-hold"
+        className="mt-1 flex items-center justify-center gap-2 rounded-tool border border-safety bg-safety/15 px-4 py-3 font-bold text-safety"
       >
-        ⚠ Found extra work? Send for approval
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        Dodatno delo? Pošlji v odobritev
       </button>
 
       <PhotoSheet open={sheet === 'photo'} onClose={() => setSheet(null)} workOrderId={id} />
@@ -105,9 +109,9 @@ function VehicleBrief({ workOrderId }: { workOrderId: string }) {
   if (!doc) return null;
   return (
     <div>
-      {doc.vehicle?.makeModel && <p className="font-display text-2xl font-bold tracking-tight">{doc.vehicle.makeModel}</p>}
-      {doc.vehicle?.plate && <p className="font-mono text-lg text-steel">{doc.vehicle.plate}</p>}
-      {doc.complaint && <p className="mt-2 text-lg">{doc.complaint}</p>}
+      {doc.vehicle?.makeModel && <p className="text-2xl font-extrabold tracking-tight text-white">{doc.vehicle.makeModel}</p>}
+      {doc.vehicle?.plate && <p className="num text-lg text-white/60">{doc.vehicle.plate}</p>}
+      {doc.complaint && <p className="mt-2 text-lg text-white/90">{doc.complaint}</p>}
     </div>
   );
 }
@@ -118,9 +122,13 @@ function ClockControl({ running, workOrderId, onToggle }: { running: boolean; wo
   const elapsed = running && startedAt ? Math.floor((now - Date.parse(startedAt)) / 1000) : 0;
   return (
     <Card className={`flex flex-col items-center gap-4 p-6 ${running ? 'bg-go/10' : ''}`}>
-      <div className="font-mono text-5xl font-bold tracking-tight">{running ? formatClock(elapsed) : '00:00:00'}</div>
+      <div className="num text-5xl font-bold tracking-tight text-ink">{running ? formatClock(elapsed) : '00:00:00'}</div>
       <Button tone={running ? 'stop' : 'go'} size="xl" full onClick={onToggle}>
-        {running ? '■ Stop work' : '▶ Start work'}
+        <span className="inline-flex items-center gap-2">
+          {running
+            ? <><svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg> Ustavi delo</>
+            : <><svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M8 5v14l11-7z"/></svg> Začni delo</>}
+        </span>
       </Button>
     </Card>
   );
@@ -142,11 +150,10 @@ function PhotoSheet({ open, onClose, workOrderId }: { open: boolean; onClose: ()
     onClose();
   }
   return (
-    <Sheet open={open} onClose={onClose} title="Add photo">
-      <label className="tool-tap flex flex-col items-center justify-center gap-3 rounded-tool border-2
-        border-dashed border-ink/20 bg-panel p-8">
-        <span className="text-4xl">{busy ? '⏳' : '📷'}</span>
-        <span className="font-display text-xl font-bold">{busy ? 'Uploading…' : 'Take a photo'}</span>
+    <Sheet open={open} onClose={onClose} title="Dodaj fotografijo">
+      <label className="flex flex-col items-center justify-center gap-3 rounded-tool border border-dashed border-linestrong bg-surface2 p-8">
+        {busy ? <Spinner className="text-brand" /> : <svg viewBox="0 0 24 24" className="h-10 w-10 text-brand" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+        <span className="text-xl font-bold text-ink">{busy ? 'Nalagam…' : 'Posnemi fotografijo'}</span>
         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} disabled={busy} />
       </label>
     </Sheet>
@@ -211,20 +218,21 @@ function NoteSheet({ open, onClose, workOrderId }: { open: boolean; onClose: () 
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Add note">
-      <button onClick={dictate} className={`tool-tap mb-3 flex w-full items-center justify-center gap-3 rounded-tool
-        border-2 ${listening ? 'border-stop bg-stop/10 text-stop' : 'border-info bg-info/10 text-info'} p-5 font-display text-xl font-bold`}>
-        {listening ? '● Listening…' : '🎤 Dictate'}
+    <Sheet open={open} onClose={onClose} title="Dodaj opombo">
+      <button onClick={dictate} className={`mb-3 flex w-full items-center justify-center gap-3 rounded-tool border ${listening ? 'border-stop bg-stop/10 text-stop' : 'border-brand bg-brandweak text-brand'} p-5 text-xl font-bold`}>
+        {listening
+          ? <><span className="h-3 w-3 animate-pulse rounded-full bg-stop" /> Poslušam…</>
+          : <><svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg> Narekuj</>}
       </button>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="Or type a short note"
-        className="w-full rounded-tool border-2 border-line bg-panel p-3 text-lg focus:border-info focus:outline-none"
+        placeholder="Ali natipkaj kratko opombo"
+        className="w-full rounded-tool border border-linestrong bg-surface p-3 text-lg focus:border-brandring focus:outline-none"
       />
       <div className="mt-3"><Button tone="go" size="lg" full onClick={saveNote} disabled={busy || (!text.trim())}>
-        {busy ? 'Saving…' : 'Save note'}
+        {busy ? 'Shranjujem…' : 'Shrani opombo'}
       </Button></div>
     </Sheet>
   );
@@ -259,23 +267,39 @@ function PartSheet({ open, onClose, workOrderId, onAdded }: {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Add part">
-      <button className="tool-tap mb-3 flex w-full items-center justify-center gap-3 rounded-tool border-2
-        border-ink/15 bg-panel p-5 font-display text-xl font-bold">
-        📷 Scan barcode
+    <Sheet open={open} onClose={onClose} title="Dodaj del">
+      <button className="mb-3 flex w-full items-center justify-center gap-3 rounded-tool border border-linestrong bg-surface2 p-5 text-xl font-bold text-ink">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg>
+        Skeniraj črtno kodo
       </button>
-      <p className="mb-2 text-center text-sm font-semibold uppercase tracking-wide text-steel">or pick / type</p>
+      <p className="mb-2 text-center text-sm font-semibold uppercase tracking-wide text-steel">ali izberi / natipkaj</p>
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Part name"
-        className="mb-4 w-full rounded-tool border-2 border-line bg-panel p-3 text-lg focus:border-info focus:outline-none"
+        placeholder="Naziv dela"
+        className="mb-4 w-full rounded-tool border border-linestrong bg-surface p-3 text-lg focus:border-brandring focus:outline-none"
       />
       <div className="mb-4 flex items-center justify-between">
-        <span className="font-display text-lg font-bold">Quantity</span>
+        <span className="text-lg font-bold text-ink">Količina</span>
         <Stepper value={qty} onChange={setQty} />
       </div>
-      <Button tone="go" size="lg" full onClick={addPart} disabled={!name.trim()}>Add</Button>
+      <Button tone="go" size="lg" full onClick={addPart} disabled={!name.trim()}>Dodaj</Button>
     </Sheet>
+  );
+}
+
+function ActionTile({ color, label, icon, badge, onClick }: {
+  color: string; label: string; icon: React.ReactNode; badge?: number; onClick?: () => void;
+}) {
+  return (
+    <button onClick={onClick}
+      className="relative flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-card text-white shadow-card transition active:translate-y-px"
+      style={{ background: color }}>
+      {icon}
+      <span className="text-lg font-bold tracking-tight">{label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="absolute right-3 top-3 flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-1.5 text-sm font-bold" style={{ color }}>{badge}</span>
+      )}
+    </button>
   );
 }

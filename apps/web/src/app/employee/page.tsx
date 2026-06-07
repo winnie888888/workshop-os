@@ -40,7 +40,7 @@ export default function EmployeeAttendancePage() {
       const cur = await api.attendance.current();
       setDay(cur);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load attendance');
+      setError(e instanceof Error ? e.message : 'Prisotnosti ni bilo mogoče naložiti');
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export default function EmployeeAttendancePage() {
   async function act(fn: () => Promise<any>) {
     setBusy(true); setError(null);
     try { setDay(await fn()); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Action failed'); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Dejanje ni uspelo'); }
     finally { setBusy(false); }
   }
 
@@ -100,34 +100,34 @@ function ClockControl({ clockedIn, onBreak, busy, day, onClockIn, onClockOut, on
       {clockedIn ? (
         <>
           <div className="text-center">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Clocked in</div>
+            <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Prijavljen</div>
             <div className="font-display text-3xl font-extrabold tabular-nums">{fmtHm(day?.netWorkedSeconds ?? 0)}</div>
-            <div className="text-xs text-steel">net worked · {fmtHm(day?.breakSeconds ?? 0)} on break</div>
+            <div className="text-xs text-steel">neto delo · {fmtHm(day?.breakSeconds ?? 0)} odmor</div>
           </div>
           {onBreak ? (
             <button onClick={onEndBreak} disabled={busy}
               className="tool-tap flex h-20 w-full items-center justify-center rounded-tool bg-hold font-display text-2xl font-extrabold text-white disabled:opacity-50">
-              {busy ? <Spinner className="text-white" /> : 'End break'}
+              {busy ? <Spinner className="text-white" /> : 'Konec odmora'}
             </button>
           ) : (
             <>
               <button onClick={onClockOut} disabled={busy}
                 className="tool-tap flex h-20 w-full items-center justify-center rounded-tool bg-stop font-display text-2xl font-extrabold text-white disabled:opacity-50">
-                {busy ? <Spinner className="text-white" /> : 'Clock out'}
+                {busy ? <Spinner className="text-white" /> : 'Odjava'}
               </button>
-              <Button tone="neutral" onClick={onStartBreak} disabled={busy} className="w-full">Start break</Button>
+              <Button tone="neutral" onClick={onStartBreak} disabled={busy} className="w-full">Začni odmor</Button>
             </>
           )}
         </>
       ) : (
         <>
           <div className="text-center">
-            <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Not clocked in</div>
-            <div className="font-display text-xl font-bold text-steel">Tap to start your day</div>
+            <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Niste prijavljeni</div>
+            <div className="font-display text-xl font-bold text-steel">Tapnite za začetek dneva</div>
           </div>
           <button onClick={onClockIn} disabled={busy}
             className="tool-tap flex h-24 w-full items-center justify-center rounded-tool bg-go font-display text-3xl font-extrabold text-white disabled:opacity-50">
-            {busy ? <Spinner className="text-white" /> : 'Clock in'}
+            {busy ? <Spinner className="text-white" /> : 'Prijava'}
           </button>
         </>
       )}
@@ -143,11 +143,13 @@ function MyVehicle() {
   return (
     <Card className="flex items-center justify-between p-4">
       <div>
-        <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">My service vehicle</div>
+        <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Moje servisno vozilo</div>
         <div className="font-mono text-lg font-bold">{v.registrationNumber}</div>
         <div className="text-sm text-steel">{[v.make, v.model].filter(Boolean).join(' ')} · {v.currentMileageKm} km</div>
       </div>
-      <span className="text-2xl">🚐</span>
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-brandweak text-brand">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 7h11v8H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="17" r="1.6"/><circle cx="17.5" cy="17" r="1.6"/></svg>
+      </span>
     </Card>
   );
 }
@@ -162,7 +164,7 @@ function MyTravelOrders({ userId, onError }: { userId: string; onError: (m: stri
   async function start(id: string) {
     setBusy(true);
     try { await api.attendance.startTravelOrder(id); load(); }
-    catch (e) { onError(e instanceof Error ? e.message : 'Could not start'); }
+    catch (e) { onError(e instanceof Error ? e.message : 'Začetka ni bilo mogoče'); }
     finally { setBusy(false); }
   }
   async function finish(id: string) {
@@ -172,24 +174,24 @@ function MyTravelOrders({ userId, onError }: { userId: string; onError: (m: stri
       // record the trip as completed so it is ready for accounting export.
       await api.attendance.finishTravelOrder(id, { travelSeconds: 0, workSeconds: 0, waitingSeconds: 0, km: 0 });
       load();
-    } catch (e) { onError(e instanceof Error ? e.message : 'Could not finish'); }
+    } catch (e) { onError(e instanceof Error ? e.message : 'Zaključka ni bilo mogoče'); }
     finally { setBusy(false); }
   }
 
   if (!orders) return null;
   return (
     <Card className="flex flex-col gap-2 p-4">
-      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">My travel orders</div>
-      {orders.length === 0 && <div className="text-sm text-steel">No travel orders.</div>}
+      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Moji potni nalogi</div>
+      {orders.length === 0 && <div className="text-sm text-steel">Ni potnih nalogov.</div>}
       {orders.slice(0, 5).map((t) => (
-        <div key={t.id} className="flex items-center justify-between rounded-tool border-2 border-line bg-panel px-3 py-2">
+        <div key={t.id} className="flex items-center justify-between rounded-tool border border-line bg-surface px-3 py-2">
           <div className="min-w-0">
-            <div className="font-mono text-sm font-bold">{t.number ?? 'draft'}</div>
+            <div className="font-mono text-sm font-bold">{t.number ?? 'osnutek'}</div>
             <div className="truncate text-xs text-steel">{labelPurpose(t.purpose)}{t.destination ? ` · ${t.destination}` : ''}</div>
           </div>
-          {t.status === 'draft' && <Button tone="go" onClick={() => start(t.id)} disabled={busy}>Start</Button>}
-          {t.status === 'in_progress' && <Button tone="info" onClick={() => finish(t.id)} disabled={busy}>Finish</Button>}
-          {(t.status === 'completed' || t.status === 'exported') && <span className="text-xs font-semibold text-go">done</span>}
+          {t.status === 'draft' && <Button tone="go" onClick={() => start(t.id)} disabled={busy}>Začni</Button>}
+          {t.status === 'in_progress' && <Button tone="info" onClick={() => finish(t.id)} disabled={busy}>Zaključi</Button>}
+          {(t.status === 'completed' || t.status === 'exported') && <span className="text-xs font-semibold text-go">končano</span>}
         </div>
       ))}
     </Card>
@@ -202,12 +204,12 @@ function MyLeave() {
   if (!leave) return null;
   return (
     <Card className="flex flex-col gap-2 p-4">
-      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">My leave</div>
-      {leave.length === 0 && <div className="text-sm text-steel">No leave on record.</div>}
+      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-steel">Moja odsotnost</div>
+      {leave.length === 0 && <div className="text-sm text-steel">Ni zabeležene odsotnosti.</div>}
       {leave.slice(0, 5).map((l) => (
         <div key={l.id} className="flex items-center justify-between text-sm">
           <span>{labelLeave(l.leaveType)} · {l.startDate}→{l.endDate}</span>
-          <span className={`font-semibold ${l.status === 'approved' ? 'text-go' : l.status === 'rejected' ? 'text-stop' : 'text-hold'}`}>{l.status}</span>
+          <span className={`font-semibold ${l.status === 'approved' ? 'text-go' : l.status === 'rejected' ? 'text-stop' : 'text-hold'}`}>{leaveStatus(l.status)}</span>
         </div>
       ))}
     </Card>
@@ -217,23 +219,26 @@ function MyLeave() {
 /* ---- small label helpers (display only) ---- */
 function labelFlag(f: string): string {
   const m: Record<string, string> = {
-    break_too_short: 'Break under 30 min on a 6h+ day', long_day: 'Long day (10h+)',
-    missing_clock_out: 'Still clocked in', overlapping_break: 'Overlapping breaks',
-    break_outside_shift: 'Break outside shift', negative_duration: 'Check times',
+    break_too_short: 'Odmor pod 30 min na 6h+ dan', long_day: 'Dolg dan (10h+)',
+    missing_clock_out: 'Še vedno prijavljen', overlapping_break: 'Prekrivajoči odmori',
+    break_outside_shift: 'Odmor izven izmene', negative_duration: 'Preveri čase',
   };
   return m[f] ?? f;
 }
 function labelPurpose(p: string): string {
   const m: Record<string, string> = {
-    field_repair: 'Field repair', field_repair_abroad: 'Field repair (abroad)',
-    road_assistance: 'Road assistance', towing: 'Towing', parts_pickup: 'Parts pickup', customer_visit: 'Customer visit',
+    field_repair: 'Terensko popravilo', field_repair_abroad: 'Terensko popravilo (tujina)',
+    road_assistance: 'Pomoč na cesti', towing: 'Vleka', parts_pickup: 'Prevzem delov', customer_visit: 'Obisk stranke',
   };
   return m[p] ?? p;
 }
 function labelLeave(t: string): string {
   const m: Record<string, string> = {
-    vacation: 'Vacation', sick_leave: 'Sick leave', personal_leave: 'Personal leave',
-    business_leave: 'Business leave', public_holiday: 'Public holiday', planned_absence: 'Planned absence',
+    vacation: 'Dopust', sick_leave: 'Bolniška', personal_leave: 'Osebni dopust',
+    business_leave: 'Službena odsotnost', public_holiday: 'Praznik', planned_absence: 'Načrtovana odsotnost',
   };
   return m[t] ?? t;
+}
+function leaveStatus(s: string): string {
+  return s === 'approved' ? 'odobreno' : s === 'rejected' ? 'zavrnjeno' : s === 'pending' ? 'v obravnavi' : s;
 }

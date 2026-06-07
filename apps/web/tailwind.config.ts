@@ -10,11 +10,16 @@ const config: Config = {
     extend: {
       colors: {
         // Brand — A-SPRINT (temporary blue; swap these to lock the identity)
-        brand: '#0e63b3',
-        brand600: '#0b56a0',
-        brand700: '#094b8c',
-        brandweak: '#e8f1fb',
-        brandring: '#b9d6f3',
+        brand: '#2563eb',
+        brand600: '#1d4ed8',
+        brand700: '#1e40af',
+        brandweak: '#eef4ff',
+        brandring: '#bfd3fb',
+
+        // Sidebar (dark navy rail from the design spec)
+        sidebar: '#0f2236',
+        sidebar2: '#1c3653',
+        sidebartext: '#9fb0c3',
 
         // Neutrals
         ink: '#1b2733',        // primary text
@@ -32,7 +37,7 @@ const config: Config = {
         go: '#1c7a43',         // ok / ready / done
         hold: '#9a6412',       // waiting / warn
         stop: '#c3362b',       // alert / overdue
-        info: '#0e63b3',       // = brand (links / primary)
+        info: '#2563eb',       // = brand (links / primary)
         safety: '#e0a400',     // accent (used sparingly)
       },
       fontFamily: {
@@ -46,10 +51,10 @@ const config: Config = {
       },
       minHeight: { tap: '3rem' },        // 48px touch floor (mixed office/floor)
       minWidth: { tap: '3rem' },
-      borderRadius: { tool: '0.5rem', card: '0.875rem' },
+      borderRadius: { tool: '0.625rem', card: '1rem' },
       boxShadow: {
         tool: '0 1px 2px rgba(20,35,55,.06), 0 1px 1px rgba(20,35,55,.04)',
-        card: '0 1px 2px rgba(20,35,55,.06)',
+        card: '0 1px 2px rgba(20,35,55,.04), 0 6px 20px -4px rgba(20,35,55,.08)',
         lift: '0 10px 30px rgba(20,35,55,.14)',
       },
     },

@@ -74,11 +74,11 @@ export function PortalButton({ children, onClick, href, tone = 'primary', disabl
 export function BottomNav() {
   const path = usePathname();
   const tabs = [
-    { href: '/portal', label: 'Home', icon: ICONS.home, match: (p: string) => p === '/portal' },
-    { href: '/portal/work-orders', label: 'Jobs', icon: ICONS.jobs, match: (p: string) => p.startsWith('/portal/work-orders') },
-    { href: '/portal/invoices', label: 'Invoices', icon: ICONS.invoice, match: (p: string) => p.startsWith('/portal/invoices') },
-    { href: '/portal/history', label: 'History', icon: ICONS.history, match: (p: string) => p.startsWith('/portal/history') },
-    { href: '/portal/appointments', label: 'Book', icon: ICONS.book, match: (p: string) => p.startsWith('/portal/appointments') },
+    { href: '/portal', label: 'Domov', icon: ICONS.home, match: (p: string) => p === '/portal' },
+    { href: '/portal/work-orders', label: 'Nalogi', icon: ICONS.jobs, match: (p: string) => p.startsWith('/portal/work-orders') },
+    { href: '/portal/invoices', label: 'Računi', icon: ICONS.invoice, match: (p: string) => p.startsWith('/portal/invoices') },
+    { href: '/portal/history', label: 'Zgodovina', icon: ICONS.history, match: (p: string) => p.startsWith('/portal/history') },
+    { href: '/portal/appointments', label: 'Najava', icon: ICONS.book, match: (p: string) => p.startsWith('/portal/appointments') },
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-panel pb-[env(safe-area-inset-bottom)]">

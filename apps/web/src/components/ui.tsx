@@ -96,7 +96,7 @@ export function Card({ children, className = '', onClick }: {
   return (
     <div
       onClick={onClick}
-      className={`rounded-card border border-line bg-surface shadow-card ${onClick ? 'cursor-pointer transition hover:border-brandring active:translate-y-px' : ''} ${className}`}
+      className={`rounded-card border border-line bg-surface text-ink shadow-card ${onClick ? 'cursor-pointer transition hover:border-brandring active:translate-y-px' : ''} ${className}`}
     >
       {children}
     </div>

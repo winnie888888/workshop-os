@@ -60,31 +60,31 @@ export default function MechanicMe() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="px-1 pt-1 font-display text-3xl font-extrabold tracking-tight">Me</h1>
+      <h1 className="px-1 pt-1 text-3xl font-extrabold tracking-tight">Profil</h1>
 
       <Card className="p-5">
-        <p className="font-display text-2xl font-bold">{session?.user.name ?? 'Not signed in'}</p>
+        <p className="text-2xl font-bold">{session?.user.name ?? 'Ni prijave'}</p>
         <p className="mt-2 text-base">
-          Clocked on: {active
-            ? <span className="font-semibold text-hold">a job is running</span>
-            : <span className="text-steel">none</span>}
+          Ura teče: {active
+            ? <span className="font-semibold text-hold">nalog v teku</span>
+            : <span className="text-muted">ne</span>}
         </p>
         <p className="mt-1 text-base">
-          Sync: {!online
-            ? <span className="font-semibold text-hold">{pending} saved on this device</span>
+          Sinhronizacija: {!online
+            ? <span className="font-semibold text-hold">{pending} shranjeno na napravi</span>
             : pending > 0
-              ? <span className="font-semibold text-info">syncing {pending}…</span>
-              : <span className="font-semibold text-go">all synced</span>}
+              ? <span className="font-semibold text-info">sinhronizacija {pending}…</span>
+              : <span className="font-semibold text-go">vse sinhronizirano</span>}
         </p>
       </Card>
 
       <Card className="p-5">
-        <h2 className="mb-3 font-display text-lg font-bold">Language {savingLang && <Spinner className="ml-2 text-info" />}</h2>
+        <h2 className="mb-3 text-lg font-bold">Jezik {savingLang && <Spinner className="ml-2 text-info" />}</h2>
         <div className="grid grid-cols-2 gap-2">
           {LANGS.map((l) => (
             <button key={l.code} onClick={() => changeLanguage(l.code)}
-              className={`tool-tap rounded-tool border-2 px-4 font-display font-bold
-                ${locale === l.code ? 'border-info bg-info/10 text-info' : 'border-line bg-panel'}`}>
+              className={`min-h-tap rounded-tool border px-4 font-bold
+                ${locale === l.code ? 'border-brand bg-brandweak text-brand' : 'border-linestrong bg-surface text-ink'}`}>
               {l.label}
             </button>
           ))}
@@ -93,7 +93,7 @@ export default function MechanicMe() {
 
       {sessions && sessions.length > 0 && (
         <Card className="p-5">
-          <h2 className="mb-3 font-display text-lg font-bold">Signed-in devices</h2>
+          <h2 className="mb-3 text-lg font-bold">Prijavljene naprave</h2>
           <ul className="flex flex-col gap-2 text-sm">
             {sessions.map((s: any) => (
               <li key={s.id} className="flex items-center justify-between rounded-tool bg-floor px-3 py-2">
@@ -105,14 +105,14 @@ export default function MechanicMe() {
         </Card>
       )}
 
-      <Button tone="stop" size="lg" full onClick={signOut}>Sign out</Button>
+      <Button tone="stop" size="lg" full onClick={signOut}>Odjava</Button>
     </div>
   );
 }
 
 function shortAgent(ua?: string): string {
-  if (!ua) return 'This device';
-  if (/iphone|android|mobile/i.test(ua)) return 'Phone';
-  if (/ipad|tablet/i.test(ua)) return 'Tablet';
-  return 'Computer';
+  if (!ua) return 'Ta naprava';
+  if (/iphone|android|mobile/i.test(ua)) return 'Telefon';
+  if (/ipad|tablet/i.test(ua)) return 'Tablica';
+  return 'Računalnik';
 }

@@ -48,10 +48,10 @@ export function statusLabel(status: string): string {
 /** Maps a status to a semantic colour token used across the UI. */
 export function statusTone(status: string): 'go' | 'hold' | 'stop' | 'info' | 'neutral' {
   switch (status) {
-    case 'in_progress': case 'ready': return 'go';
-    case 'awaiting_approval': case 'awaiting_parts': case 'on_hold': return 'hold';
+    case 'ready': case 'invoiced': case 'closed': return 'go';
+    case 'in_progress': case 'on_hold': return 'hold';
+    case 'awaiting_approval': case 'awaiting_parts': return 'info';
     case 'cancelled': return 'stop';
-    case 'invoiced': case 'closed': return 'info';
     default: return 'neutral';
   }
 }

@@ -3,51 +3,61 @@
 import Link from 'next/link';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { Button, Card, Spinner } from '@/components/ui';
+import { Card, Spinner } from '@/components/ui';
 
 /*
  * Customers register — the on-ramp to the operational loop. Each row links to
  * the customer hub (vehicles, balance, new job); the header offers New customer.
- * This is where an advisor starts when a hauler they don't yet have arrives.
  */
 export default function CustomersList() {
   const { data, isLoading } = useSWR('customers-list', () => api.customers.list());
+  const rows = (data as any[]) ?? [];
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Customers</h1>
-        <Link href="/advisor/customers/new">
-          <Button tone="info">+ New customer</Button>
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">Stranke</h1>
+          {data && <p className="mt-0.5 text-sm text-muted"><span className="num">{rows.length}</span> strank</p>}
+        </div>
+        <Link href="/advisor/customers/new"
+          className="inline-flex min-h-tap items-center gap-2 rounded-tool bg-brand px-5 font-bold text-white shadow-tool transition hover:bg-brand600 active:translate-y-px">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
+          Nova stranka
         </Link>
       </div>
 
-      {isLoading && <div className="flex justify-center py-16"><Spinner className="text-info" /></div>}
+      {isLoading && <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>}
 
       {data && (
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-floor text-left text-xs uppercase tracking-wide text-steel">
-              <tr><th className="p-3">Name</th><th className="p-3">VAT id</th><th className="p-3">Country</th>
-                <th className="p-3">Terms</th><th className="p-3"></th></tr>
+            <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+              <tr>
+                <th className="px-4 py-2.5 font-bold">Naziv</th>
+                <th className="hidden px-4 py-2.5 font-bold sm:table-cell">DDV</th>
+                <th className="hidden px-4 py-2.5 font-bold sm:table-cell">Država</th>
+                <th className="px-4 py-2.5 font-bold">Plačilni rok</th>
+                <th className="px-4 py-2.5"></th>
+              </tr>
             </thead>
             <tbody>
-              {(data as any[]).map((c) => (
-                <tr key={c.id} className="border-t border-line hover:bg-floor">
-                  <td className="p-3">
-                    <Link href={`/advisor/customers/${c.id}`} className="font-semibold text-info">{c.name ?? '—'}</Link>
+              {rows.map((c) => (
+                <tr key={c.id} className="border-t border-line transition hover:bg-floor">
+                  <td className="px-4 py-3">
+                    <Link href={`/advisor/customers/${c.id}`} className="font-semibold text-brand hover:underline">{c.name ?? '—'}</Link>
                   </td>
-                  <td className="p-3 font-mono">{c.vatId ?? c.vat_id ?? '—'}</td>
-                  <td className="p-3">{c.country ?? c.countryCode ?? '—'}</td>
-                  <td className="p-3">{c.paymentTermsDays ?? c.payment_terms_days ?? '—'} days</td>
-                  <td className="p-3 text-right">
-                    <Link href={`/advisor/customers/${c.id}`} className="text-sm font-semibold text-steel">open →</Link>
+                  <td className="num hidden px-4 py-3 text-muted sm:table-cell">{c.vatId ?? c.vat_id ?? '—'}</td>
+                  <td className="hidden px-4 py-3 text-muted sm:table-cell">{c.country ?? c.countryCode ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted"><span className="num">{c.paymentTermsDays ?? c.payment_terms_days ?? '—'}</span> dni</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/advisor/customers/${c.id}`} className="text-sm font-semibold text-muted2 hover:text-brand">odpri →</Link>
                   </td>
                 </tr>
               ))}
-              {(data as any[]).length === 0 && (
-                <tr><td colSpan={5} className="p-6 text-center text-steel">
-                  No customers yet. <Link href="/advisor/customers/new" className="font-semibold text-info">Add the first one →</Link>
+              {rows.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">
+                  Še ni strank. <Link href="/advisor/customers/new" className="font-semibold text-brand hover:underline">Dodaj prvo →</Link>
                 </td></tr>
               )}
             </tbody>

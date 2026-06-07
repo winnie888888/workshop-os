@@ -3,11 +3,17 @@
 import React from 'react';
 
 /*
- * Shared form primitives for the advisor's data-entry screens (create/edit
- * customer and vehicle, the line editor). They carry the same industrial look
- * as the rest of the UI — large targets, heavy labels, clear focus — so every
- * form in the desk feels like one tool rather than a patchwork.
+ * Shared form primitives for every data-entry screen (create/edit customer and
+ * vehicle, the line editor, owner/portal forms). One design language: light
+ * fields, quiet uppercase labels, a soft brand focus ring, generous tap
+ * targets. Updating these updates every form across the product at once.
  */
+
+const FIELD =
+  'min-h-tap w-full rounded-tool border border-linestrong bg-surface px-3 text-base text-ink transition ' +
+  'placeholder:text-muted2 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brandring';
+const LABEL = 'mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted2';
+const HINT = 'mt-1 block text-xs text-muted';
 
 export function TextField({
   label, value, onChange, placeholder, type = 'text', required, hint, mono, uppercase,
@@ -17,18 +23,15 @@ export function TextField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">
-        {label}{required && <span className="text-stop"> *</span>}
-      </span>
+      <span className={LABEL}>{label}{required && <span className="text-stop"> *</span>}</span>
       <input
         type={type}
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(uppercase ? e.target.value.toUpperCase() : e.target.value)}
-        className={`min-h-tap w-full rounded-tool border-2 border-line bg-panel px-3 text-tap
-          focus:border-info focus:outline-none ${mono ? 'font-mono' : ''}`}
+        className={`${FIELD} ${mono ? 'num' : ''}`}
       />
-      {hint && <span className="mt-1 block text-xs text-steel">{hint}</span>}
+      {hint && <span className={HINT}>{hint}</span>}
     </label>
   );
 }
@@ -40,17 +43,14 @@ export function NumberField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">
-        {label}{required && <span className="text-stop"> *</span>}
-      </span>
+      <span className={LABEL}>{label}{required && <span className="text-stop"> *</span>}</span>
       <input
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-        className="min-h-tap w-full rounded-tool border-2 border-line bg-panel px-3 text-tap font-mono
-          focus:border-info focus:outline-none"
+        className={`${FIELD} num text-right`}
       />
-      {hint && <span className="mt-1 block text-xs text-steel">{hint}</span>}
+      {hint && <span className={HINT}>{hint}</span>}
     </label>
   );
 }
@@ -63,15 +63,8 @@ export function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">
-        {label}{required && <span className="text-stop"> *</span>}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-tap w-full rounded-tool border-2 border-line bg-panel px-3 text-tap
-          focus:border-info focus:outline-none"
-      >
+      <span className={LABEL}>{label}{required && <span className="text-stop"> *</span>}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={FIELD}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </label>
@@ -85,13 +78,13 @@ export function TextAreaField({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-steel">{label}</span>
+      <span className={LABEL}>{label}</span>
       <textarea
         value={value}
         rows={rows}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-tool border-2 border-line bg-panel p-3 text-base focus:border-info focus:outline-none"
+        className={`${FIELD} py-2.5 leading-relaxed`}
       />
     </label>
   );
@@ -103,16 +96,16 @@ export function CheckboxField({
   label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-tool border-2 border-line bg-panel p-3">
+    <label className="flex cursor-pointer items-start gap-3 rounded-tool border border-linestrong bg-surface p-3 transition hover:border-brandring">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 h-5 w-5 accent-info"
+        className="mt-0.5 h-5 w-5 accent-brand"
       />
       <span>
-        <span className="block font-semibold">{label}</span>
-        {hint && <span className="block text-xs text-steel">{hint}</span>}
+        <span className="block font-semibold text-ink">{label}</span>
+        {hint && <span className="block text-xs text-muted">{hint}</span>}
       </span>
     </label>
   );
