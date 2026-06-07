@@ -3,12 +3,13 @@
 @tailwind utilities;
 
 /*
- * Industrial / utilitarian base. High contrast, heavy weight, generous targets.
- * Fonts are wired via next/font in layout.tsx and exposed as CSS variables here.
+ * Clean business base (Minimax-aligned): light surfaces, Manrope type, single
+ * blue accent. Fonts are wired via next/font in layout.tsx (Manrope -> --font-display,
+ * IBM Plex Mono -> --font-mono) and aliased here.
  */
 :root {
-  --font-display: 'Archivo', system-ui, sans-serif;
-  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: 'Manrope', system-ui, sans-serif;   /* next/font overrides on <html> */
+  --font-body: var(--font-display);
   --font-mono: 'IBM Plex Mono', monospace;
 }
 
@@ -17,39 +18,29 @@ html, body {
 }
 
 body {
-  background: #f4f5f2;
-  color: #14181d;
+  background: #f4f6f9;
+  color: #1b2733;
   font-family: var(--font-body);
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
-  /* Avoid accidental text selection on tap-heavy tool screens. */
   -webkit-tap-highlight-color: transparent;
 }
 
-/* A faint diagonal hazard texture for shop-floor surfaces, used sparingly. */
-.bg-hazard {
-  background-image: repeating-linear-gradient(
-    45deg,
-    #00000008 0,
-    #00000008 12px,
-    transparent 12px,
-    transparent 24px
-  );
-}
+/* Tabular figures for money, plates, clocks. */
+.num { font-variant-numeric: tabular-nums lining-nums; }
 
-/* Large, gloved-finger control reset. */
+/* Large, gloved-finger control floor (retained for shop-floor screens). */
 .tool-tap {
-  min-height: 3.5rem;
-  min-width: 3.5rem;
   touch-action: manipulation;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .stagger > * {
-    animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation: rise 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   }
-  .stagger > *:nth-child(2) { animation-delay: 0.04s; }
-  .stagger > *:nth-child(3) { animation-delay: 0.08s; }
-  .stagger > *:nth-child(4) { animation-delay: 0.12s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.05s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.10s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.15s; }
   @keyframes rise {
     from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
