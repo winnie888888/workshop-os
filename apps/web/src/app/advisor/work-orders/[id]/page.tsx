@@ -59,6 +59,8 @@ export default function WorkOrderWorkspace() {
 
       <MechanicAssign workOrderId={id} assignedMechanicId={(wo as any).assignedMechanicId ?? null} editable={editable} onChanged={() => mutate()} />
 
+      <AiAdvice wo={wo} />
+
       <LinesBlock wo={wo} editable={editable} onChanged={() => mutate()} />
 
       {/* Action row — legal transitions + issue path */}
@@ -734,5 +736,51 @@ function QuickAddBar({ wo, onAdded, onError }: { wo: WorkOrderDetail; onAdded: (
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * AI advice — a lightweight validation pass over the work order. It cross-checks
+ * the vehicle's powertrain against the line descriptions and flags items that do
+ * not belong (e.g. engine oil / fuel filter / AdBlue / DPF on an electric or
+ * hybrid vehicle), then suggests the matching service package. This is the
+ * "AI Validation" guardrail; in production the same check is reinforced by the
+ * model, but the rule-based pass already catches the obvious mistakes for free.
+ */
+const EV_BAD_PATTERNS: RegExp[] = [
+  /olj[ae]/i, /motorn/i, /\boil\b/i, /gorivn/i, /filter goriva/i, /adblue/i, /\bdpf\b/i, /izpuh/i, /izpušn/i, /sveč/i, /vžigaln/i, /menjalnik.*olj/i,
+];
+
+function AiAdvice({ wo }: { wo: WorkOrderDetail }) {
+  const assetId = (wo as any).assetId as string | null | undefined;
+  const { data: vehicle } = useSWR(assetId ? ['wo-veh-advice', assetId] : null, () => api.assets.get(assetId as string).catch(() => null));
+  const { data: presets } = useSWR('all-presets', () => api.presets.list().catch(() => []));
+
+  const power = (vehicle as any)?.powertrain as string | undefined;
+  const vType = (vehicle as any)?.type as string | undefined;
+  if (power !== 'electric' && power !== 'hybrid') return null;
+
+  const flagged = (wo.lines ?? []).filter((l) => EV_BAD_PATTERNS.some((re) => re.test(l.description || '')));
+  if (flagged.length === 0) return null;
+
+  const suggestion = (presets as any[] | undefined)?.find((p) =>
+    p.active !== false && (p.powertrains?.length ? p.powertrains.includes(power) : false) && (!p.vehicleClasses?.length || (vType && p.vehicleClasses.includes(vType))));
+
+  return (
+    <Card className="border-safety/60 bg-safety/10 p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 rounded-md bg-safety px-2 py-1 text-xs font-extrabold text-white">AI</span>
+        <div className="min-w-0">
+          <p className="font-bold text-ink">Opozorilo — vozilo je {power === 'electric' ? 'električno' : 'hibridno'}</p>
+          <p className="mt-1 text-sm text-steel">
+            Te postavke verjetno ne sodijo sem: <span className="font-semibold">{flagged.map((f) => f.description).join(', ')}</span>.
+            Električni pogon nima motornega olja, gorivnih filtrov, AdBlue ali izpušnega sistema — preveri, preden izdaš račun.
+          </p>
+          {suggestion && (
+            <p className="mt-1 text-sm text-steel">Predlog: uporabi paket <span className="font-semibold text-ink">„{suggestion.name}"</span> (gumb „+ Paket" spodaj).</p>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }

@@ -1662,6 +1662,9 @@ video {
 .border-white\/80 {
   border-color: rgb(255 255 255 / 0.8);
 }
+.border-safety\/60 {
+  border-color: rgb(224 164 0 / 0.6);
+}
 .border-t-transparent {
   border-top-color: transparent;
 }
@@ -1813,6 +1816,9 @@ video {
 }
 .bg-white\/5 {
   background-color: rgb(255 255 255 / 0.05);
+}
+.bg-safety\/10 {
+  background-color: rgb(224 164 0 / 0.1);
 }
 .bg-\[radial-gradient\(60rem_30rem_at_50\%_-10\%\2c rgba\(37\2c 99\2c 235\2c 0\.06\)\2c transparent\)\] {
   background-image: radial-gradient(60rem 30rem at 50% -10%,rgba(37,99,235,0.06),transparent);
