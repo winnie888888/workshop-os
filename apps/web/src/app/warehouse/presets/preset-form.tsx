@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { formatMoneyMinor } from '@/lib/format';
+import { readDefaultsSync } from '@/lib/workshop-settings';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 import { TextField, TextAreaField } from '@/components/form';
 
@@ -47,8 +48,8 @@ export function PresetForm({ mode, initial }: { mode: 'create' | 'edit'; initial
   const toggle = (arr: string[], set: (v: string[]) => void, v: string) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const setLine = (id: string, patch: Partial<Line>) => setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   const removeLine = (id: string) => setLines((ls) => ls.filter((l) => l.id !== id));
-  const addLabour = () => setLines((ls) => [...ls, { id: uid(), kind: 'labour', description: 'Delo', qty: '1', priceEur: '65.00', vat: '22' }]);
-  const addFree = () => setLines((ls) => [...ls, { id: uid(), kind: 'part', description: '', qty: '1', priceEur: '0.00', vat: '22' }]);
+  const addLabour = () => { const d = readDefaultsSync(); setLines((ls) => [...ls, { id: uid(), kind: 'labour', description: 'Delo', qty: '1', priceEur: d.labourRateEur, vat: d.vatRatePct }]); };
+  const addFree = () => { const d = readDefaultsSync(); setLines((ls) => [...ls, { id: uid(), kind: 'part', description: '', qty: '1', priceEur: '0.00', vat: d.vatRatePct }]); };
   const addItem = (it: any) => {
     setLines((ls) => [...ls, { id: uid(), kind: 'part', description: it.name, itemId: it.id, qty: '1', priceEur: (Number(it.priceMinor) / 100).toFixed(2), vat: String(it.vatRatePct ?? 22) }]);
     setPicking(false);

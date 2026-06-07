@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { readDefaultsSync } from '@/lib/workshop-settings';
 import { Button, Card, Spinner } from '@/components/ui';
 import { TextField, NumberField, SelectField, TextAreaField, CheckboxField } from '@/components/form';
 
@@ -47,6 +48,9 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // On a new item, prefill VAT from the workshop default (Settings).
+  useEffect(() => { if (mode === 'create') setVat(readDefaultsSync().vatRatePct); }, [mode]);
 
   async function save() {
     if (name.trim().length < 2) { setError('Naziv je obvezen.'); return; }

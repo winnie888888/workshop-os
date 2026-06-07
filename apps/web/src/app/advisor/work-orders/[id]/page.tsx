@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api, ApiError, type WorkOrderDetail, type WorkOrderLine, type WorkOrderStatus } from '@/lib/api';
 import { formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
+import { readDefaultsSync } from '@/lib/workshop-settings';
 import { Button, Card, ProblemBanner, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { TextField, NumberField } from '@/components/form';
 
@@ -346,10 +347,11 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
   // Labour is "hours × rate"; a part is "quantity × unit price". The field
   // labels differ but both map to the same {quantity, unitPriceMinor} the
   // backend's addLine expects, so the server prices them identically.
+  const defs = readDefaultsSync();
   const [description, setDescription] = useState(kind === 'labour' ? 'Delo' : '');
   const [qty, setQty] = useState(kind === 'labour' ? '1' : '1');
-  const [unit, setUnit] = useState('');
-  const [vat, setVat] = useState('22');
+  const [unit, setUnit] = useState(kind === 'labour' ? defs.labourRateEur : '');
+  const [vat, setVat] = useState(defs.vatRatePct);
   const [busy, setBusy] = useState(false);
 
   async function add() {
