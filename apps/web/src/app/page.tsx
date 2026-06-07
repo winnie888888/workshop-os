@@ -11,30 +11,36 @@ import { DEMO_MODE } from '@/lib/demo';
 import { DemoShare } from '@/components/share';
 
 /*
- * Entry / launcher. The real OIDC login replaces the old development sign-in:
- * pressing "Prijava" runs the Authorization Code + PKCE flow against the
- * configured identity provider. After the callback returns, the session holds
- * the user's identity and tenant memberships; if they belong to more than one
- * workshop the picker is shown, otherwise we go straight to the interfaces.
+ * Entry / launcher. Premium product entry: ambient brand glow, centred hero,
+ * a compact signed-in identity chip, and the interfaces as a refined card grid.
+ * Real OIDC login (Authorization Code + PKCE) is unchanged.
  */
 
 type IfaceIcon = (p: { className?: string }) => JSX.Element;
 const INTERFACES: { href: string; title: string; sub: string; icon: IfaceIcon }[] = [
   {
-    href: '/mechanic', title: 'Mehanik', sub: 'Delavnica — ura, postavke, fotografije',
-    icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 1 5.4-5.4l-2.7 2.7-2.3-.4-.4-2.3 2.7-2.7Z"/></svg>),
-  },
-  {
     href: '/advisor', title: 'Servisni svetovalec', sub: 'Pult — nalogi, stranke, računi',
     icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>),
+  },
+  {
+    href: '/mechanic', title: 'Mehanik', sub: 'Delavnica — ura, postavke, fotografije',
+    icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 1 5.4-5.4l-2.7 2.7-2.3-.4-.4-2.3 2.7-2.7Z"/></svg>),
   },
   {
     href: '/owner', title: 'Lastnik', sub: 'Nadzorna plošča — pregled poslovanja',
     icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>),
   },
   {
+    href: '/warehouse', title: 'Skladišče', sub: 'Zaloga, prevzem, dobavitelji',
+    icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9 12 4l9 5v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 9h18M9 21V13h6v8"/></svg>),
+  },
+  {
     href: '/employee', title: 'Moj delovni čas', sub: 'Prihod/odhod in potni nalogi',
     icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>),
+  },
+  {
+    href: '/portal', title: 'Portal stranke', sub: 'Vozila, nalogi, odobritve, računi',
+    icon: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13A4 4 0 0 1 16 11"/></svg>),
   },
 ];
 
@@ -60,73 +66,102 @@ export default function Home() {
     setSession(null); setLocal(null);
   }
 
+  const tenantName = session?.memberships.find((m) => m.tenantId === session?.tenantId)?.tenantName ?? 'Delavnica';
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
-      <header className="pt-10">
-        <div className="flex flex-col gap-2">
-          <img src="/asprint-logo.png" alt="A-SPRINT GARAGE" className="h-16 w-auto sm:h-20" />
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted2">Operacijski sistem delavnice</p>
-        </div>
-      </header>
+    <main className="relative min-h-screen overflow-hidden bg-floor">
+      {/* ambient brand glow */}
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-14rem] h-[34rem] w-[70rem] -translate-x-1/2 rounded-full bg-brand/10 blur-[130px]" />
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_30rem_at_50%_-10%,rgba(37,99,235,0.06),transparent)]" />
 
-      {error && <ProblemBanner message={error} />}
-
-      {!session ? (
-        <Card className="p-6 stagger">
-          <h2 className="mb-1 text-xl font-bold text-ink">Prijava</h2>
-          <p className="mb-4 text-sm text-muted">
-            Preusmerjeni boste na varni prijavni sistem vaše delavnice in nato vrnjeni sem.
-            Aplikacija nikoli ne obdeluje gesla.
-          </p>
-          <Button tone="info" size="lg" full onClick={login} disabled={loading}>
-            {loading ? <Spinner /> : 'Prijava z računom delavnice'}
-          </Button>
-        </Card>
-      ) : !session.tenantId ? (
-        <TenantPicker session={session} onPicked={setLocal} />
-      ) : (
-        <>
-          <Card className="flex items-center gap-4 p-5">
-            <div className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-brandweak text-lg font-extrabold text-brand">
-              {session.user.name.trim().charAt(0).toUpperCase()}
+      <div className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-10 sm:py-16">
+        {/* Hero — navy band with the brand logo on a clean white plaque */}
+        <header className="relative overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-sidebar2 via-sidebar to-[#0a1626] px-8 py-12 text-center shadow-lift sm:py-14">
+          <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-64 w-[40rem] -translate-x-1/2 rounded-full bg-brand/25 blur-[90px]" />
+          <div className="relative flex flex-col items-center gap-4">
+            <div className="rounded-2xl bg-white px-8 py-6 shadow-lift">
+              <img src="/asprint-logo.png" alt="A-SPRINT GARAGE" className="h-14 w-auto sm:h-[4.5rem]" />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted2">Prijavljen kot</p>
-              <p className="truncate text-xl font-bold text-ink">{session.user.name}</p>
-              <p className="truncate text-sm text-muted">
-                {session.memberships.find((m) => m.tenantId === session.tenantId)?.tenantName ?? 'Delavnica'}
-                {session.memberships.length > 1 && (
-                  <button onClick={() => { setSession({ ...session, tenantId: '' }); setLocal({ ...session, tenantId: '' }); }}
-                    className="ml-2 font-semibold text-brand hover:underline">zamenjaj</button>
-                )}
-              </p>
-            </div>
-          </Card>
-
-          <div className="grid gap-3 stagger">
-            {INTERFACES.map((it) => {
-              const Ic = it.icon;
-              return (
-                <Link key={it.href} href={it.href}
-                  className="group flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-card transition hover:border-brandring hover:shadow-lift active:translate-y-px">
-                  <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-brandweak text-brand">
-                    <Ic className="h-6 w-6" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-lg font-bold text-ink">{it.title}</span>
-                    <span className="block truncate text-sm text-muted">{it.sub}</span>
-                  </span>
-                  <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none text-muted2 transition group-hover:translate-x-0.5 group-hover:text-brand" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
-                </Link>
-              );
-            })}
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.3em] text-white/45">Operacijski sistem delavnice</p>
           </div>
+        </header>
 
-          <button onClick={logout} className="mt-auto text-sm font-semibold text-stop hover:underline">Odjava</button>
+        {error && <div className="mx-auto mt-6 w-full max-w-md"><ProblemBanner message={error} /></div>}
 
-          {DEMO_MODE && <DemoShare />}
-        </>
-      )}
+        {!session ? (
+          <div className="mx-auto mt-10 w-full max-w-md">
+            <Card className="p-7">
+              <h2 className="mb-1 text-xl font-bold text-ink">Dobrodošli</h2>
+              <p className="mb-5 text-sm text-muted">
+                Preusmerjeni boste na varni prijavni sistem vaše delavnice in nato vrnjeni sem.
+                Aplikacija nikoli ne obdeluje gesla.
+              </p>
+              <Button tone="info" size="lg" full onClick={login} disabled={loading}>
+                {loading ? <Spinner /> : 'Prijava z računom delavnice'}
+              </Button>
+            </Card>
+          </div>
+        ) : !session.tenantId ? (
+          <div className="mx-auto mt-10 w-full max-w-md"><TenantPicker session={session} onPicked={setLocal} /></div>
+        ) : (
+          <>
+            {/* Signed-in identity chip */}
+            <div className="mx-auto mt-8 flex w-full max-w-md items-center gap-3 rounded-full border border-line bg-surface px-4 py-2.5 shadow-card">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-gradient-to-br from-brand to-brand700 text-sm font-bold text-white">
+                {session.user.name.trim().charAt(0).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[0.6rem] font-bold uppercase tracking-wide text-muted2">Prijavljen kot</span>
+                <span className="block truncate text-sm font-bold text-ink">{session.user.name} <span className="font-normal text-muted">· {tenantName}</span></span>
+              </span>
+              {session.memberships.length > 1 && (
+                <button onClick={() => { setSession({ ...session, tenantId: '' }); setLocal({ ...session, tenantId: '' }); }}
+                  className="flex-none text-xs font-semibold text-brand hover:underline">zamenjaj</button>
+              )}
+            </div>
+
+            {/* Interface grid */}
+            <section className="mt-10">
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="text-sm font-bold uppercase tracking-[0.15em] text-muted2">Izberite vmesnik</h2>
+                <span className="h-px flex-1 bg-line" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger">
+                {INTERFACES.map((it) => {
+                  const Ic = it.icon;
+                  return (
+                    <Link key={it.href} href={it.href}
+                      className="group relative flex flex-col gap-3 overflow-hidden rounded-card border border-line bg-surface p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:border-brandring hover:shadow-lift">
+                      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] origin-left scale-x-0 bg-gradient-to-r from-brand to-brand700 transition-transform duration-200 group-hover:scale-x-100" />
+                      <span className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand700 text-white shadow-tool">
+                        <Ic className="h-6 w-6" />
+                      </span>
+                      <span>
+                        <span className="flex items-center gap-1.5 text-lg font-bold text-ink">
+                          {it.title}
+                          <svg viewBox="0 0 24 24" className="h-4 w-4 text-muted2 transition group-hover:translate-x-0.5 group-hover:text-brand" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+                        </span>
+                        <span className="mt-0.5 block text-sm text-muted">{it.sub}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="mt-auto flex flex-col items-center gap-6 pt-12">
+              <button onClick={logout} className="text-sm font-semibold text-muted hover:text-stop">Odjava</button>
+              {DEMO_MODE && (
+                <div className="w-full max-w-md opacity-90">
+                  <DemoShare />
+                </div>
+              )}
+              <p className="num text-xs text-muted2">A-SPRINT Workshop OS · 2026</p>
+            </footer>
+          </>
+        )}
+      </div>
     </main>
   );
 }
@@ -137,7 +172,7 @@ function TenantPicker({ session, onPicked }: { session: Session; onPicked: (s: S
     onPicked(requireSession());
   }
   return (
-    <Card className="p-6">
+    <Card className="p-7">
       <h2 className="mb-1 text-xl font-bold text-ink">Izberi delavnico</h2>
       <p className="mb-4 text-sm text-muted">Dostop imaš do več delavnic. Izberi, v kateri želiš delati.</p>
       <div className="grid gap-3">

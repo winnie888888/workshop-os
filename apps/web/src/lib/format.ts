@@ -5,8 +5,12 @@
  */
 
 /** Format minor units (e.g. "23729") in a currency (e.g. "EUR") as "€237.29". */
-export function formatMoneyMinor(minor: string | number | bigint, currency = 'EUR'): string {
-  const n = typeof minor === 'bigint' ? minor : BigInt(typeof minor === 'number' ? Math.round(minor) : minor);
+export function formatMoneyMinor(minor: string | number | bigint | null | undefined, currency = 'EUR'): string {
+  if (minor === null || minor === undefined || minor === '') return '—';
+  let n: bigint;
+  try {
+    n = typeof minor === 'bigint' ? minor : BigInt(typeof minor === 'number' ? Math.round(minor) : String(minor).trim());
+  } catch { return '—'; }
   const neg = n < 0n;
   const abs = neg ? -n : n;
   const major = abs / 100n;

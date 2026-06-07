@@ -33,11 +33,11 @@ type NavItem = { href?: string; label: string; icon: string; soon?: boolean };
 const NAV: NavItem[] = [
   { href: '/warehouse', label: 'Pregled', icon: 'overview' },
   { href: '/warehouse/receiving', label: 'Prejem blaga', icon: 'receive' },
-  { label: 'Postavke', icon: 'items', soon: true },
-  { label: 'Premiki', icon: 'moves', soon: true },
-  { label: 'Inventura', icon: 'count', soon: true },
-  { label: 'Dobavitelji', icon: 'suppliers', soon: true },
-  { label: 'Nastavitve', icon: 'settings', soon: true },
+  { href: '/warehouse/items', label: 'Postavke', icon: 'items' },
+  { href: '/warehouse/movements', label: 'Premiki', icon: 'moves' },
+  { href: '/warehouse/stocktake', label: 'Inventura', icon: 'count' },
+  { href: '/warehouse/suppliers', label: 'Dobavitelji', icon: 'suppliers' },
+  { href: '/warehouse/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 
 function Rail() {

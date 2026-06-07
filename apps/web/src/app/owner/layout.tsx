@@ -35,15 +35,15 @@ const I: Record<string, Icon> = {
 type NavItem = { href?: string; label: string; icon: string; soon?: boolean };
 const NAV: NavItem[] = [
   { href: '/owner', label: 'Nadzorna plošča', icon: 'dashboard' },
-  { label: 'Profitabilnost', icon: 'profit', soon: true },
-  { label: 'Produktivnost', icon: 'productivity', soon: true },
-  { label: 'Terjatve', icon: 'receivables', soon: true },
-  { label: 'Zaloga', icon: 'stock', soon: true },
+  { href: '/owner/profitability', label: 'Profitabilnost', icon: 'profit' },
+  { href: '/owner/productivity', label: 'Produktivnost', icon: 'productivity' },
+  { href: '/owner/receivables', label: 'Terjatve', icon: 'receivables' },
+  { href: '/owner/inventory', label: 'Zaloga', icon: 'stock' },
   { href: '/owner/insights', label: 'Opozorila AI', icon: 'ai' },
   { href: '/owner/attendance', label: 'Prisotnost', icon: 'attendance' },
   { href: '/owner/rental', label: 'Najem vozil', icon: 'rental' },
-  { label: 'Poročila', icon: 'reports', soon: true },
-  { label: 'Nastavitve', icon: 'settings', soon: true },
+  { href: '/owner/reports', label: 'Poročila', icon: 'reports' },
+  { href: '/owner/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 
 function Rail() {
