@@ -61,6 +61,7 @@ function PortalEnterInner() {
     <div className="flex min-h-screen flex-col justify-center bg-sidebar px-6 text-white">
       <div className="mx-auto w-full max-w-sm">
         <div className="mb-8 text-center">
+          <img src="/asprint-mark.png" alt="A-SPRINT" className="mx-auto mb-3 h-16 w-auto" />
           <div className="text-4xl font-extrabold tracking-tight text-brand">A-SPRINT</div>
           <p className="mt-1 text-sm font-semibold uppercase tracking-[0.2em] text-white/60">Portal za stranke</p>
         </div>

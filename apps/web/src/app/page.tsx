@@ -63,12 +63,9 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 p-6">
       <header className="pt-10">
-        <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-brand to-brand700 text-xl font-extrabold text-white shadow-tool">A</div>
-          <div className="leading-tight">
-            <div className="text-3xl font-extrabold tracking-tight text-ink">A-SPRINT <span className="text-brand">OS</span></div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted2">Operacijski sistem delavnice</p>
-          </div>
+        <div className="flex flex-col gap-2">
+          <img src="/asprint-logo.png" alt="A-SPRINT GARAGE" className="h-16 w-auto sm:h-20" />
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted2">Operacijski sistem delavnice</p>
         </div>
       </header>
 

@@ -44,12 +44,12 @@ const NAV: NavItem[] = [
   { href: '/advisor/customers', label: 'Stranke', icon: 'customers' },
   { href: '/advisor/vehicles', label: 'Vozila', icon: 'vehicles' },
   { href: '/advisor/work-orders', label: 'Delovni nalogi', icon: 'workorders' },
-  { label: 'Predračuni', icon: 'quotes', soon: true },
+  { href: '/advisor/quotes', label: 'Predračuni', icon: 'quotes' },
   { href: '/advisor/invoices', label: 'Računi', icon: 'invoices' },
-  { label: 'Koledar', icon: 'calendar', soon: true },
-  { label: 'Sporočila', icon: 'messages', soon: true },
-  { label: 'Poročila', icon: 'reports', soon: true },
-  { label: 'Nastavitve', icon: 'settings', soon: true },
+  { href: '/advisor/calendar', label: 'Koledar', icon: 'calendar' },
+  { href: '/advisor/messages', label: 'Sporočila', icon: 'messages' },
+  { href: '/advisor/reports', label: 'Poročila', icon: 'reports' },
+  { href: '/advisor/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 
 function Rail() {
@@ -57,7 +57,7 @@ function Rail() {
   return (
     <aside className="flex flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext">
       <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand700 text-base font-extrabold text-white shadow-tool">A</div>
+        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 object-contain" />
         <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
       </div>
       {NAV.map((n) => {

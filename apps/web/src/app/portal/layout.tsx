@@ -52,7 +52,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <div className="min-w-0">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-surface px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
           <span className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-brand to-brand700 text-xs font-extrabold text-white">A</span>
+            <img src="/asprint-mark.png" alt="A-SPRINT" className="h-7 w-7 object-contain" />
             <span className="text-base font-extrabold tracking-tight text-ink">A-SPRINT</span>
           </span>
           <span className="text-xs font-semibold uppercase tracking-widest text-muted2">Portal</span>
@@ -96,7 +96,7 @@ function Rail({ onLogout }: { onLogout: () => void }) {
   return (
     <aside className="hidden flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext lg:flex">
       <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand700 text-base font-extrabold text-white shadow-tool">A</div>
+        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 object-contain" />
         <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
       </div>
       {NAV.map((n) => {

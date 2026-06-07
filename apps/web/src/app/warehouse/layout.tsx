@@ -48,7 +48,7 @@ function Rail() {
   return (
     <aside className="flex flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext">
       <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-brand700 text-base font-extrabold text-white shadow-tool">A</div>
+        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 object-contain" />
         <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
       </div>
       {NAV.map((n) => {
