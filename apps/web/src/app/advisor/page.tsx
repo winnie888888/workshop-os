@@ -29,7 +29,7 @@ export default function TodayBoard() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Today</h1>
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Danes</h1>
         <span className="text-sm text-steel">{new Date().toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
       </div>
 
@@ -61,12 +61,12 @@ function Lanes({ jobs }: { jobs: WorkOrderListItem[] }) {
       {lanes.map(([laneId, laneJobs]) => (
         <section key={laneId} className="flex flex-col gap-3">
           <h2 className="font-display text-sm font-bold uppercase tracking-wide text-steel">
-            {laneId === 'unassigned' ? 'Unassigned' : `Bay ${laneId.slice(0, 4)}`}
+            {laneId === 'unassigned' ? 'Nerazporejeno' : `Boks ${laneId.slice(0, 4)}`}
           </h2>
           {laneJobs.map((j) => <BoardCard key={j.id} job={j} />)}
         </section>
       ))}
-      {lanes.length === 0 && <Card className="p-6 text-steel">No open jobs.</Card>}
+      {lanes.length === 0 && <Card className="p-6 text-steel">Ni odprtih nalogov.</Card>}
     </div>
   );
 }
@@ -78,7 +78,7 @@ function BoardCard({ job }: { job: WorkOrderListItem }) {
         <div className="flex items-center justify-between">
           <span className="font-mono text-sm text-steel">{job.number ?? 'draft'}</span>
           <SoftChip tone={job.clockedForMe || job.hasOpenClock ? 'go' : statusTone(job.status)}>
-            {job.hasOpenClock ? 'Running' : statusLabel(job.status)}
+            {job.hasOpenClock ? 'V delu' : statusLabel(job.status)}
           </SoftChip>
         </div>
         <div className="mt-1 font-mono text-lg font-bold">{job.plate ? displayPlate(job.plate) : '—'}</div>
@@ -90,11 +90,11 @@ function BoardCard({ job }: { job: WorkOrderListItem }) {
 
 function AttentionPanel({ jobs }: { jobs: WorkOrderListItem[] }) {
   if (jobs.length === 0) {
-    return <Card className="p-4 text-steel">Nothing needs your attention. 👍</Card>;
+    return <Card className="p-4 text-steel">Nič ne potrebuje tvoje pozornosti.</Card>;
   }
   return (
     <Card className="p-4">
-      <h2 className="mb-3 font-display text-lg font-bold">Needs attention ({jobs.length})</h2>
+      <h2 className="mb-3 font-display text-lg font-bold">Potrebuje pozornost ({jobs.length})</h2>
       <ul className="flex flex-col gap-2">
         {jobs.map((j) => (
           <li key={j.id}>
@@ -106,9 +106,9 @@ function AttentionPanel({ jobs }: { jobs: WorkOrderListItem[] }) {
                 <span className="text-sm text-steel">{j.customerName}</span>
               </span>
               <span className="text-sm font-semibold text-info">
-                {j.status === 'awaiting_approval' ? 'send for approval →'
-                  : j.status === 'ready' ? 'invoice →'
-                  : 'check parts →'}
+                {j.status === 'awaiting_approval' ? 'pošlji v odobritev →'
+                  : j.status === 'ready' ? 'račun →'
+                  : 'preveri dele →'}
               </span>
             </Link>
           </li>

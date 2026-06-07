@@ -38,9 +38,9 @@ export function formatClock(totalSeconds: number): string {
 /** Human label for a work-order status. */
 export function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    draft: 'Draft', open: 'To do', in_progress: 'Running', awaiting_approval: 'Approval',
-    awaiting_parts: 'Waiting parts', on_hold: 'On hold', ready: 'Ready', invoiced: 'Invoiced',
-    closed: 'Closed', cancelled: 'Cancelled',
+    draft: 'Osnutek', open: 'Za izvedbo', in_progress: 'V delu', awaiting_approval: 'Čaka odobritev',
+    awaiting_parts: 'Čaka dele', on_hold: 'Zadržano', ready: 'Pripravljeno', invoiced: 'Zaračunano',
+    closed: 'Zaključeno', cancelled: 'Preklicano',
   };
   return map[status] ?? status;
 }
