@@ -9,6 +9,7 @@
     "test:shared": "node --experimental-strip-types packages/shared/test/run.ts",
     "build": "pnpm -r build",
     "migrate": "node apps/api/scripts/migrate.js",
+    "seed": "node apps/api/scripts/seed.js",
     "start:api": "pnpm --filter @workshop/api start",
     "start:worker": "pnpm --filter @workshop/api worker"
   }

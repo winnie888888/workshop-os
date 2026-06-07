@@ -7,8 +7,14 @@ import { AppConfig } from './config/configuration';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  const config = app.get(AppConfig);
 
   app.use(helmet());
+  app.enableCors({
+    origin: config.devAuth ? true : config.webAppBaseUrl,
+    allowedHeaders: ['authorization', 'content-type', 'x-tenant-id', 'x-request-id', 'accept'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
   app.enableShutdownHooks();
 
   // Reject unknown fields; transform payloads to DTO instances.
@@ -21,7 +27,6 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  const config = app.get(AppConfig);
   await app.listen(config.port);
   new Logger('Bootstrap').log(`API listening on :${config.port} (${config.nodeEnv})`);
 }

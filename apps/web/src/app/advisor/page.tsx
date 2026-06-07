@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import useSWR from 'swr';
 import { api, type WorkOrderListItem } from '@/lib/api';
+import { DEMO_MODE } from '@/lib/demo';
 import { displayPlate, formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
 import { Card, SoftChip, Spinner } from '@/components/ui';
 
@@ -118,6 +119,7 @@ export default function AdvisorDashboard() {
           </Card>
 
           <Finance aging={aging} />
+          <ActivityCard />
         </div>
       </div>
     </div>
@@ -205,4 +207,32 @@ function overdue(aging: any): bigint {
   let sum = 0n;
   for (const k of keys) { try { sum += BigInt(b[k] ?? '0'); } catch { /* ignore */ } }
   return sum;
+}
+
+/**
+ * Recent activity from the central demo store. Demo-only (the real backend has
+ * no activity feed yet); hidden in real mode and when there is nothing to show,
+ * so it is never a dead/empty card.
+ */
+function ActivityCard() {
+  const { data } = useSWR(
+    DEMO_MODE ? 'advisor-activity' : null,
+    () => api.activity.list(8).catch(() => []),
+    { refreshInterval: 15000 },
+  );
+  const items = data ?? [];
+  if (!DEMO_MODE || items.length === 0) return null;
+  return (
+    <Card className="p-4">
+      <h2 className="mb-3 text-base font-bold text-ink">Nedavna aktivnost</h2>
+      <ul className="flex flex-col gap-2.5">
+        {items.map((a) => (
+          <li key={a.id} className="flex items-start gap-2.5 text-sm">
+            <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-brand" />
+            <span className="leading-snug text-steel">{a.message}</span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
 }

@@ -22,21 +22,24 @@ export class UserAuthMiddleware implements NestMiddleware {
 
   constructor(
     private readonly pg: PgService,
-    config: AppConfig,
+    private readonly config: AppConfig,
   ) {
     this.verifier = new TokenVerifier(config);
   }
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
-    const auth = req.header('authorization');
-    if (!auth?.startsWith('Bearer ')) throw new UnauthorizedException('Missing bearer token');
-
     let subject: string;
-    try {
-      const payload = await this.verifier.verify(auth.slice(7));
-      subject = String(payload.sub);
-    } catch {
-      throw new UnauthorizedException('Invalid token');
+    if (this.config.devAuth) {
+      subject = this.config.devAuthSubject;
+    } else {
+      const auth = req.header('authorization');
+      if (!auth?.startsWith('Bearer ')) throw new UnauthorizedException('Missing bearer token');
+      try {
+        const payload = await this.verifier.verify(auth.slice(7));
+        subject = String(payload.sub);
+      } catch {
+        throw new UnauthorizedException('Invalid token');
+      }
     }
 
     const user = await this.pg.withAdmin(async (tx) => {

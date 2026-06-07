@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { displayPlate, formatMoneyMinor } from '@/lib/format';
+import { DEMO_MODE } from '@/lib/demo';
+import { displayPlate, formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 
 /*
@@ -18,6 +19,8 @@ export default function CustomerHub() {
 
   const { data: customer, mutate: refreshCustomer } = useSWR(['customer', id], () => api.customers.get(id));
   const { data: vehicles } = useSWR(['cust-vehicles', id], () => api.assets.list(id).catch(() => []));
+  const { data: wos } = useSWR(['cust-wos', id], () => api.workOrders.list({ customerId: id }).catch(() => []));
+  const { data: invoices } = useSWR(['cust-invoices', id], () => api.invoices.byCustomer(id).catch(() => []));
   const { data: ar } = useSWR(['cust-ar', id], () => api.customerReceivables(id).catch(() => null));
 
   if (!customer) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
@@ -94,6 +97,9 @@ export default function CustomerHub() {
           </table>
         )}
       </Card>
+
+      <WorkOrdersCard id={id} wos={wos} />
+      <InvoicesCard invoices={invoices} />
     </div>
   );
 }
@@ -177,6 +183,74 @@ function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () =
             </Button>
           </div>
         </div>
+      )}
+    </Card>
+  );
+}
+
+/* Linked work orders for this customer (cross-link). */
+function WorkOrdersCard({ id, wos }: { id: string; wos: any[] | undefined }) {
+  if (!DEMO_MODE) return null;
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line p-4">
+        <h2 className="text-base font-bold text-ink">Delovni nalogi</h2>
+        <Link href={`/advisor/work-orders/new?customerId=${id}`}><Button tone="info">+ Nov nalog</Button></Link>
+      </div>
+      {!wos ? (
+        <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
+      ) : wos.length === 0 ? (
+        <p className="p-8 text-center text-muted">Ni delovnih nalogov.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+            <tr><th className="p-3 font-bold">Št.</th><th className="p-3 font-bold">Vozilo</th><th className="p-3 font-bold">Status</th><th className="p-3 text-right font-bold">Znesek</th></tr>
+          </thead>
+          <tbody>
+            {wos.map((w) => (
+              <tr key={w.id} className="border-t border-line hover:bg-surface2">
+                <td className="p-3"><Link href={`/advisor/work-orders/${w.id}`} className="num font-semibold text-brand hover:underline">{w.number ?? '—'}</Link></td>
+                <td className="num p-3 text-muted">{w.plate ? displayPlate(w.plate) : '—'}</td>
+                <td className="p-3"><SoftChip tone={statusTone(w.status)}>{statusLabel(w.status)}</SoftChip></td>
+                <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(w.totalGrossMinor, w.currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  );
+}
+
+const INV_LABEL: Record<string, string> = { draft: 'Osnutek', issued: 'Izdan', paid: 'Plačan', overdue: 'Zapadel', credited: 'Dobropis' };
+const INV_TONE: Record<string, 'go' | 'hold' | 'stop' | 'info' | 'neutral'> = { draft: 'neutral', issued: 'info', paid: 'go', overdue: 'stop', credited: 'hold' };
+
+/* Linked invoices for this customer (cross-link). */
+function InvoicesCard({ invoices }: { invoices: any[] | undefined }) {
+  if (!DEMO_MODE) return null;
+  return (
+    <Card className="overflow-hidden">
+      <div className="border-b border-line p-4"><h2 className="text-base font-bold text-ink">Računi</h2></div>
+      {!invoices ? (
+        <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
+      ) : invoices.length === 0 ? (
+        <p className="p-8 text-center text-muted">Ni računov.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+            <tr><th className="p-3 font-bold">Št.</th><th className="p-3 font-bold">Datum</th><th className="p-3 font-bold">Status</th><th className="p-3 text-right font-bold">Znesek</th></tr>
+          </thead>
+          <tbody>
+            {invoices.map((inv) => (
+              <tr key={inv.id} className="border-t border-line hover:bg-surface2">
+                <td className="p-3"><Link href={`/advisor/invoices/${inv.id}`} className="num font-semibold text-brand hover:underline">{inv.number ?? '—'}</Link></td>
+                <td className="num p-3 text-muted">{inv.issueDate ?? '—'}</td>
+                <td className="p-3"><SoftChip tone={INV_TONE[inv.status] ?? 'neutral'}>{INV_LABEL[inv.status] ?? inv.status}</SoftChip></td>
+                <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(inv.totalGrossMinor, inv.currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </Card>
   );

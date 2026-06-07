@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { getSession } from '@/lib/session';
+import { DEMO_MODE } from '@/lib/demo';
+import { subscribe } from '@/lib/demo-store';
 import { Spinner } from '@/components/ui';
 
 /*
@@ -115,7 +117,8 @@ function CommandBar() {
   function go(hit: { type: string; id: string }) {
     setOpen(false); setQ('');
     if (hit.type === 'work_order') router.push(`/advisor/work-orders/${hit.id}`);
-    else if (hit.type === 'customer') router.push(`/advisor/customers`);
+    else if (hit.type === 'customer') router.push(`/advisor/customers/${hit.id}`);
+    else if (hit.type === 'invoice') router.push(`/advisor/invoices/${hit.id}`);
     else if (hit.type === 'vehicle') router.push(`/advisor/vehicles`);
   }
 
@@ -156,10 +159,7 @@ function CommandBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        <button className="relative grid h-10 w-10 place-items-center rounded-full text-muted transition hover:bg-floor hover:text-ink" title="Obvestila">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-stop ring-2 ring-surface" />
-        </button>
+        <NotificationBell />
         <div className="flex items-center gap-2.5 rounded-full border border-line py-1 pl-1 pr-3">
           <span className="grid h-8 w-8 place-items-center rounded-full bg-brandweak text-sm font-bold text-brand">{initial}</span>
           <span className="leading-tight">
@@ -169,5 +169,94 @@ function CommandBar() {
         </div>
       </div>
     </header>
+  );
+}
+
+type Ntf = { id: string; kind: string; title: string; body?: string; entityType?: string; entityId?: string; read: boolean; createdAt: string };
+
+function timeAgo(iso: string): string {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return 'pravkar';
+  const m = Math.floor(s / 60); if (m < 60) return `pred ${m} min`;
+  const h = Math.floor(m / 60); if (h < 24) return `pred ${h} h`;
+  return `pred ${Math.floor(h / 24)} d`;
+}
+
+/**
+ * Notification bell. In demo mode it reads the central store (live, via
+ * subscribe + poll). The real backend has no notifications route yet, so there
+ * the bell is shown disabled with an explanation rather than firing 404s.
+ */
+function NotificationBell() {
+  const router = useRouter();
+  const [items, setItems] = useState<Ntf[]>([]);
+  const [open, setOpen] = useState(false);
+
+  async function load() {
+    try { setItems(await api.notifications.list()); } catch { setItems([]); }
+  }
+  useEffect(() => {
+    if (!DEMO_MODE) return;
+    load();
+    const t = setInterval(load, 20000);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    const unsub = subscribe(load);
+    return () => { clearInterval(t); window.removeEventListener('focus', onFocus); unsub(); };
+  }, []);
+
+  if (!DEMO_MODE) {
+    return (
+      <button disabled title="Obvestila — na voljo v demo načinu"
+        className="relative grid h-10 w-10 cursor-not-allowed place-items-center rounded-full text-muted2">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      </button>
+    );
+  }
+
+  const unread = items.filter((n) => !n.read).length;
+
+  async function openItem(n: Ntf) {
+    setOpen(false);
+    try { await api.notifications.markRead(n.id); } catch { /* ignore */ }
+    load();
+    if (n.entityType === 'work_order' && n.entityId) router.push(`/advisor/work-orders/${n.entityId}`);
+    else if (n.entityType === 'invoice' && n.entityId) router.push(`/advisor/invoices/${n.entityId}`);
+    else if (n.entityType === 'customer' && n.entityId) router.push(`/advisor/customers/${n.entityId}`);
+  }
+  async function markAll() { try { await api.notifications.markAllRead(); } catch { /* ignore */ } load(); }
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((o) => !o)} onBlur={() => setTimeout(() => setOpen(false), 160)}
+        className="relative grid h-10 w-10 place-items-center rounded-full text-muted transition hover:bg-floor hover:text-ink" title="Obvestila">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        {unread > 0 && (
+          <span className="num absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-stop px-1 text-[0.6rem] font-bold text-white ring-2 ring-surface">{unread}</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-30 mt-2 w-80 overflow-hidden rounded-card border border-line bg-surface shadow-lift">
+          <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+            <span className="text-sm font-bold text-ink">Obvestila</span>
+            {unread > 0 && <button onMouseDown={markAll} className="text-xs font-semibold text-brand hover:underline">Označi vse</button>}
+          </div>
+          <div className="max-h-96 overflow-y-auto">
+            {items.length === 0 && <p className="px-4 py-8 text-center text-sm text-muted">Ni obvestil.</p>}
+            {items.map((n) => (
+              <button key={n.id} onMouseDown={() => openItem(n)}
+                className={`flex w-full items-start gap-3 border-b border-line px-4 py-3 text-left last:border-0 hover:bg-floor ${n.read ? '' : 'bg-brandweak/50'}`}>
+                <span className={`mt-1.5 h-2 w-2 flex-none rounded-full ${n.read ? 'bg-transparent' : 'bg-stop'}`} />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink">{n.title}</span>
+                  {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
+                  <span className="block text-[0.7rem] text-muted2">{timeAgo(n.createdAt)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

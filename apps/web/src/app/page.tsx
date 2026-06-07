@@ -7,7 +7,7 @@ import { beginLogin } from '@/lib/oidc';
 import { api } from '@/lib/api';
 import { startAutoFlush } from '@/lib/offline-queue';
 import { Button, Card, Spinner, ProblemBanner } from '@/components/ui';
-import { DEMO_MODE } from '@/lib/demo';
+import { DEMO_MODE, DEV_AUTH, planDevSession } from '@/lib/demo';
 import { DemoShare } from '@/components/share';
 
 /*
@@ -99,6 +99,12 @@ export default function Home() {
               <Button tone="info" size="lg" full onClick={login} disabled={loading}>
                 {loading ? <Spinner /> : 'Prijava z računom delavnice'}
               </Button>
+              {DEV_AUTH && (
+                <button onClick={() => setLocal(planDevSession())}
+                  className="mt-3 w-full rounded-tool border border-line py-2.5 text-sm font-semibold text-steel transition hover:border-brandring hover:text-brand">
+                  Dev prijava (lokalno)
+                </button>
+              )}
             </Card>
           </div>
         ) : !session.tenantId ? (

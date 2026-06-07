@@ -129,3 +129,34 @@ export async function uploadDocument(file: File): Promise<UploadResult> {
     return { ok: false, error: e instanceof Error ? e.message : 'upload failed' };
   }
 }
+
+/**
+ * Downscale an image file to a small JPEG data URL for use as an inline preview
+ * thumbnail (e.g. a rental vehicle photo shown in the gallery). In the demo the
+ * result is stored directly (well under the localStorage budget); in production
+ * the original would instead be uploaded to object storage via uploadPhoto/
+ * uploadDocument and only the returned URL kept. Runs entirely on-device.
+ */
+export async function compressImageToDataUrl(file: File, maxDim = 1100, quality = 0.72): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('read failed'));
+    r.readAsDataURL(file);
+  });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('decode failed'));
+    im.src = dataUrl;
+  });
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return dataUrl;
+  ctx.drawImage(img, 0, 0, w, h);
+  try { return canvas.toDataURL('image/jpeg', quality); } catch { return dataUrl; }
+}

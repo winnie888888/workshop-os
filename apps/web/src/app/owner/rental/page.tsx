@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { uploadDocument } from '@/lib/uploads';
+import { uploadDocument, compressImageToDataUrl } from '@/lib/uploads';
 import { Button, Card, Spinner, ProblemBanner, SoftChip, Stepper } from '@/components/ui';
 
 /*
@@ -120,26 +120,65 @@ export default function RentalPage() {
 // --------------------------------------------------------------------------
 
 function RentalHome({ vehicles, onNewVehicle, onReserve }: { vehicles: any[]; onNewVehicle: () => void; onReserve: () => void }) {
+  const [q, setQ] = useState('');
+  const s = q.trim().toLowerCase();
+  const filtered = !s ? vehicles : vehicles.filter((v) =>
+    [v.make, v.model, v.plate, catLabel(v.category)].filter(Boolean).join(' ').toLowerCase().includes(s));
   return (
     <>
       <div className="flex gap-2">
         <Button tone="go" full onClick={onReserve}>Nova rezervacija</Button>
         <Button tone="neutral" full onClick={onNewVehicle}>Dodaj vozilo</Button>
       </div>
-      <div className="flex flex-col gap-2">
-        <div className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">Vozni park ({vehicles.length})</div>
-        {vehicles.length === 0 && <Card className="p-4 text-sm text-muted">Še ni vozil za najem. Dodajte prvo.</Card>}
-        {vehicles.map((v) => (
-          <Card key={v.id} className="flex items-center justify-between p-3">
-            <div>
-              <div className="font-bold">{[v.make, v.model].filter(Boolean).join(' ') || v.plate}</div>
-              <div className="text-sm text-muted">{v.plate} · {catLabel(v.category)} · {eur(Number(v.daily_rate_minor))}/dan</div>
-            </div>
-            <SoftChip tone={v.status === 'available' ? 'go' : v.status === 'rented' ? 'hold' : 'neutral'}>{rentStatus(v.status)}</SoftChip>
-          </Card>
-        ))}
+
+      <div className="relative">
+        <svg viewBox="0 0 24 24" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted2" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Išči po znamki, modelu, tablici…"
+          className="w-full rounded-tool border border-line bg-surface py-2.5 pl-10 pr-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brandring" />
       </div>
+
+      <div className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">Vozni park ({filtered.length}{s ? ` / ${vehicles.length}` : ''})</div>
+
+      {filtered.length === 0 ? (
+        <Card className="p-4 text-sm text-muted">{vehicles.length === 0 ? 'Še ni vozil za najem. Dodajte prvo.' : 'Ni zadetkov.'}</Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {filtered.map((v) => (
+            <Card key={v.id} className="overflow-hidden p-0">
+              <div className="aspect-[16/10] w-full bg-floor">
+                {v.photoUrl
+                  ? <img src={v.photoUrl} alt="" className="h-full w-full object-cover" />
+                  : <div className="flex h-full w-full items-center justify-center text-muted2"><CarIcon large /></div>}
+              </div>
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="font-bold leading-tight text-ink">{[v.make, v.model].filter(Boolean).join(' ') || v.plate}</div>
+                  <SoftChip tone={v.status === 'available' ? 'go' : v.status === 'rented' ? 'hold' : 'neutral'}>{rentStatus(v.status)}</SoftChip>
+                </div>
+                <div className="num mt-0.5 text-sm text-muted">{v.plate} · {catLabel(v.category)}</div>
+                <div className="mt-2 flex items-end justify-between">
+                  <div>
+                    <div className="text-[0.6rem] uppercase tracking-wide text-muted2">dnevna</div>
+                    <div className="num text-lg font-extrabold text-ink">{eur(Number(v.daily_rate_minor))}</div>
+                  </div>
+                  <div className="text-right text-xs text-muted">{v.included_km_per_day} km/dan<br />varščina {eur(Number(v.deposit_minor ?? 0))}</div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </>
+  );
+}
+
+function CarIcon({ large }: { large?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className={large ? 'h-12 w-12' : 'h-7 w-7'} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5" />
+      <path d="M3 13h18v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z" />
+      <circle cx="7.5" cy="16.5" r="1.2" /><circle cx="16.5" cy="16.5" r="1.2" />
+    </svg>
   );
 }
 
@@ -169,6 +208,14 @@ function NewVehicleForm({ onCreated, onError }: { onCreated: () => void; onError
     <input className={inputCls} type="number" value={Number(f[k]) / 100}
       onChange={(e) => set(k, Math.round(Number(e.target.value) * 100))} />
   );
+  const [photoBusy, setPhotoBusy] = useState(false);
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setPhotoBusy(true);
+    try { set('photoUrl', await compressImageToDataUrl(file)); }
+    catch { onError('Slike ni bilo mogoče obdelati'); }
+    finally { setPhotoBusy(false); }
+  }
   async function submit() {
     if (!f.plate) { onError('Tablica je obvezna'); return; }
     setBusy(true);
@@ -179,6 +226,26 @@ function NewVehicleForm({ onCreated, onError }: { onCreated: () => void; onError
   return (
     <Card className="flex flex-col gap-3 p-4">
       <div className="text-lg font-bold">Dodaj vozilo za najem</div>
+
+      <div>
+        <span className="text-[0.65rem] font-bold uppercase tracking-wide text-muted">Fotografija vozila</span>
+        <div className="mt-1 flex items-center gap-3">
+          <div className="h-20 w-28 shrink-0 overflow-hidden rounded-tool border border-line bg-floor">
+            {f.photoUrl
+              ? <img src={f.photoUrl} alt="" className="h-full w-full object-cover" />
+              : <div className="flex h-full w-full items-center justify-center text-muted2"><CarIcon /></div>}
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="tool-tap cursor-pointer rounded-tool border border-line px-3 py-2 text-sm font-semibold text-ink">
+              {photoBusy ? 'Obdelava…' : (f.photoUrl ? 'Zamenjaj fotografijo' : 'Naloži / slikaj')}
+              <input type="file" accept="image/*" capture="environment" onChange={onPhoto} className="hidden" />
+            </label>
+            {f.photoUrl && <button type="button" onClick={() => set('photoUrl', undefined)} className="text-left text-xs text-stop">Odstrani</button>}
+            <span className="text-[0.65rem] text-muted2">Za lažje prepoznavanje v voznem parku.</span>
+          </div>
+        </div>
+      </div>
+
       <Field label="Kategorija">
         <select className={inputCls} value={f.category} onChange={(e) => set('category', e.target.value)}>
           <option value="motorhome">Avtodom</option><option value="car">Avtomobil</option>

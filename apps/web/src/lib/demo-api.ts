@@ -11,9 +11,10 @@
  */
 
 import {
-  demoCustomers, demoVehicles, demoMechanics, demoItems, demoStock,
+  demoCustomers, demoVehicles, demoMechanics,
   demoWorkOrders, demoListItem, demoInvoices, demoInsight, LOCATION_MAIN,
 } from './demo-data';
+import { demoStore, demoEmit } from './demo-store';
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }
 
@@ -86,6 +87,16 @@ export async function demoRequest<T>(call: Call): Promise<T> {
 
   const ok = <R>(v: R): Promise<R> => Promise.resolve(clone(v));
 
+  // --- notifications + activity (central demo store) ---
+  if (seg[0] === 'notifications') {
+    if (seg.length === 1 && method === 'GET') return ok(demoStore.notifications.list() as any);
+    if (seg[1] === 'read-all' && method === 'POST') { demoStore.notifications.markAllRead(); return ok({ ok: true } as any); }
+    if (seg[1] && seg[2] === 'read' && method === 'POST') { demoStore.notifications.markRead(seg[1]); return ok({ ok: true } as any); }
+  }
+  if (seg[0] === 'activity' && method === 'GET') {
+    return ok(demoStore.activity.list(Number(params.get('limit') ?? 30)) as any);
+  }
+
   // --- auth / session (the launcher + header read these) ---
   if (path === '/auth/config') return ok({ demo: true } as any);
   if (path === '/auth/me') {
@@ -103,8 +114,10 @@ export async function demoRequest<T>(call: Call): Promise<T> {
 
   if (path === '/work-orders' && method === 'GET') {
     const statuses = params.get('statuses')?.split(',').filter(Boolean);
+    const customerId = params.get('customerId');
     let ids = Object.keys(demoWorkOrders);
     if (statuses?.length) ids = ids.filter((id) => statuses.includes(demoWorkOrders[id].status));
+    if (customerId) ids = ids.filter((id) => demoWorkOrders[id].customerId === customerId);
     return ok(ids.map(demoListItem) as any);
   }
   if (path === '/work-orders' && method === 'POST') {
@@ -118,6 +131,8 @@ export async function demoRequest<T>(call: Call): Promise<T> {
       totalNetMinor: '0', totalVatMinor: '0', totalGrossMinor: '0', version: 1,
       assignedMechanicId: null, lines: [], timeEntries: [],
     };
+    demoEmit.activity('work_order_created', 'Nov delovni nalog (osnutek)', 'work_order', id);
+    demoEmit.notify('work_order_new', 'Nov delovni nalog', demoWorkOrders[id].complaint ?? undefined, 'work_order', id);
     return ok(header(demoWorkOrders[id]) as any);
   }
 
@@ -136,6 +151,8 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     // POST /work-orders/:id/transition
     if (seg[2] === 'transition' && method === 'POST') {
       wo.status = call.body?.to ?? wo.status;
+      demoEmit.activity('work_order_status', `Nalog ${wo.number ?? wo.id} → ${wo.status}`, 'work_order', wo.id);
+      if ((call.body?.to) === 'ready') demoEmit.notify('vehicle_ready', 'Vozilo pripravljeno', `Nalog ${wo.number ?? wo.id}`, 'work_order', wo.id);
       return ok(header(wo) as any);
     }
     // POST /work-orders/:id/clock-on | clock-off
@@ -216,18 +233,42 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     return ok((veh ?? {}) as any);
   }
 
-  // --- inventory catalogue + stock ---
+  // --- inventory catalogue + stock + batches (central demo store) ---
   if (path === '/inventory/items' && method === 'GET') {
-    const q = (params.get('q') ?? '').toLowerCase().trim();
-    const matched = q.length === 0 ? demoItems
-      : demoItems.filter((i) => i.name.toLowerCase().includes(q) || (i.sku ?? '').toLowerCase().includes(q) || (i.oemRef ?? '').toLowerCase().includes(q));
-    return ok(matched as any);
+    const q = (params.get('q') ?? '').trim();
+    return ok(demoStore.items.list(q).map((i) => ({
+      ...demoStore.items.catalogue(i),
+      onHand: i.onHand, reserved: i.reserved, available: Math.max(0, i.onHand - i.reserved),
+      reorderPoint: i.reorderPoint, low: i.reorderPoint > 0 && i.onHand <= i.reorderPoint,
+    })) as any);
   }
-  if (seg[0] === 'inventory' && seg[1] === 'items' && seg[3] === 'stock') {
-    return ok((demoStock[seg[2]] ?? []) as any);
+  if (path === '/inventory/items' && method === 'POST') {
+    return ok(demoStore.items.create(body ?? {}) as any);
+  }
+  if (seg[0] === 'inventory' && seg[1] === 'items' && seg[2] && seg[3] === 'stock' && method === 'GET') {
+    const it = demoStore.items.get(seg[2]);
+    if (!it) return ok([] as any);
+    return ok([{ itemId: it.id, locationId: LOCATION_MAIN, onHand: it.onHand, reserved: it.reserved, available: Math.max(0, it.onHand - it.reserved) }] as any);
+  }
+  if (seg[0] === 'inventory' && seg[1] === 'items' && seg[2] && !seg[3] && method === 'GET') {
+    return ok((demoStore.items.get(seg[2]) ?? {}) as any);
+  }
+  if (seg[0] === 'inventory' && seg[1] === 'items' && seg[2] && !seg[3] && (method === 'PATCH' || method === 'PUT')) {
+    return ok((demoStore.items.update(seg[2], body ?? {}) ?? {}) as any);
+  }
+  if (path === '/inventory/receive' && method === 'POST') {
+    const it = demoStore.items.receive(body?.itemId, Number(body?.quantity ?? 0), { batchNo: body?.batchNo, expiry: body?.expiry, costMinor: body?.costMinor });
+    return ok((it ? { ok: true, onHand: it.onHand } : { ok: false }) as any);
   }
 
   // --- invoices ---
+  if (path === '/invoices' && method === 'GET') {
+    const customerId = params.get('customerId');
+    const list = Object.values(demoInvoices)
+      .filter((inv: any) => !customerId || inv.customerId === customerId)
+      .map((inv: any) => ({ id: inv.id, number: inv.number, status: inv.status, currency: inv.currency, totalGrossMinor: inv.totalGrossMinor, issueDate: inv.issueDate ?? null, dueDate: inv.dueDate ?? null }));
+    return ok(list as any);
+  }
   if (seg[0] === 'invoices' && seg[1] && method === 'GET') return ok((demoInvoices[seg[1]] ?? demoInvoices['inv-1']) as any);
 
   // --- reports / insight ---
@@ -236,6 +277,7 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   }
   if (path === '/reports/ar-aging') return ok({ asOf: new Date().toISOString().slice(0, 10), buckets: { current: '0', d1_30: '0', d31_60: '0', d61_90: '0', d90_plus: '0', total: '46750' }, formatted: {} } as any);
   if (path === '/reports/revenue') return ok({ from: '2026-01-01', to: '2026-06-01', documents: 1, netMinor: '46750', vatMinor: '0', grossMinor: '46750', net: '€467.50', gross: '€467.50' } as any);
+  if (path === '/reports/vat') return ok({ from: '2026-01-01', to: '2026-06-01', totalNetMinor: '46750', totalVatMinor: '10285', groups: [{ ratePct: '22', reverseCharge: false, net: '€467.50', vat: '€102.85' }, { ratePct: '0', reverseCharge: true, net: '€0.00', vat: '€0.00' }] } as any);
 
   // --- search ---
   if (path === '/search') {
@@ -248,8 +290,10 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   }
 
   // --- warehouse reads (return empty so those screens render gracefully) ---
-  if (path === '/warehouse-reports/valuation') return ok({ items: [], totalValueMinor: '0' } as any);
-  if (path === '/warehouse-reports/low-stock') return ok([{ itemId: 'item-wiper', locationId: LOCATION_MAIN, name: 'Wiper blade 650mm', sku: 'WB-650', onHand: 3, reserved: 0, available: 3, reorderPoint: 5, reorderQty: 10, preferredSupplierId: null }] as any);
+  if (path === '/warehouse-reports/valuation') return ok({ items: [], totalValueMinor: String(demoStore.items.valuationMinor()) } as any);
+  if (path === '/warehouse-reports/low-stock') {
+    return ok(demoStore.items.lowStock().map((i) => ({ itemId: i.id, locationId: LOCATION_MAIN, name: i.name, sku: i.sku, onHand: i.onHand, reserved: i.reserved, available: Math.max(0, i.onHand - i.reserved), reorderPoint: i.reorderPoint, reorderQty: Math.max(i.reorderPoint, 1), preferredSupplierId: i.preferredSupplierId ?? null })) as any);
+  }
   if (path === '/suppliers' || path === '/purchase-orders' || path === '/goods-receipts' || path === '/stock-ops/counts') return ok([] as any);
 
   // --- OCR receiving (demo): return the realistic Knorr-Bremse extraction so a
@@ -562,4 +606,3 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   // Default: empty-ish, never throw, so an untailored screen still renders.
   return ok((method === 'GET' ? [] : { ok: true }) as any);
 }
-

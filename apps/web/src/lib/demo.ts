@@ -15,6 +15,10 @@ import { setSession, getSession, type Session } from './session';
 // A single flag drives all demo behaviour. Vercel sets NEXT_PUBLIC_DEMO=1.
 export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO === '1';
 
+// Local dev-login: plant a seed-owner session but hit the REAL API (not demo
+// fixtures). Pair with DEV_AUTH=1 on the backend. Off in production.
+export const DEV_AUTH = process.env.NEXT_PUBLIC_DEV_AUTH === '1';
+
 // The seeded A-SPRINT tenant + owner, matching db/seed/0001_seed_tenant.sql so
 // the demo identity is the same one the rest of the system knows.
 const DEMO_TENANT_ID = '00000000-0000-0000-0000-0000000a5b71';
@@ -56,4 +60,15 @@ export function ensureDemoSession(): void {
   if (typeof window === 'undefined') return;
   if (getSession()) return;
   setSession(demoSession());
+}
+
+/**
+ * Plant a local dev session (seed A-SPRINT owner) and return it. Unlike demo
+ * mode, this does NOT route the API client to fixtures — requests go to the real
+ * backend, which must run with DEV_AUTH=1. For local development only.
+ */
+export function planDevSession(): Session {
+  const s = demoSession();
+  setSession(s);
+  return s;
 }

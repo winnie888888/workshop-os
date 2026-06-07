@@ -18,14 +18,23 @@ export class AppConfig {
   readonly nodeEnv = optional('NODE_ENV', 'development');
   readonly port = parseInt(optional('PORT', '3000'), 10);
 
+  /**
+   * Local-only auth shortcut. When DEV_AUTH=1 (and NOT production) the API boots
+   * without a real IdP and the auth middleware skips token verification, acting
+   * as the seed owner. Never honoured when NODE_ENV=production.
+   */
+  readonly devAuth = optional('DEV_AUTH', '') === '1' && optional('NODE_ENV', 'development') !== 'production';
+  readonly devAuthSubject = optional('DEV_AUTH_SUBJECT', 'oidc|seed-owner');
+
   // Database
   readonly databaseUrl = required('DATABASE_URL');
   readonly dbAppRole = optional('DB_APP_ROLE', 'workshop_app');
 
   // Auth (OIDC). JWKS is fetched from the IdP; tokens verified by `jose`.
-  readonly oidcIssuer = required('OIDC_ISSUER');
-  readonly oidcAudience = required('OIDC_AUDIENCE');
-  readonly oidcJwksUri = optional('OIDC_JWKS_URI', `${process.env.OIDC_ISSUER ?? ''}/.well-known/jwks.json`);
+  // In DEV_AUTH mode these are not required (the verifier is never invoked).
+  readonly oidcIssuer = this.devAuth ? optional('OIDC_ISSUER', 'http://dev.local') : required('OIDC_ISSUER');
+  readonly oidcAudience = this.devAuth ? optional('OIDC_AUDIENCE', 'dev') : required('OIDC_AUDIENCE');
+  readonly oidcJwksUri = optional('OIDC_JWKS_URI', `${this.oidcIssuer}/.well-known/jwks.json`);
 
   // AI Gateway
   readonly aiResidency = optional('AI_RESIDENCY', 'eu'); // 'eu' enforced for PII
@@ -68,7 +77,7 @@ export class AppConfig {
   readonly oidcScopes = optional('OIDC_SCOPES', 'openid profile email offline_access');
   readonly oidcRedirectUri = optional('OIDC_REDIRECT_URI', `${this.webAppBaseUrl}/auth/callback`);
   // Discovery document; the SPA reads endpoints from here so we don't hardcode them.
-  readonly oidcDiscoveryUrl = optional('OIDC_DISCOVERY_URL', `${process.env.OIDC_ISSUER ?? ''}/.well-known/openid-configuration`);
+  readonly oidcDiscoveryUrl = optional('OIDC_DISCOVERY_URL', `${this.oidcIssuer}/.well-known/openid-configuration`);
 
   // ---- File storage (Phase 4A) -------------------------------------------
   readonly storageDriver = optional('STORAGE_DRIVER', 's3'); // 's3' | 'local'

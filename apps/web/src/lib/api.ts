@@ -174,11 +174,12 @@ export interface RevenueReport {
 
 export const api = {
   workOrders: {
-    list: (params: { statuses?: string[]; assignedMechanicId?: string; clockedMechanicId?: string; limit?: number } = {}) => {
+    list: (params: { statuses?: string[]; assignedMechanicId?: string; clockedMechanicId?: string; customerId?: string; limit?: number } = {}) => {
       const q = new URLSearchParams();
       if (params.statuses?.length) q.set('statuses', params.statuses.join(','));
       if (params.assignedMechanicId) q.set('assignedMechanicId', params.assignedMechanicId);
       if (params.clockedMechanicId) q.set('clockedMechanicId', params.clockedMechanicId);
+      if (params.customerId) q.set('customerId', params.customerId);
       if (params.limit) q.set('limit', String(params.limit));
       const qs = q.toString();
       return request<WorkOrderListItem[]>(`/work-orders${qs ? `?${qs}` : ''}`);
@@ -273,12 +274,20 @@ export const api = {
       request<Array<{ id: string; name: string; sku: string | null; oemRef: string | null;
         priceMinor: string; vatRatePct: string; unit: string }>>(
         `/inventory/items?q=${encodeURIComponent(q)}`),
-    receive: (dto: { itemId: string; locationId: string; quantity: number; reason?: string }) =>
+    get: (id: string) => request<any>(`/inventory/items/${id}`),
+    create: (dto: Record<string, any>) =>
+      request<any>(`/inventory/items`, { method: 'POST', body: dto }),
+    update: (id: string, patch: Record<string, any>) =>
+      request<any>(`/inventory/items/${id}`, { method: 'PATCH', body: patch }),
+    receive: (dto: { itemId: string; locationId?: string; quantity: number; reason?: string; batchNo?: string; expiry?: string; costMinor?: number }) =>
       request<any>(`/inventory/receive`, { method: 'POST', body: dto }),
   },
 
   invoices: {
     get: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
+    byCustomer: (customerId: string) =>
+      request<Array<{ id: string; number: string | null; status: string; currency: string; totalGrossMinor: string; issueDate: string | null; dueDate: string | null }>>(
+        `/invoices?customerId=${encodeURIComponent(customerId)}`),
     issue: (dto: { workOrderId: string; dueDays?: number; issueDate?: string }) =>
       request<InvoiceDetail>(`/invoices/issue`, { method: 'POST', body: dto }),
     creditNote: (dto: { invoiceId: string; reason: string }) =>
@@ -434,6 +443,17 @@ export const api = {
   search: (q: string, limit = 10) =>
     request<{ query: string; intent: string; hits: Array<{ type: string; id: string; label: string; sublabel?: string; exact: boolean }> }>(
       `/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+
+  // Connected demo layer (demo mode → central store; real backend has no such
+  // route yet, so callers tolerate failure and treat it as "no events").
+  notifications: {
+    list: () => request<Array<{ id: string; kind: string; title: string; body?: string; entityType?: string; entityId?: string; read: boolean; createdAt: string }>>(`/notifications`),
+    markRead: (id: string) => request<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST' }),
+    markAllRead: () => request<{ ok: boolean }>(`/notifications/read-all`, { method: 'POST' }),
+  },
+  activity: {
+    list: (limit = 30) => request<Array<{ id: string; kind: string; message: string; entityType?: string; entityId?: string; actor?: string; createdAt: string }>>(`/activity?limit=${limit}`),
+  },
 
   customerReceivables: (customerId: string, asOf?: string) =>
     request<{
