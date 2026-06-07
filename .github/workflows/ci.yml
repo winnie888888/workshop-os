@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: '22'
       - name: Run shared domain core tests (no deps)
-        run: node --experimental-strip-types packages/shared/test/run.ts
+        run: node --experimental-strip-types --import ./packages/shared/test/register-ts.mjs packages/shared/test/run.ts
 
   api-build:
     runs-on: ubuntu-latest
@@ -34,8 +34,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -45,3 +43,4 @@ jobs:
         run: node apps/api/scripts/migrate.js
       - name: Build
         run: pnpm -r build
+
