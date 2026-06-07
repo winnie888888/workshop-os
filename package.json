@@ -1,0 +1,15 @@
+{
+  "name": "workshop-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Workshop Operating System for commercial-vehicle & fleet workshops. Modular monolith (Architecture Blueprint).",
+  "packageManager": "pnpm@9.7.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test:shared": "node --experimental-strip-types packages/shared/test/run.ts",
+    "build": "pnpm -r build",
+    "migrate": "node apps/api/scripts/migrate.js",
+    "start:api": "pnpm --filter @workshop/api start",
+    "start:worker": "pnpm --filter @workshop/api worker"
+  }
+}

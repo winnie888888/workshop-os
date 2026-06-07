@@ -1,0 +1,20 @@
+import "./money.test.ts";
+import "./core.test.ts";
+import "./phase2.test.ts";
+import "./phase3.test.ts";
+import "./phase4a.test.ts";
+import "./phase4c.test.ts";
+import "./phase5.test.ts";
+import "./phase51.test.ts";
+import "./phase52.test.ts";
+import "./phase6.test.ts";
+import "./phase7.test.ts";
+import "./phase8.test.ts";
+import "./phase9.test.ts";
+import "./phase10.test.ts";
+import "./phase11.test.ts";
+import "./phase12.test.ts";
+import { run } from "./harness.ts";
+
+console.log("Running workshop-os shared core tests\n");
+await run();

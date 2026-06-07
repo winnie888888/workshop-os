@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Industrial / utilitarian base. High contrast, heavy weight, generous targets.
+ * Fonts are wired via next/font in layout.tsx and exposed as CSS variables here.
+ */
+:root {
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #f4f5f2;
+  color: #14181d;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  /* Avoid accidental text selection on tap-heavy tool screens. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A faint diagonal hazard texture for shop-floor surfaces, used sparingly. */
+.bg-hazard {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #00000008 0,
+    #00000008 12px,
+    transparent 12px,
+    transparent 24px
+  );
+}
+
+/* Large, gloved-finger control reset. */
+.tool-tap {
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .stagger > * {
+    animation: rise 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .stagger > *:nth-child(2) { animation-delay: 0.04s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.08s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.12s; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
