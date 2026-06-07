@@ -234,6 +234,9 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   }
 
   // --- inventory catalogue + stock + batches (central demo store) ---
+  if (path === '/inventory/quick-add' && method === 'GET') {
+    return ok(demoStore.items.quickAdd().map((i) => demoStore.items.catalogue(i)) as any);
+  }
   if (path === '/inventory/items' && method === 'GET') {
     const q = (params.get('q') ?? '').trim();
     return ok(demoStore.items.list(q).map((i) => ({
@@ -260,6 +263,13 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     const it = demoStore.items.receive(body?.itemId, Number(body?.quantity ?? 0), { batchNo: body?.batchNo, expiry: body?.expiry, costMinor: body?.costMinor });
     return ok((it ? { ok: true, onHand: it.onHand } : { ok: false }) as any);
   }
+
+  // --- service packages / presets (central store) ---
+  if (path === '/presets' && method === 'GET') return ok(demoStore.presets.all() as any);
+  if (path === '/presets' && method === 'POST') return ok(demoStore.presets.create(body ?? {}) as any);
+  if (seg[0] === 'presets' && seg[1] && method === 'GET') return ok((demoStore.presets.get(seg[1]) ?? {}) as any);
+  if (seg[0] === 'presets' && seg[1] && (method === 'PATCH' || method === 'PUT')) return ok((demoStore.presets.update(seg[1], body ?? {}) ?? {}) as any);
+  if (seg[0] === 'presets' && seg[1] && method === 'DELETE') { demoStore.presets.remove(seg[1]); return ok({ ok: true } as any); }
 
   // --- invoices ---
   if (path === '/invoices' && method === 'GET') {

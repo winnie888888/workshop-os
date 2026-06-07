@@ -31,10 +31,12 @@ export interface Customer {
   phone?: string; email?: string; createdAt: string;
 }
 
+export type VehicleType = 'tractor' | 'truck' | 'van' | 'trailer' | 'other';
+export type Powertrain = 'diesel' | 'petrol' | 'electric' | 'hybrid' | 'cng' | 'lng' | 'hydrogen' | 'other';
 export interface Vehicle {
   id: string; customerId: string; plate: string; countryOfPlate: string;
   vin?: string; make?: string; model?: string; year?: number;
-  type: 'tractor' | 'truck' | 'van' | 'trailer' | 'other';
+  type: VehicleType; powertrain?: Powertrain;
   odometerLast?: number; createdAt: string;
 }
 
@@ -80,10 +82,26 @@ export interface Item {
   supplierName?: string; supplierSku?: string; preferredSupplierId?: string;
   onHand: number; reserved: number; reorderPoint: number; bin?: string;
   batches: ItemBatch[];
-  active: boolean; notes?: string; createdAt: string; updatedAt: string;
+  active: boolean; quickAdd?: boolean; notes?: string; createdAt: string; updatedAt: string;
 }
 export function itemAvailable(it: Item): number { return Math.max(0, it.onHand - it.reserved); }
 export function itemIsLow(it: Item): boolean { return it.reorderPoint > 0 && it.onHand <= it.reorderPoint; }
+
+// Service package / preset: a reusable bundle of labour + part lines, applied to
+// a work order in one click. Optional tags (vehicle class + powertrain) scope it;
+// empty = applies to all. Part lines carry an itemId so price/VAT can be resolved
+// live from the catalogue at apply time.
+export interface PresetLine { id: string; kind: 'labour' | 'part'; description: string; itemId?: string; qty: number; unitPriceMinor: number; vatRatePct: number; }
+export interface Preset {
+  id: string; name: string; description?: string;
+  vehicleClasses?: VehicleType[]; powertrains?: Powertrain[];
+  lines: PresetLine[]; active: boolean; createdAt: string; updatedAt: string;
+}
+export function presetMatches(p: Preset, type?: VehicleType | null, powertrain?: Powertrain | null): boolean {
+  const okClass = !p.vehicleClasses?.length || (!!type && p.vehicleClasses.includes(type));
+  const okPow = !p.powertrains?.length || (!!powertrain && p.powertrains.includes(powertrain));
+  return okClass && okPow;
+}
 
 export type NotificationKind =
   | 'work_order_new' | 'vehicle_ready' | 'invoice_overdue' | 'minimax_failed'
@@ -114,7 +132,7 @@ interface DB {
   v: number;
   customers: Customer[]; vehicles: Vehicle[]; mechanics: Mechanic[];
   workOrders: WorkOrder[]; estimates: Estimate[]; invoices: Invoice[];
-  items: Item[];
+  items: Item[]; presets: Preset[];
   voiceNotes: VoiceNote[]; plateScans: PlateScan[]; messages: Message[]; appointments: Appointment[];
   notifications: Notification[]; activity: Activity[]; settings: Settings;
   seq: number;
@@ -124,7 +142,7 @@ interface DB {
 // Persistence (single key, SSR-safe, versioned) + reactive subscribe()
 // ----------------------------------------------------------------------------
 const KEY = 'wos.demo.v1';
-const VERSION = 2;
+const VERSION = 4;
 const listeners = new Set<() => void>();
 let version = 0;
 let cache: DB | null = null;
@@ -138,7 +156,7 @@ function emptyDB(): DB {
   return {
     v: VERSION,
     customers: [], vehicles: [], mechanics: [], workOrders: [], estimates: [], invoices: [],
-    items: [],
+    items: [], presets: [],
     voiceNotes: [], plateScans: [], messages: [], appointments: [],
     notifications: [], activity: [],
     settings: {
@@ -545,6 +563,7 @@ export const demoStore = {
         (i.oemRef ?? '').toLowerCase().includes(s) || (i.barcode ?? '').toLowerCase().includes(s));
     },
     get(id: string): Item | undefined { return load().items.find((i) => i.id === id); },
+    quickAdd(): Item[] { return load().items.filter((i) => i.quickAdd && i.active); },
     lowStock(): Item[] { return load().items.filter(itemIsLow); },
     valuationMinor(): number {
       return load().items.reduce((s, i) => s + i.onHand * (i.costMinor ?? i.priceMinor), 0);
@@ -562,7 +581,7 @@ export const demoStore = {
         vatRatePct: data.vatRatePct ?? db.settings.vatRatePct, supplierName: data.supplierName, supplierSku: data.supplierSku,
         preferredSupplierId: data.preferredSupplierId,
         onHand: data.onHand ?? 0, reserved: data.reserved ?? 0, reorderPoint: data.reorderPoint ?? 0, bin: data.bin,
-        batches: data.batches ?? [], active: data.active ?? true, notes: data.notes,
+        batches: data.batches ?? [], active: data.active ?? true, quickAdd: data.quickAdd ?? false, notes: data.notes,
         createdAt: nowIso(), updatedAt: nowIso(),
       };
       db.items.unshift(it);
@@ -604,6 +623,36 @@ export const demoStore = {
       if (itemIsLow(it)) notify('low_stock', 'Nizka zaloga', `${it.name} · ${it.onHand} ${it.unit}`, 'inventory_item', it.id);
       persist();
       return it;
+    },
+  },
+
+  // ---- service packages / presets ----
+  presets: {
+    all(): Preset[] { return [...load().presets]; },
+    active(): Preset[] { return load().presets.filter((p) => p.active); },
+    get(id: string): Preset | undefined { return load().presets.find((p) => p.id === id); },
+    grossMinor(p: Preset): number {
+      return p.lines.reduce((s, l) => s + Math.round(l.qty * l.unitPriceMinor * (1 + l.vatRatePct / 100)), 0);
+    },
+    create(data: Partial<Preset> & { name: string }): Preset {
+      const db = load();
+      const p: Preset = {
+        id: newId('pk'), name: data.name, description: data.description,
+        vehicleClasses: data.vehicleClasses ?? [], powertrains: data.powertrains ?? [],
+        lines: (data.lines ?? []).map((l) => ({ id: l.id ?? newId('pl'), kind: l.kind ?? 'part', description: l.description ?? '', itemId: l.itemId, qty: l.qty ?? 1, unitPriceMinor: l.unitPriceMinor ?? 0, vatRatePct: l.vatRatePct ?? db.settings.vatRatePct })),
+        active: data.active ?? true, createdAt: nowIso(), updatedAt: nowIso(),
+      };
+      db.presets.unshift(p);
+      logActivity('item_created', `Nov servisni paket: ${p.name}`, 'preset', p.id);
+      persist();
+      return p;
+    },
+    update(id: string, patch: Partial<Preset>): Preset | undefined {
+      const db = load(); const p = db.presets.find((x) => x.id === id);
+      if (!p) return undefined; Object.assign(p, patch); p.updatedAt = nowIso(); persist(); return p;
+    },
+    remove(id: string): void {
+      const db = load(); db.presets = db.presets.filter((p) => p.id !== id); persist();
     },
   },
 
@@ -651,9 +700,9 @@ function seed(db: DB): DB {
   const c3: Customer = { id: 'cus-3', code: 'K-003', name: 'Prevozi Novak s.p.', type: 'company', country: 'SI', address: 'Kolodvorska 3', postCode: '8340', city: 'Črnomelj', vatLiable: true, vatId: 'SI99887766', taxId: '99887766', registrationNo: '2233445000', currency: 'EUR', paymentTermsDays: 15, discountPct: 0, phone: '+386 41 555 666', createdAt: nowIso() };
   db.customers = [c1, c2, c3];
 
-  const v1: Vehicle = { id: 'veh-1', customerId: c1.id, plate: 'LJ AB-123', countryOfPlate: 'SI', vin: 'WDB9634031L123456', make: 'Mercedes-Benz', model: 'Actros 1845', year: 2019, type: 'tractor', odometerLast: 612000, createdAt: nowIso() };
+  const v1: Vehicle = { id: 'veh-1', customerId: c1.id, plate: 'LJ AB-123', countryOfPlate: 'SI', vin: 'WDB9634031L123456', make: 'Mercedes-Benz', model: 'Actros 1845', year: 2019, type: 'tractor', powertrain: 'diesel', odometerLast: 612000, createdAt: nowIso() };
   const v2: Vehicle = { id: 'veh-2', customerId: c1.id, plate: 'LJ PR-456', countryOfPlate: 'SI', make: 'Krone', model: 'SD', year: 2020, type: 'trailer', createdAt: nowIso() };
-  const v3: Vehicle = { id: 'veh-3', customerId: c2.id, plate: 'KR CD-789', countryOfPlate: 'SI', vin: 'XLRTE47MS0E654321', make: 'DAF', model: 'XF 480', year: 2021, type: 'truck', odometerLast: 388000, createdAt: nowIso() };
+  const v3: Vehicle = { id: 'veh-3', customerId: c2.id, plate: 'KR CD-789', countryOfPlate: 'SI', vin: 'XLRTE47MS0E654321', make: 'DAF', model: 'XD Electric', year: 2024, type: 'truck', powertrain: 'electric', odometerLast: 88000, createdAt: nowIso() };
   db.vehicles = [v1, v2, v3];
 
   // One work order in progress with a couple of lines
@@ -699,9 +748,35 @@ function seed(db: DB): DB {
   db.items = [
     { id: 'item-pad', sku: 'BP-FR-ACT', name: 'Set zavornih ploščic spredaj', oemRef: '0034205220', kind: 'part', unit: 'set', category: 'Zavore', priceMinor: 18500, costMinor: 11900, vatRatePct: 22, supplierName: 'AD Auto Parts d.o.o.', onHand: 6, reserved: 1, reorderPoint: 3, bin: 'A-12', batches: [], active: true, createdAt: t, updatedAt: t },
     { id: 'item-disc', sku: 'BD-FR-ACT', name: 'Zavorni disk spredaj (par)', oemRef: '0004212312', kind: 'part', unit: 'par', category: 'Zavore', priceMinor: 24000, costMinor: 15600, vatRatePct: 22, supplierName: 'AD Auto Parts d.o.o.', onHand: 4, reserved: 0, reorderPoint: 2, bin: 'A-13', batches: [], active: true, createdAt: t, updatedAt: t },
-    { id: 'item-oil', sku: 'OIL-1040', name: 'Motorno olje 10W-40', kind: 'fluid', unit: 'L', category: 'Olja in tekočine', priceMinor: 650, costMinor: 420, vatRatePct: 22, supplierName: 'Petrol d.d.', onHand: 180, reserved: 0, reorderPoint: 40, bin: 'C-01', batches: [{ id: 'btc-oil-1', batchNo: 'OIL-2026-04', qty: 180, expiry: new Date(Date.now() + 540 * 86400000).toISOString().slice(0, 10), costMinor: 420, receivedAt: t }], active: true, createdAt: t, updatedAt: t },
-    { id: 'item-airf', sku: 'AF-2245', name: 'Zračni filter', oemRef: 'C 30 1500', kind: 'part', unit: 'kos', category: 'Filtri', priceMinor: 3800, costMinor: 2400, vatRatePct: 22, supplierName: 'AD Auto Parts d.o.o.', onHand: 12, reserved: 0, reorderPoint: 4, bin: 'B-04', batches: [], active: true, createdAt: t, updatedAt: t },
-    { id: 'item-wiper', sku: 'WB-650', name: 'Metlica brisalca 650mm', kind: 'consumable', unit: 'kos', category: 'Drobni material', priceMinor: 1400, costMinor: 820, vatRatePct: 22, onHand: 3, reserved: 0, reorderPoint: 4, bin: 'D-09', batches: [], active: true, createdAt: t, updatedAt: t },
+    { id: 'item-oil', sku: 'OIL-1040', name: 'Motorno olje 10W-40', kind: 'fluid', unit: 'L', category: 'Olja in tekočine', priceMinor: 650, costMinor: 420, vatRatePct: 22, supplierName: 'Petrol d.d.', onHand: 180, reserved: 0, reorderPoint: 40, bin: 'C-01', quickAdd: true, batches: [{ id: 'btc-oil-1', batchNo: 'OIL-2026-04', qty: 180, expiry: new Date(Date.now() + 540 * 86400000).toISOString().slice(0, 10), costMinor: 420, receivedAt: t }], active: true, createdAt: t, updatedAt: t },
+    { id: 'item-airf', sku: 'AF-2245', name: 'Zračni filter', oemRef: 'C 30 1500', kind: 'part', unit: 'kos', category: 'Filtri', priceMinor: 3800, costMinor: 2400, vatRatePct: 22, supplierName: 'AD Auto Parts d.o.o.', onHand: 12, reserved: 0, reorderPoint: 4, bin: 'B-04', batches: [], active: true, quickAdd: true, createdAt: t, updatedAt: t },
+    { id: 'item-wiper', sku: 'WB-650', name: 'Metlica brisalca 650mm', kind: 'consumable', unit: 'kos', category: 'Drobni material', priceMinor: 1400, costMinor: 820, vatRatePct: 22, onHand: 3, reserved: 0, reorderPoint: 4, bin: 'D-09', batches: [], active: true, quickAdd: true, createdAt: t, updatedAt: t },
+  ];
+
+  // Service packages (reference the catalogue items seeded above). Tags scope
+  // them by class + powertrain; empty = applies to all.
+  db.presets = [
+    { id: 'pk-brake-front', name: 'Menjava sprednjih zavor', description: 'Ploščice + diski spredaj, z delom.',
+      vehicleClasses: ['tractor', 'truck', 'van'], powertrains: [], active: true, createdAt: t, updatedAt: t, lines: [
+        { id: 'pl-1', kind: 'labour', description: 'Menjava sprednjih zavor (delo)', qty: 2, unitPriceMinor: 6500, vatRatePct: 22 },
+        { id: 'pl-2', kind: 'part', itemId: 'item-pad', description: 'Set zavornih ploščic spredaj', qty: 1, unitPriceMinor: 18500, vatRatePct: 22 },
+        { id: 'pl-3', kind: 'part', itemId: 'item-disc', description: 'Zavorni disk spredaj (par)', qty: 1, unitPriceMinor: 24000, vatRatePct: 22 },
+      ] },
+    { id: 'pk-service-120', name: 'Servis 120.000 km (dizel)', description: 'Olje in filtri za dizelski tovornjak.',
+      vehicleClasses: ['tractor', 'truck'], powertrains: ['diesel'], active: true, createdAt: t, updatedAt: t, lines: [
+        { id: 'pl-4', kind: 'labour', description: 'Veliki servis (delo)', qty: 3, unitPriceMinor: 6500, vatRatePct: 22 },
+        { id: 'pl-5', kind: 'part', itemId: 'item-oil', description: 'Motorno olje 10W-40', qty: 30, unitPriceMinor: 650, vatRatePct: 22 },
+        { id: 'pl-6', kind: 'part', itemId: 'item-airf', description: 'Zračni filter', qty: 1, unitPriceMinor: 3800, vatRatePct: 22 },
+      ] },
+    { id: 'pk-ev-service', name: 'Servis električnega vozila', description: 'Pregled HV baterije, zavorna tekočina, kabinski filter — brez olja.',
+      vehicleClasses: ['tractor', 'truck', 'van'], powertrains: ['electric', 'hybrid'], active: true, createdAt: t, updatedAt: t, lines: [
+        { id: 'pl-7', kind: 'labour', description: 'Pregled HV sistema in baterije (delo)', qty: 1.5, unitPriceMinor: 6500, vatRatePct: 22 },
+        { id: 'pl-8', kind: 'labour', description: 'Menjava zavorne tekočine (delo)', qty: 0.5, unitPriceMinor: 6500, vatRatePct: 22 },
+      ] },
+    { id: 'pk-trailer', name: 'Servis priklopnika', description: 'Zavore, vzmetenje, luči, EBS.',
+      vehicleClasses: ['trailer'], powertrains: [], active: true, createdAt: t, updatedAt: t, lines: [
+        { id: 'pl-9', kind: 'labour', description: 'Pregled in nastavitev zavor priklopnika (delo)', qty: 2, unitPriceMinor: 6500, vatRatePct: 22 },
+      ] },
   ];
 
   db.seq = 1010;

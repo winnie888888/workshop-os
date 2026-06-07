@@ -43,6 +43,7 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
   const [bin, setBin] = useState(initial?.bin ?? '');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [active, setActive] = useState(initial?.active ?? true);
+  const [quickAdd, setQuickAdd] = useState(initial?.quickAdd ?? false);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +57,7 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
       priceMinor: eurToMinor(priceEur), costMinor: costEur ? eurToMinor(costEur) : undefined,
       vatRatePct: parseFloat(vat) || 0, supplierName: supplierName.trim() || undefined, supplierSku: supplierSku.trim() || undefined,
       reorderPoint: parseInt(reorderPoint, 10) || 0, bin: bin.trim() || undefined,
-      notes: notes.trim() || undefined, active,
+      notes: notes.trim() || undefined, active, quickAdd,
     };
     if (mode === 'create') payload.onHand = parseInt(onHand, 10) || 0;
     try {
@@ -112,6 +113,7 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
         <div className="grid gap-3">
           <TextAreaField label="Opombe" value={notes} onChange={setNotes} rows={2} />
           <CheckboxField label="Aktiven artikel" checked={active} onChange={setActive} hint="Neaktivni se ne ponujajo pri vnosu na nalog." />
+          <CheckboxField label="Hitri vnos" checked={quickAdd} onChange={setQuickAdd} hint="Pogosto dodajan del — pokaže se kot gumb na delovnem nalogu." />
         </div>
       </Card>
 

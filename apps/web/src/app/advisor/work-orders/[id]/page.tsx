@@ -224,6 +224,7 @@ function MechanicAssign({
 function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable: boolean; onChanged: () => void }) {
   const [adding, setAdding] = useState<null | 'labour' | 'part'>(null);
   const [picking, setPicking] = useState(false);
+  const [pkg, setPkg] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -232,13 +233,16 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line p-4">
         <h3 className="font-display text-lg font-bold">Postavke</h3>
         {editable && (
-          <div className="flex gap-2">
-            <Button tone="info" onClick={() => { setAdding('labour'); setPicking(false); setEditingId(null); }}>+ Delo</Button>
-            <Button tone="go" onClick={() => { setPicking(true); setAdding(null); setEditingId(null); }}>+ Del iz zaloge</Button>
-            <Button tone="neutral" onClick={() => { setAdding('part'); setPicking(false); setEditingId(null); }}>+ Drug del</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button tone="info" onClick={() => { setPkg(true); setPicking(false); setAdding(null); setEditingId(null); }}>+ Paket</Button>
+            <Button tone="info" onClick={() => { setAdding('labour'); setPkg(false); setPicking(false); setEditingId(null); }}>+ Delo</Button>
+            <Button tone="go" onClick={() => { setPicking(true); setPkg(false); setAdding(null); setEditingId(null); }}>+ Del iz zaloge</Button>
+            <Button tone="neutral" onClick={() => { setAdding('part'); setPkg(false); setPicking(false); setEditingId(null); }}>+ Drug del</Button>
           </div>
         )}
       </div>
+
+      {editable && <QuickAddBar wo={wo} onAdded={onChanged} onError={setError} />}
 
       {error && <div className="px-4 pt-3"><ProblemBanner message={error} /></div>}
 
@@ -247,6 +251,15 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
           <PartsPicker wo={wo}
             onCancel={() => setPicking(false)}
             onAdded={() => { setPicking(false); onChanged(); }}
+            onError={setError} />
+        </div>
+      )}
+
+      {pkg && (
+        <div className="border-b border-line p-4">
+          <PackagePicker wo={wo}
+            onCancel={() => setPkg(false)}
+            onAdded={() => { setPkg(false); onChanged(); }}
             onError={setError} />
         </div>
       )}
@@ -584,6 +597,140 @@ function PartsPicker({ wo, onCancel, onAdded, onError }: {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Package picker — applies a service package (preset) to the work order in one
+ * click. Packages are filtered by the work order vehicle's class + powertrain
+ * (resolved via the asset), so an electric vehicle never sees a diesel oil
+ * service. Part-line prices are resolved LIVE from the catalogue at apply time;
+ * labour lines use the price stored on the package.
+ */
+function PackagePicker({ wo, onCancel, onAdded, onError }: {
+  wo: WorkOrderDetail; onCancel: () => void; onAdded: () => void; onError: (m: string | null) => void;
+}) {
+  const assetId = (wo as any).assetId as string | null | undefined;
+  const { data: vehicle } = useSWR(assetId ? ['wo-veh', assetId] : null, () => api.assets.get(assetId as string).catch(() => null));
+  const { data: presets } = useSWR('all-presets', () => api.presets.list().catch(() => []));
+  const { data: catalog } = useSWR(['catalog-all'], () => api.inventory.search('').catch(() => []));
+  const [showAll, setShowAll] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const vType = (vehicle as any)?.type as string | undefined;
+  const vPower = (vehicle as any)?.powertrain as string | undefined;
+
+  const CLASS_LABEL: Record<string, string> = { tractor: 'Vlačilec', truck: 'Tovornjak', van: 'Kombi', trailer: 'Priklopnik', other: 'Drugo' };
+  const POWER_LABEL: Record<string, string> = { diesel: 'Dizel', petrol: 'Bencin', electric: 'Električno', hybrid: 'Hibrid', cng: 'CNG', lng: 'LNG', hydrogen: 'Vodik', other: 'Drugo' };
+
+  function matchFn(p: any): boolean {
+    const okC = !(p.vehicleClasses?.length) || (vType && p.vehicleClasses.includes(vType));
+    const okP = !(p.powertrains?.length) || (vPower && p.powertrains.includes(vPower));
+    return !!(okC && okP);
+  }
+  const all = (presets ?? []).filter((p: any) => p.active !== false);
+  const matching = all.filter(matchFn);
+  const shown = showAll ? all : matching;
+
+  function gross(p: any): number {
+    return (p.lines ?? []).reduce((s: number, l: any) => s + Math.round((l.qty ?? 0) * (l.unitPriceMinor ?? 0) * (1 + (l.vatRatePct ?? 0) / 100)), 0);
+  }
+
+  async function apply(p: any) {
+    setBusyId(p.id); onError(null);
+    try {
+      for (const l of (p.lines ?? [])) {
+        const cat = l.itemId ? (catalog as any[])?.find((i) => i.id === l.itemId) : null;
+        const unitMinor = cat ? Number(cat.priceMinor) : (l.unitPriceMinor ?? 0);
+        const vat = cat ? String(cat.vatRatePct ?? l.vatRatePct ?? '22') : String(l.vatRatePct ?? '22');
+        await api.workOrders.addLine(wo.id, {
+          lineId: crypto.randomUUID(),
+          type: l.kind, description: l.description,
+          inventoryItemId: l.itemId, quantity: String(l.qty ?? 1),
+          unitPriceMinor: unitMinor, vatRatePct: vat,
+        });
+      }
+      onAdded();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Paketa ni bilo mogoče dodati');
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h4 className="font-bold text-ink">Dodaj servisni paket</h4>
+        <button onClick={onCancel} className="text-sm font-semibold text-muted hover:text-brand">prekliči</button>
+      </div>
+      <p className="text-xs text-muted">
+        Vozilo: {vType ? (CLASS_LABEL[vType] ?? vType) : 'neznano'}{vPower ? ` · ${POWER_LABEL[vPower] ?? vPower}` : ''}. Prikazani so paketi za to vozilo.
+      </p>
+
+      {shown.length === 0 ? (
+        <div className="rounded-tool border border-line bg-surface2 p-4 text-sm text-muted">
+          Ni paketov za to vozilo.{!showAll && all.length > 0 && <> <button onClick={() => setShowAll(true)} className="font-semibold text-brand">Prikaži vse</button></>}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {shown.map((p: any) => {
+            const off = !matchFn(p);
+            return (
+              <div key={p.id} className={`flex items-center justify-between gap-3 rounded-tool border border-line p-3 ${off ? 'opacity-60' : ''}`}>
+                <div className="min-w-0">
+                  <div className="font-semibold text-ink">{p.name}{off && <span className="ml-2 text-xs text-muted2">(drugo vozilo)</span>}</div>
+                  <div className="text-xs text-muted">{(p.lines ?? []).length} postavk · {formatMoneyMinor(String(gross(p)), wo.currency)}</div>
+                </div>
+                <Button tone="go" onClick={() => apply(p)} disabled={busyId !== null}>{busyId === p.id ? 'Dodajanje…' : 'Dodaj'}</Button>
+              </div>
+            );
+          })}
+          {!showAll && all.length > matching.length && (
+            <button onClick={() => setShowAll(true)} className="self-start text-sm font-semibold text-brand">Prikaži vse pakete ({all.length})</button>
+          )}
+          {showAll && (
+            <button onClick={() => setShowAll(false)} className="self-start text-sm font-semibold text-muted">Pokaži samo ustrezne</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Quick-add bar — one-tap chips for the items flagged "hitri vnos" in the
+ * catalogue. Tapping adds that part line to the work order with the item's live
+ * price/VAT. The mechanic's most common consumables, one tap away.
+ */
+function QuickAddBar({ wo, onAdded, onError }: { wo: WorkOrderDetail; onAdded: () => void; onError: (m: string | null) => void }) {
+  const { data: favs } = useSWR('quick-add', () => api.inventory.quickAdd().catch(() => []));
+  const [busyId, setBusyId] = useState<string | null>(null);
+  if (!favs || favs.length === 0) return null;
+
+  async function add(it: any) {
+    setBusyId(it.id); onError(null);
+    try {
+      await api.workOrders.addLine(wo.id, {
+        lineId: crypto.randomUUID(), type: 'part', description: it.name,
+        inventoryItemId: it.id, quantity: '1',
+        unitPriceMinor: Number(it.priceMinor), vatRatePct: String(it.vatRatePct ?? '22'),
+      });
+      onAdded();
+    } catch (e) {
+      onError(e instanceof ApiError ? e.message : 'Postavke ni bilo mogoče dodati');
+    } finally { setBusyId(null); }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface2 px-4 py-2.5">
+      <span className="text-xs font-semibold uppercase tracking-wide text-muted2">Hitri vnos</span>
+      {(favs as any[]).map((it) => (
+        <button key={it.id} type="button" disabled={busyId !== null} onClick={() => add(it)}
+          className="tool-tap rounded-full border border-linestrong bg-surface px-3 py-1 text-sm font-semibold text-ink hover:border-brand disabled:opacity-50">
+          {busyId === it.id ? '…' : `+ ${it.name}`}
+        </button>
+      ))}
     </div>
   );
 }

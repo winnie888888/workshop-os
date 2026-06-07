@@ -275,12 +275,23 @@ export const api = {
         priceMinor: string; vatRatePct: string; unit: string }>>(
         `/inventory/items?q=${encodeURIComponent(q)}`),
     get: (id: string) => request<any>(`/inventory/items/${id}`),
+    quickAdd: () =>
+      request<Array<{ id: string; name: string; sku: string | null; oemRef: string | null; priceMinor: string; vatRatePct: string; unit: string }>>(
+        `/inventory/quick-add`),
     create: (dto: Record<string, any>) =>
       request<any>(`/inventory/items`, { method: 'POST', body: dto }),
     update: (id: string, patch: Record<string, any>) =>
       request<any>(`/inventory/items/${id}`, { method: 'PATCH', body: patch }),
     receive: (dto: { itemId: string; locationId?: string; quantity: number; reason?: string; batchNo?: string; expiry?: string; costMinor?: number }) =>
       request<any>(`/inventory/receive`, { method: 'POST', body: dto }),
+  },
+
+  presets: {
+    list: () => request<any[]>(`/presets`),
+    get: (id: string) => request<any>(`/presets/${id}`),
+    create: (dto: Record<string, any>) => request<any>(`/presets`, { method: 'POST', body: dto }),
+    update: (id: string, patch: Record<string, any>) => request<any>(`/presets/${id}`, { method: 'PATCH', body: patch }),
+    remove: (id: string) => request<any>(`/presets/${id}`, { method: 'DELETE' }),
   },
 
   invoices: {
