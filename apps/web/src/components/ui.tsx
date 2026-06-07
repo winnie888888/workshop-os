@@ -34,9 +34,10 @@ export function Button({
   children, onClick, tone = 'neutral', size = 'md', disabled, type = 'button', full, className = '',
 }: {
   children: React.ReactNode; onClick?: () => void; tone?: Tone;
-  size?: 'md' | 'lg' | 'xl'; disabled?: boolean; type?: 'button' | 'submit'; full?: boolean; className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl'; disabled?: boolean; type?: 'button' | 'submit'; full?: boolean; className?: string;
 }) {
   const sizes = {
+    sm: 'min-h-tap px-3 text-sm',
     md: 'min-h-tap px-5 text-tap',
     lg: 'min-h-[4.25rem] px-6 text-xl',
     xl: 'min-h-[5.5rem] px-8 text-2xl',
@@ -165,3 +166,4 @@ export function Spinner({ className = '' }: { className?: string }) {
       border-t-transparent ${className}`} aria-label="loading" />
   );
 }
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import Link from 'next/link';
@@ -18,7 +18,7 @@ import { Button, Card, ProblemBanner, Spinner } from '@/components/ui';
  * the vehicle dropdown only populates once a customer is chosen. The customer
  * can also be pre-selected via ?customerId= from the customer hub's "New job".
  */
-export default function NewJob() {
+function NewJobInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: customers } = useSWR('customers', () => api.customers.list().catch(() => []));
@@ -145,3 +145,12 @@ function Textarea({ label, value, onChange, placeholder }: {
     </label>
   );
 }
+
+export default function NewJob() {
+  return (
+    <Suspense fallback={null}>
+      <NewJobInner />
+    </Suspense>
+  );
+}
+

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getSession, setSession, selectTenant, type Session } from '@/lib/session';
+import { getSession, setSession, selectTenant, requireSession, type Session } from '@/lib/session';
 import { beginLogin } from '@/lib/oidc';
 import { api } from '@/lib/api';
 import { startAutoFlush } from '@/lib/offline-queue';
@@ -99,7 +99,7 @@ export default function Home() {
 function TenantPicker({ session, onPicked }: { session: Session; onPicked: (s: Session) => void }) {
   function pick(tenantId: string) {
     selectTenant(tenantId);
-    onPicked(getSession());
+    onPicked(requireSession());
   }
   return (
     <Card className="p-6">
@@ -115,3 +115,4 @@ function TenantPicker({ session, onPicked }: { session: Session; onPicked: (s: S
     </Card>
   );
 }
+

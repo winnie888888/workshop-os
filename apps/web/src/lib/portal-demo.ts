@@ -16,7 +16,7 @@ import { demoCustomers, demoVehicles, demoWorkOrders, demoInvoices } from './dem
 const DEMO_CUSTOMER_ID = 'cust-horvat';
 
 // In-memory approvals + appointments for the demo (reset on reload).
-let approvals = [
+let approvals: any[] = [
   {
     id: 'appr-1', workOrderId: 'wo-1002', workOrderNumber: '2026-1002', kind: 'additional_work',
     title: 'Additional work found during 120,000 km service',
@@ -124,3 +124,4 @@ export async function portalDemoRequest<T>(call: Call): Promise<T> {
 
   return ok((method === 'GET' ? [] : { ok: true }) as any);
 }
+

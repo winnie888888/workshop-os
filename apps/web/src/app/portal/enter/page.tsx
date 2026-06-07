@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { portalApi, setPortalSession, PortalApiError } from '@/lib/portal-api';
 import { PortalButton } from '../portal-ui';
@@ -20,7 +20,7 @@ import { PortalButton } from '../portal-ui';
  * For the tenant, we read it from the link (?t=) when present, falling back to a
  * configured default — a real deployment serves one workshop's portal per host.
  */
-export default function PortalEnter() {
+function PortalEnterInner() {
   const router = useRouter();
   const params = useSearchParams();
   const [state, setState] = useState<'idle' | 'verifying' | 'requesting' | 'sent' | 'error'>('idle');
@@ -114,3 +114,12 @@ export default function PortalEnter() {
     </div>
   );
 }
+
+export default function PortalEnter() {
+  return (
+    <Suspense fallback={null}>
+      <PortalEnterInner />
+    </Suspense>
+  );
+}
+

@@ -82,6 +82,7 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   const method = call.method.toUpperCase();
   const params = new URLSearchParams(query);
   const seg = path.split('/').filter(Boolean); // e.g. ['work-orders','wo-1001']
+  const body = call.body;
 
   const ok = <R>(v: R): Promise<R> => Promise.resolve(clone(v));
 
@@ -561,3 +562,4 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   // Default: empty-ish, never throw, so an untailored screen still renders.
   return ok((method === 'GET' ? [] : { ok: true }) as any);
 }
+

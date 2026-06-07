@@ -67,7 +67,7 @@ export default function InvoiceDetail() {
         </div>
       </Card>
 
-      {DEMO_MODE && <MinimaxSyncPanel invoiceNumber={inv.number} />}
+      {DEMO_MODE && inv.number && <MinimaxSyncPanel invoiceNumber={inv.number} />}
     </div>
   );
 }
@@ -128,3 +128,4 @@ function Row({ label, value, big }: { label: string; value: string; big?: boolea
     </div>
   );
 }
+
