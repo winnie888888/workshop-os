@@ -43,7 +43,10 @@ export default function InvoiceDetail() {
         <h1 className="num text-2xl font-extrabold tracking-tight text-ink">
           {inv.kind === 'credit_note' ? 'Dobropis' : 'Račun'} {inv.number}
         </h1>
-        <StatusChip tone={tone}>{invStatus(inv.status)}</StatusChip>
+        <div className="flex items-center gap-2">
+          <Link href={`/print/invoice/${id}`} target="_blank" className="inline-flex min-h-tap items-center rounded-tool border border-line px-3 text-sm font-semibold text-steel hover:border-brandring hover:text-brand">Natisni / PDF</Link>
+          <StatusChip tone={tone}>{invStatus(inv.status)}</StatusChip>
+        </div>
       </div>
 
       {company && (
