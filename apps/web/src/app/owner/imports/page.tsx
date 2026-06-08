@@ -8,6 +8,14 @@ import { demoStore } from '@/lib/demo-store';
 import { ENTITY_LIST, getSchema, planImport, ruleBasedMapper } from '@/lib/import-engine';
 import type { ColumnMapping, DryRunResult, RowOutcome, SourceTable } from '@/lib/import-engine';
 import { readFileToSourceTable } from '@/lib/import-file';
+import { canCommit, commitImport, type CommitResult } from '@/lib/import-sink';
+import Link from 'next/link';
+
+const VIEW_LINK: Record<string, { href: string; label: string }> = {
+  companies: { href: '/advisor/customers', label: 'Odpri stranke' },
+  products: { href: '/warehouse/items', label: 'Odpri zalogo' },
+  vehicles: { href: '/advisor/vehicles', label: 'Odpri vozila' },
+};
 
 /*
  * Uvoz podatkov — the wizard surface over the Universal Import Engine.
@@ -64,6 +72,8 @@ export default function ImportWizardPage() {
   const [mapping, setMapping] = useState<ColumnMapping[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [committed, setCommitted] = useState<CommitResult | null>(null);
+  const [committing, setCommitting] = useState(false);
 
   const schema = entity ? getSchema(entity) : undefined;
 
@@ -78,7 +88,14 @@ export default function ImportWizardPage() {
   const missingReq = schema ? schema.fields.filter((f) => f.required && !mappedKeys.has(f.key)).map((f) => f.label) : [];
 
   function reset() {
-    setStep(1); setEntity(null); setTable(null); setMapping([]); setError(null);
+    setStep(1); setEntity(null); setTable(null); setMapping([]); setError(null); setCommitted(null);
+  }
+
+  function doImport() {
+    if (!entity || !dry || !canCommit(entity) || dry.created + dry.updated === 0) return;
+    setCommitting(true);
+    try { setCommitted(commitImport(entity, dry)); }
+    finally { setCommitting(false); }
   }
 
   async function onFile(file: File | null | undefined) {
@@ -257,18 +274,50 @@ export default function ImportWizardPage() {
             {dry.rows.length > 300 && <div className="border-t border-line p-2 text-center text-xs text-muted">prikazanih prvih 300 od {dry.rows.length} vrstic</div>}
           </Card>
 
-          <div className="mt-5 rounded-card border border-line bg-surface2 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <Button tone="go" size="lg" disabled>Uvozi {dry.created + dry.updated} zapisov</Button>
-                <p className="mt-2 max-w-xl text-sm text-muted">Zapis v aplikacijo pride v naslednjem koraku (P1 korak 4). Ta pregled ničesar ne shrani — je varnostni korak: pokaže, kaj bo nastalo, posodobljeno ali preskočeno.</p>
-              </div>
-              <div className="flex gap-2">
-                <Button tone="neutral" onClick={() => setStep(3)}>Nazaj na preslikavo</Button>
-                <Button tone="neutral" onClick={reset}>Začni znova</Button>
+          {committed ? (
+            <div className="mt-5 rounded-card border border-go/30 bg-go/5 p-4">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-go/15 text-go">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M20 6L9 17l-5-5" /></svg>
+                </span>
+                <div className="min-w-0">
+                  <div className="font-semibold text-ink">Uvoženo · {committed.created} novih, {committed.updated} posodobljenih{committed.skipped > 0 ? `, ${committed.skipped} preskočenih` : ''}</div>
+                  <p className="mt-1 text-sm text-steel">Zapisi so shranjeni v skupno bazo in so zdaj vidni povsod v aplikaciji (sprejem, mehanik, skladišče …).</p>
+                  {committed.notes.map((n, i) => <p key={i} className="mt-1 text-sm text-hold">{n}</p>)}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {VIEW_LINK[committed.entity] && (
+                      <Link href={VIEW_LINK[committed.entity].href} className="inline-flex min-h-tap items-center rounded-tool bg-brand px-4 font-semibold text-white">{VIEW_LINK[committed.entity].label}</Link>
+                    )}
+                    <Button tone="neutral" onClick={reset}>Uvozi več</Button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-5 rounded-card border border-line bg-surface2 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  {canCommit(entity ?? '') ? (
+                    <>
+                      <Button tone="go" size="lg" disabled={committing || dry.created + dry.updated === 0} onClick={doImport}>
+                        {committing ? 'Uvažam…' : `Uvozi ${dry.created + dry.updated} zapisov`}
+                      </Button>
+                      <p className="mt-2 max-w-xl text-sm text-muted">Zapiše {dry.created} novih in {dry.updated} posodobljenih v skupno bazo. Preskočene in napačne vrstice se ne uvozijo.</p>
+                    </>
+                  ) : (
+                    <>
+                      <Button tone="go" size="lg" disabled>Uvozi</Button>
+                      <p className="mt-2 max-w-xl text-sm text-muted">Uvoz računov v bazo pride z računovodskim uvozom (prejeti računi, e-SLOG) v fazi P2. Tu deluje predogled; zapis za to entiteto še ni na voljo.</p>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button tone="neutral" onClick={() => setStep(3)}>Nazaj na preslikavo</Button>
+                  <Button tone="neutral" onClick={reset}>Začni znova</Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
