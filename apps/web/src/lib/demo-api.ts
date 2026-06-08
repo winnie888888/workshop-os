@@ -306,7 +306,7 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   if (seg[0] === 'reports' && seg[1] === 'work-orders' && (seg[3] === 'insights' || seg[3] === 'labour')) {
     return ok((demoInsight[seg[2] as keyof typeof demoInsight] ?? demoInsight['wo-1001']) as any);
   }
-  if (path === '/reports/ar-aging') return ok({ asOf: new Date().toISOString().slice(0, 10), buckets: { current: '0', d1_30: '0', d31_60: '0', d61_90: '0', d90_plus: '0', total: '46750' }, formatted: {} } as any);
+  if (path === '/reports/ar-aging') return ok({ asOf: new Date().toISOString().slice(0, 10), buckets: { current: '46750', d1_30: '0', d31_60: '0', d61_90: '0', d90_plus: '0', total: '46750' }, formatted: {} } as any);
   if (path === '/reports/revenue') return ok({ from: '2026-01-01', to: '2026-06-01', documents: 1, netMinor: '46750', vatMinor: '0', grossMinor: '46750', net: '€467.50', gross: '€467.50' } as any);
   if (path === '/reports/vat') return ok({ from: '2026-01-01', to: '2026-06-01', totalNetMinor: '46750', totalVatMinor: '10285', groups: [{ ratePct: '22', reverseCharge: false, net: '€467.50', vat: '€102.85' }, { ratePct: '0', reverseCharge: true, net: '€0.00', vat: '€0.00' }] } as any);
 
