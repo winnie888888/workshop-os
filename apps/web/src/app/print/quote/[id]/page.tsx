@@ -18,8 +18,8 @@ import { loadSettings } from '@/lib/workshop-settings';
 export default function QuotePrint() {
   const { id } = useParams<{ id: string }>();
   const { data: est } = useSWR(DEMO_MODE ? ['print-est', id] : null, () => api.estimates.get(id).catch(() => null));
-  const { data: customer } = useSWR(est?.customerId ? ['print-est-cust', est.customerId] : null, () => api.customers.get(est.customerId).catch(() => null));
-  const { data: vehicle } = useSWR(est?.vehicleId ? ['print-est-veh', est.vehicleId] : null, () => api.assets.get(est.vehicleId).catch(() => null));
+  const { data: customer } = useSWR(est?.customerId ? ['print-est-cust', est.customerId] : null, () => api.customers.get(est!.customerId).catch(() => null));
+  const { data: vehicle } = useSWR(est?.vehicleId ? ['print-est-veh', est.vehicleId] : null, () => api.assets.get(est!.vehicleId).catch(() => null));
   const [company, setCompany] = useState<{ name: string; address: string; vatId: string; iban: string } | null>(null);
   useEffect(() => { loadSettings().then((s) => setCompany(s.company)).catch(() => { /* ignore */ }); }, []);
 

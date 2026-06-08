@@ -37,7 +37,7 @@ function recapRows(inv: any): RecapRow[] {
 export default function InvoicePrint() {
   const { id } = useParams<{ id: string }>();
   const { data: inv } = useSWR(['print-inv', id], () => api.invoices.get(id));
-  const { data: customer } = useSWR(inv?.customerId ? ['print-inv-cust', inv.customerId] : null, () => api.customers.get(inv.customerId));
+  const { data: customer } = useSWR(inv?.customerId ? ['print-inv-cust', inv.customerId] : null, () => api.customers.get(inv!.customerId));
   const [company, setCompany] = useState<{ name: string; address: string; vatId: string; iban: string } | null>(null);
   useEffect(() => { loadSettings().then((s) => setCompany(s.company)).catch(() => { /* ignore */ }); }, []);
 
