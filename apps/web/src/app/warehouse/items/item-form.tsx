@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { readDefaultsSync } from '@/lib/workshop-settings';
 import { Button, Card, Spinner } from '@/components/ui';
 import { TextField, NumberField, SelectField, TextAreaField, CheckboxField } from '@/components/form';
+import { SI_VAT_OPTIONS } from '@/lib/format';
 
 /*
  * Skupni obrazec za artikel (ustvari + uredi). Cene se vnašajo v EUR in se ob
@@ -76,6 +77,10 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
     }
   }
 
+  const vatOptions = SI_VAT_OPTIONS.some((o) => o.value === vat)
+    ? SI_VAT_OPTIONS
+    : [...SI_VAT_OPTIONS, { value: vat, label: `${vat} % (obstoječa)` }];
+
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-4">
@@ -96,7 +101,7 @@ export function ItemForm({ mode, initial }: { mode: 'create' | 'edit'; initial?:
         <div className="grid gap-3 sm:grid-cols-3">
           <NumberField label="Prodajna cena (€)" value={priceEur} onChange={setPriceEur} hint="neto, brez DDV" />
           <NumberField label="Nabavna cena (€)" value={costEur} onChange={setCostEur} hint="za maržo in vrednost zaloge" />
-          <NumberField label="DDV %" value={vat} onChange={setVat} />
+          <SelectField label="DDV %" value={vat} onChange={setVat} options={vatOptions} />
         </div>
       </Card>
 

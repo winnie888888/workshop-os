@@ -88,3 +88,42 @@ export function docTotalsMinor(lines: Array<{ qty?: number; unitPriceMinor?: num
   }
   return { netMinor: net, vatMinor: vat, grossMinor: net + vat };
 }
+
+/** Slovenian statutory VAT rates (ZDDV-1): general 22 %, reduced 9,5 %, special 5 %. */
+export const SI_VAT_RATES = [22, 9.5, 5] as const;
+
+/** Select options for a VAT-rate field, incl. 0 % (exempt / reverse charge). */
+export const SI_VAT_OPTIONS: { value: string; label: string }[] = [
+  { value: '22', label: '22 % — splošna' },
+  { value: '9.5', label: '9,5 % — znižana' },
+  { value: '5', label: '5 % — posebna nižja' },
+  { value: '0', label: '0 % — oproščeno / obrnjeno breme' },
+];
+
+/** Format a VAT rate for display (9.5 → "9,5", 22 → "22"). */
+export function formatVatRate(rate: number): string {
+  return (rate % 1 === 0 ? String(rate) : rate.toFixed(1)).replace('.', ',');
+}
+
+/**
+ * Group document lines into a VAT recapitulation by rate — the per-rate
+ * base + VAT block that ZDDV-1 requires on an invoice when more than one rate
+ * applies. Summing vatMinor across rows equals docTotalsMinor's vatMinor
+ * (both round VAT per line), so the recap reconciles with the document total.
+ */
+export function vatBreakdownMinor(
+  lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number }> = [],
+): Array<{ ratePct: number; netMinor: number; vatMinor: number; grossMinor: number }> {
+  const map = new Map<number, { netMinor: number; vatMinor: number }>();
+  for (const l of lines) {
+    const rate = l.vatRatePct || 0;
+    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0));
+    const cur = map.get(rate) || { netMinor: 0, vatMinor: 0 };
+    cur.netMinor += lineNet;
+    cur.vatMinor += Math.round((lineNet * rate) / 100);
+    map.set(rate, cur);
+  }
+  return [...map.entries()]
+    .map(([ratePct, v]) => ({ ratePct, netMinor: v.netMinor, vatMinor: v.vatMinor, grossMinor: v.netMinor + v.vatMinor }))
+    .sort((a, b) => b.ratePct - a.ratePct);
+}

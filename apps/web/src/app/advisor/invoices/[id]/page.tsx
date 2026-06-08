@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { formatMoneyMinor } from '@/lib/format';
+import { formatMoneyMinor, formatVatRate, vatBreakdownMinor } from '@/lib/format';
 import { Card, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { DEMO_MODE } from '@/lib/demo';
 
@@ -29,6 +29,7 @@ export default function InvoiceDetail() {
   if (!inv) return <Card className="p-6 text-muted">Računa ni mogoče najti.</Card>;
 
   const tone = inv.status === 'paid' ? 'go' : inv.status === 'overdue' ? 'stop' : inv.status === 'credited' ? 'hold' : 'info';
+  const vatRows = vatBreakdownMinor((inv.lines ?? []).map((l: any) => ({ qty: 1, unitPriceMinor: Number(l.net_minor) || 0, vatRatePct: Number(l.vat_rate_pct) || 0 })));
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
@@ -62,6 +63,26 @@ export default function InvoiceDetail() {
             ))}
           </tbody>
         </table>
+
+        {vatRows.length > 0 && (
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="mb-1 text-xs font-bold uppercase tracking-wide text-muted2">Rekapitulacija DDV</div>
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted2">
+                <tr><th className="py-1 font-semibold">Stopnja</th><th className="py-1 text-right font-semibold">Osnova</th><th className="py-1 text-right font-semibold">DDV</th></tr>
+              </thead>
+              <tbody>
+                {vatRows.map((b) => (
+                  <tr key={b.ratePct} className="border-t border-line">
+                    <td className="num py-1 text-ink">{formatVatRate(b.ratePct)} %</td>
+                    <td className="num py-1 text-right text-ink">{formatMoneyMinor(b.netMinor, inv.currency)}</td>
+                    <td className="num py-1 text-right text-ink">{formatMoneyMinor(b.vatMinor, inv.currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="mt-4 border-t border-line pt-3">
           <Row label="Neto" value={formatMoneyMinor(inv.totalNetMinor, inv.currency)} />
