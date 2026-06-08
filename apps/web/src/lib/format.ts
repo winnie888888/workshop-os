@@ -79,10 +79,10 @@ export function estimateStatusTone(s: string): 'go' | 'hold' | 'stop' | 'info' |
 }
 
 /** Sum DocLine[] into net / VAT / gross minor units (single source for document totals in the UI). */
-export function docTotalsMinor(lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number }> = []): { netMinor: number; vatMinor: number; grossMinor: number } {
+export function docTotalsMinor(lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number; discountPct?: number }> = []): { netMinor: number; vatMinor: number; grossMinor: number } {
   let net = 0, vat = 0;
   for (const l of lines) {
-    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0));
+    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0) * (1 - (l.discountPct || 0) / 100));
     net += lineNet;
     vat += Math.round((lineNet * (l.vatRatePct || 0)) / 100);
   }
@@ -112,12 +112,12 @@ export function formatVatRate(rate: number): string {
  * (both round VAT per line), so the recap reconciles with the document total.
  */
 export function vatBreakdownMinor(
-  lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number }> = [],
+  lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number; discountPct?: number }> = [],
 ): Array<{ ratePct: number; netMinor: number; vatMinor: number; grossMinor: number }> {
   const map = new Map<number, { netMinor: number; vatMinor: number }>();
   for (const l of lines) {
     const rate = l.vatRatePct || 0;
-    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0));
+    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0) * (1 - (l.discountPct || 0) / 100));
     const cur = map.get(rate) || { netMinor: 0, vatMinor: 0 };
     cur.netMinor += lineNet;
     cur.vatMinor += Math.round((lineNet * rate) / 100);

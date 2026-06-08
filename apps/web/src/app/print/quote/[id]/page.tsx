@@ -85,7 +85,7 @@ export default function QuotePrint() {
           <table className="mt-6 w-full border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-ink text-left text-xs uppercase text-muted2">
-                <th className="py-2">Opis</th><th className="py-2 text-right">Količina</th><th className="py-2 text-right">Cena</th><th className="py-2 text-right">DDV %</th><th className="py-2 text-right">Neto</th>
+                <th className="py-2">Opis</th><th className="py-2 text-right">Količina</th><th className="py-2 text-right">Cena</th><th className="py-2 text-right">Popust</th><th className="py-2 text-right">DDV %</th><th className="py-2 text-right">Neto</th>
               </tr>
             </thead>
             <tbody>
@@ -94,8 +94,9 @@ export default function QuotePrint() {
                   <td className="py-2">{l.description ?? l.name ?? ''}</td>
                   <td className="num py-2 text-right">{l.qty ?? ''}</td>
                   <td className="num py-2 text-right">{formatMoneyMinor(String(l.unitPriceMinor ?? '0'), cur)}</td>
+                  <td className="num py-2 text-right">{(l.discountPct || 0) > 0 ? `−${formatVatRate(l.discountPct)} %` : '—'}</td>
                   <td className="num py-2 text-right">{String(l.vatRatePct ?? '')}%</td>
-                  <td className="num py-2 text-right">{formatMoneyMinor(String(Math.round((l.qty || 0) * (l.unitPriceMinor || 0))), cur)}</td>
+                  <td className="num py-2 text-right">{formatMoneyMinor(String(Math.round((l.qty || 0) * (l.unitPriceMinor || 0) * (1 - (l.discountPct || 0) / 100))), cur)}</td>
                 </tr>
               ))}
             </tbody>

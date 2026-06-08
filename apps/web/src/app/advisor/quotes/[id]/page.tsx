@@ -101,7 +101,7 @@ export default function QuoteDetailPage() {
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
-            <tr><th className="p-3 font-bold">Vrsta</th><th className="p-3 font-bold">Opis</th><th className="p-3 text-right font-bold">Kol.</th><th className="p-3 text-right font-bold">Cena</th><th className="p-3 text-right font-bold">DDV</th><th className="p-3 text-right font-bold">Neto</th></tr>
+            <tr><th className="p-3 font-bold">Vrsta</th><th className="p-3 font-bold">Opis</th><th className="p-3 text-right font-bold">Kol.</th><th className="p-3 text-right font-bold">Cena</th><th className="p-3 text-right font-bold">Popust</th><th className="p-3 text-right font-bold">DDV</th><th className="p-3 text-right font-bold">Neto</th></tr>
           </thead>
           <tbody>
             {(est.lines as any[] ?? []).map((l) => (
@@ -110,12 +110,13 @@ export default function QuoteDetailPage() {
                 <td className="p-3 text-ink">{l.description}</td>
                 <td className="num p-3 text-right text-steel">{l.qty}</td>
                 <td className="num p-3 text-right text-steel">{formatMoneyMinor(String(l.unitPriceMinor))}</td>
+                <td className="num p-3 text-right text-steel">{(l.discountPct || 0) > 0 ? `−${formatVatRate(l.discountPct)} %` : '—'}</td>
                 <td className="num p-3 text-right text-muted">{l.vatRatePct}%</td>
-                <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(String(Math.round((l.qty || 0) * (l.unitPriceMinor || 0))))}</td>
+                <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(String(Math.round((l.qty || 0) * (l.unitPriceMinor || 0) * (1 - (l.discountPct || 0) / 100))))}</td>
               </tr>
             ))}
             {(!est.lines || est.lines.length === 0) && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted">Predračun nima postavk.</td></tr>
+              <tr><td colSpan={7} className="p-8 text-center text-muted">Predračun nima postavk.</td></tr>
             )}
           </tbody>
         </table>

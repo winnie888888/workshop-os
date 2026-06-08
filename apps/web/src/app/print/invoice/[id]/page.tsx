@@ -99,7 +99,7 @@ export default function InvoicePrint() {
           <table className="mt-6 w-full border-collapse text-sm">
             <thead>
               <tr className="border-b-2 border-ink text-left text-xs uppercase text-muted2">
-                <th className="py-2">Opis</th><th className="py-2 text-right">Količina</th><th className="py-2 text-right">Cena</th><th className="py-2 text-right">DDV %</th><th className="py-2 text-right">Neto</th>
+                <th className="py-2">Opis</th><th className="py-2 text-right">Količina</th><th className="py-2 text-right">Cena</th><th className="py-2 text-right">Popust</th><th className="py-2 text-right">DDV %</th><th className="py-2 text-right">Neto</th>
               </tr>
             </thead>
             <tbody>
@@ -108,6 +108,7 @@ export default function InvoicePrint() {
                   <td className="py-2">{l.description}</td>
                   <td className="num py-2 text-right">{l.qty ?? l.quantity ?? ''}</td>
                   <td className="num py-2 text-right">{formatMoneyMinor(String(l.unit_price_minor ?? l.unitPriceMinor ?? '0'), cur)}</td>
+                  <td className="num py-2 text-right">{Number(l.discount_pct ?? l.discountPct ?? 0) > 0 ? `−${formatVatRate(Number(l.discount_pct ?? l.discountPct))} %` : '—'}</td>
                   <td className="num py-2 text-right">{String(l.vat_rate_pct ?? l.vatRatePct ?? '')}%</td>
                   <td className="num py-2 text-right">{formatMoneyMinor(String(l.net_minor ?? '0'), cur)}</td>
                 </tr>

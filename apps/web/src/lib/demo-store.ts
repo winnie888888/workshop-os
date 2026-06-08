@@ -42,7 +42,7 @@ export interface Vehicle {
 
 export interface DocLine {
   id: string; kind: LineKind; description: string;
-  qty: number; unitPriceMinor: number; vatRatePct: number;
+  qty: number; unitPriceMinor: number; vatRatePct: number; discountPct?: number;
 }
 
 export interface WorkOrder {

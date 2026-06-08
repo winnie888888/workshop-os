@@ -17,7 +17,7 @@ import { SelectField } from '@/components/form';
  * a free part, or pull a part straight from the catalogue. Defaults (VAT, rate)
  * come from Settings via readDefaultsSync, so this matches the work-order editor.
  */
-type Row = { id: string; kind: 'labour' | 'part'; description: string; qty: string; priceEur: string; vat: string };
+type Row = { id: string; kind: 'labour' | 'part'; description: string; qty: string; priceEur: string; vat: string; discountPct: string };
 const uid = () => Math.random().toString(36).slice(2, 9);
 const eurToMinor = (s: string) => Math.round((parseFloat(String(s).replace(',', '.')) || 0) * 100);
 const inputCls = 'w-full rounded-tool border border-line bg-surface px-2.5 py-1.5 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brandring';
@@ -45,13 +45,13 @@ export default function NewQuotePage() {
     );
   }
 
-  const addLabour = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'labour', description: 'Delo', qty: '1', priceEur: d.labourRateEur, vat: d.vatRatePct }]); };
-  const addPart = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'part', description: '', qty: '1', priceEur: '0.00', vat: d.vatRatePct }]); };
-  const addFromCatalogue = (it: any) => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'part', description: it.name, qty: '1', priceEur: ((Number(it.priceMinor) || 0) / 100).toFixed(2), vat: String(it.vatRatePct ?? d.vatRatePct) }]); setQ(''); };
+  const addLabour = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'labour', description: 'Delo', qty: '1', priceEur: d.labourRateEur, vat: d.vatRatePct, discountPct: '0' }]); };
+  const addPart = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'part', description: '', qty: '1', priceEur: '0.00', vat: d.vatRatePct, discountPct: '0' }]); };
+  const addFromCatalogue = (it: any) => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'part', description: it.name, qty: '1', priceEur: ((Number(it.priceMinor) || 0) / 100).toFixed(2), vat: String(it.vatRatePct ?? d.vatRatePct), discountPct: '0' }]); setQ(''); };
   const setRow = (id: string, patch: Partial<Row>) => setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   const removeRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id));
 
-  const totals = docTotalsMinor(rows.map((r) => ({ qty: parseFloat(r.qty) || 0, unitPriceMinor: eurToMinor(r.priceEur), vatRatePct: parseFloat(r.vat) || 0 })));
+  const totals = docTotalsMinor(rows.map((r) => ({ qty: parseFloat(r.qty) || 0, unitPriceMinor: eurToMinor(r.priceEur), vatRatePct: parseFloat(r.vat) || 0, discountPct: parseFloat(r.discountPct) || 0 })));
 
   const customerOpts = [{ value: '', label: '— izberi stranko —' }, ...((customers as any[] | undefined) ?? []).map((c) => ({ value: c.id, label: c.name }))];
   const vehicleOpts = [{ value: '', label: customerId ? '— brez vozila —' : 'najprej izberi stranko' }, ...((vehicles as any[] | undefined) ?? []).map((v) => ({ value: v.id, label: [v.plate, [v.make, v.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || v.id }))];
@@ -61,7 +61,7 @@ export default function NewQuotePage() {
     if (rows.length === 0) { setError('Dodaj vsaj eno postavko.'); return; }
     setBusy(true); setError(null);
     try {
-      const lines = rows.map((r) => ({ id: uid(), kind: r.kind, description: r.description.trim() || '(brez opisa)', qty: parseFloat(r.qty) || 0, unitPriceMinor: eurToMinor(r.priceEur), vatRatePct: parseFloat(r.vat) || 22 }));
+      const lines = rows.map((r) => ({ id: uid(), kind: r.kind, description: r.description.trim() || '(brez opisa)', qty: parseFloat(r.qty) || 0, unitPriceMinor: eurToMinor(r.priceEur), vatRatePct: parseFloat(r.vat) || 22, discountPct: parseFloat(r.discountPct) || 0 }));
       const est = await api.estimates.create({ customerId, vehicleId: vehicleId || undefined, lines });
       router.push(`/advisor/quotes/${est.id}`);
     } catch { setError('Predračuna ni bilo mogoče shraniti.'); setBusy(false); }
@@ -96,7 +96,7 @@ export default function NewQuotePage() {
         ) : (
           <div className="flex flex-col gap-2">
             {rows.map((r) => {
-              const lineNet = (parseFloat(r.qty) || 0) * eurToMinor(r.priceEur);
+              const lineNet = (parseFloat(r.qty) || 0) * eurToMinor(r.priceEur) * (1 - (parseFloat(r.discountPct) || 0) / 100);
               return (
                 <div key={r.id} className="rounded-tool border border-line p-2.5">
                   <div className="mb-2 flex items-center gap-2">
@@ -104,11 +104,13 @@ export default function NewQuotePage() {
                     <input value={r.description} onChange={(e) => setRow(r.id, { description: e.target.value })} placeholder={r.kind === 'labour' ? 'npr. Pregled zavor' : 'npr. Zavorne ploščice'} className={inputCls} />
                     <button onClick={() => removeRow(r.id)} className="px-1 text-sm font-semibold text-stop">×</button>
                   </div>
-                  <div className="grid grid-cols-4 items-end gap-2">
+                  <div className="grid grid-cols-5 items-end gap-2">
                     <label className="block"><span className="text-[0.6rem] uppercase text-muted2">{r.kind === 'labour' ? 'Ure' : 'Količina'}</span>
                       <input value={r.qty} inputMode="decimal" onChange={(e) => setRow(r.id, { qty: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') })} className={`num ${inputCls} text-right`} /></label>
                     <label className="block"><span className="text-[0.6rem] uppercase text-muted2">{r.kind === 'labour' ? '€/h' : '€/EM'}</span>
                       <input value={r.priceEur} inputMode="decimal" onChange={(e) => setRow(r.id, { priceEur: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') })} className={`num ${inputCls} text-right`} /></label>
+                    <label className="block"><span className="text-[0.6rem] uppercase text-muted2">Popust %</span>
+                      <input value={r.discountPct} inputMode="decimal" onChange={(e: any) => setRow(r.id, { discountPct: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') })} className={`num ${inputCls} text-right`} /></label>
                     <label className="block"><span className="text-[0.6rem] uppercase text-muted2">DDV %</span>
                       <select value={r.vat} onChange={(e: any) => setRow(r.id, { vat: e.target.value })} className={`num ${inputCls} text-right`}>
                         {!['22', '9.5', '5', '0'].includes(r.vat) && <option value={r.vat}>{r.vat} %</option>}
