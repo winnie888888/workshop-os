@@ -1,16 +1,7 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
   "/page": "app/page.js",
   "/portal/page": "app/portal/page.js",
-  "/portal/appointments/page": "app/portal/appointments/page.js",
-  "/portal/history/page": "app/portal/history/page.js",
-  "/advisor/page": "app/advisor/page.js",
-  "/mechanic/page": "app/mechanic/page.js",
-  "/advisor/vehicles/page": "app/advisor/vehicles/page.js",
-  "/advisor/work-orders/page": "app/advisor/work-orders/page.js",
-  "/advisor/invoices/page": "app/advisor/invoices/page.js",
-  "/advisor/calendar/page": "app/advisor/calendar/page.js",
   "/advisor/messages/page": "app/advisor/messages/page.js",
-  "/advisor/reports/page": "app/advisor/reports/page.js"
+  "/advisor/page": "app/advisor/page.js",
+  "/portal/history/page": "app/portal/history/page.js"
 }

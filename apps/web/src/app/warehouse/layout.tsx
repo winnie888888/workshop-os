@@ -33,7 +33,9 @@ type NavItem = { href?: string; label: string; icon: string; soon?: boolean };
 const NAV: NavItem[] = [
   { href: '/warehouse', label: 'Pregled', icon: 'overview' },
   { href: '/warehouse/receiving', label: 'Prejem blaga', icon: 'receive' },
+  { href: '/warehouse/ai-import', label: 'AI uvoz', icon: 'receive' },
   { href: '/warehouse/items', label: 'Postavke', icon: 'items' },
+  { href: '/warehouse/presets', label: 'Paketi', icon: 'items' },
   { href: '/warehouse/movements', label: 'Premiki', icon: 'moves' },
   { href: '/warehouse/stocktake', label: 'Inventura', icon: 'count' },
   { href: '/warehouse/suppliers', label: 'Dobavitelji', icon: 'suppliers' },
