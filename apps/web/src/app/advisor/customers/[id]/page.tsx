@@ -8,6 +8,20 @@ import { api } from '@/lib/api';
 import { DEMO_MODE } from '@/lib/demo';
 import { displayPlate, formatMoneyMinor, statusLabel, statusTone, estimateStatusLabel, estimateStatusTone, docTotalsMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
+import { downloadJson, dateStamp } from '@/lib/data-export';
+
+/** Gather everything held about a customer for a GDPR access/portability export (Art. 15/20). */
+async function gatherCustomerExport(id: string) {
+  const [customer, vehicles, workOrders, invoices, estimates, appointments] = await Promise.all([
+    api.customers.get(id),
+    api.assets.list(id).catch(() => []),
+    api.workOrders.list({ customerId: id }).catch(() => []),
+    api.invoices.byCustomer(id).catch(() => []),
+    api.estimates.list({ customerId: id }).catch(() => []),
+    api.appointments.list({ customerId: id }).catch(() => []),
+  ]);
+  return { exportedAt: new Date().toISOString(), customer, vehicles, workOrders, invoices, estimates, appointments };
+}
 
 /*
  * The customer hub — ties the customer to their vehicles, outstanding balance,
@@ -22,6 +36,18 @@ export default function CustomerHub() {
   const { data: wos } = useSWR(['cust-wos', id], () => api.workOrders.list({ customerId: id }).catch(() => []));
   const { data: invoices } = useSWR(['cust-invoices', id], () => api.invoices.byCustomer(id).catch(() => []));
   const { data: ar } = useSWR(['cust-ar', id], () => api.customerReceivables(id).catch(() => null));
+  const [exporting, setExporting] = useState(false);
+
+  async function exportGdpr() {
+    setExporting(true);
+    try {
+      const data = await gatherCustomerExport(id);
+      const safe = (((customer?.name as string) || 'stranka')).replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+      downloadJson(`gdpr_${safe}_${dateStamp()}.json`, data);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   if (!customer) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
 
@@ -41,6 +67,7 @@ export default function CustomerHub() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button tone="neutral" onClick={exportGdpr} disabled={exporting}>{exporting ? 'Izvažam…' : 'Izvozi (GDPR)'}</Button>
           <Link href={`/advisor/customers/${id}/edit`}><Button tone="neutral">Uredi</Button></Link>
           <Link href={`/advisor/work-orders/new?customerId=${id}`}><Button tone="info">+ Nov nalog</Button></Link>
         </div>
