@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { DEMO_MODE } from '@/lib/demo';
-import { formatMoneyMinor, estimateStatusLabel, estimateStatusTone, docTotalsMinor, displayPlate } from '@/lib/format';
+import { formatMoneyMinor, estimateStatusLabel, estimateStatusTone, docTotalsMinor, displayPlate, vatBreakdownMinor, formatVatRate } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner, ProblemBanner, StatusChip } from '@/components/ui';
 
 /*
@@ -45,6 +45,7 @@ export default function QuoteDetailPage() {
   if (!est || !est.id) return <Card className="p-6 text-muted">Predračun ni najden.</Card>;
 
   const totals = docTotalsMinor(est.lines);
+  const vatRows = vatBreakdownMinor((est.lines as any[]) ?? []);
   const status: string = est.status;
 
   async function setStatus(next: string) {
@@ -117,6 +118,14 @@ export default function QuoteDetailPage() {
             )}
           </tbody>
         </table>
+        {vatRows.length > 1 && (
+          <div className="flex flex-col items-end gap-0.5 border-t border-line bg-surface2 px-4 pt-3 text-xs text-muted">
+            <span className="font-semibold uppercase tracking-wide text-muted2">Rekapitulacija DDV</span>
+            {vatRows.map((b) => (
+              <span key={b.ratePct} className="num">{formatVatRate(b.ratePct)} %: osnova {formatMoneyMinor(String(b.netMinor))} · DDV {formatMoneyMinor(String(b.vatMinor))}</span>
+            ))}
+          </div>
+        )}
         <div className="flex items-center justify-end gap-6 border-t border-line bg-surface2 p-4 text-sm">
           <span className="text-muted">Neto <span className="num font-semibold text-ink">{formatMoneyMinor(String(totals.netMinor))}</span></span>
           <span className="text-muted">DDV <span className="num font-semibold text-ink">{formatMoneyMinor(String(totals.vatMinor))}</span></span>

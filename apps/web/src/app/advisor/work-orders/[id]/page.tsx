@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api, ApiError, type WorkOrderDetail, type WorkOrderLine, type WorkOrderStatus } from '@/lib/api';
-import { formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
+import { formatMoneyMinor, statusLabel, statusTone, vatBreakdownMinor, formatVatRate } from '@/lib/format';
 import { readDefaultsSync } from '@/lib/workshop-settings';
 import { DEMO_MODE } from '@/lib/demo';
 import { Button, Card, ProblemBanner, SoftChip, Spinner, StatusChip } from '@/components/ui';
@@ -342,6 +342,17 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
           )}
         </tbody>
         <tfoot className="border-t border-line bg-surface2">
+          {(() => {
+            const vatRows = vatBreakdownMinor((wo.lines ?? []).map((l: any) => ({ qty: 1, unitPriceMinor: Number(l.netMinor) || 0, vatRatePct: Number(l.vatRatePct) || 0 })));
+            return vatRows.length > 1 ? vatRows.map((b) => (
+              <tr key={`vr${b.ratePct}`} className="text-xs text-muted">
+                <td className="px-3 pt-2 text-right" colSpan={5}>DDV {formatVatRate(b.ratePct)} % — osnova</td>
+                <td className="px-3 pt-2 text-right font-mono">{formatMoneyMinor(b.netMinor, wo.currency)}</td>
+                <td className="px-3 pt-2 text-right font-mono">{formatMoneyMinor(b.vatMinor, wo.currency)}</td>
+                <td></td>
+              </tr>
+            )) : null;
+          })()}
           <tr className="font-bold">
             <td className="p-3" colSpan={5}>Vsote</td>
             <td className="p-3 text-right font-mono">{formatMoneyMinor(wo.totalNetMinor, wo.currency)}</td>

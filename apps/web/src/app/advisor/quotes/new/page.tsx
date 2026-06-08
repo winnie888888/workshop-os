@@ -110,7 +110,13 @@ export default function NewQuotePage() {
                     <label className="block"><span className="text-[0.6rem] uppercase text-muted2">{r.kind === 'labour' ? '€/h' : '€/EM'}</span>
                       <input value={r.priceEur} inputMode="decimal" onChange={(e) => setRow(r.id, { priceEur: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') })} className={`num ${inputCls} text-right`} /></label>
                     <label className="block"><span className="text-[0.6rem] uppercase text-muted2">DDV %</span>
-                      <input value={r.vat} inputMode="decimal" onChange={(e) => setRow(r.id, { vat: e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.') })} className={`num ${inputCls} text-right`} /></label>
+                      <select value={r.vat} onChange={(e: any) => setRow(r.id, { vat: e.target.value })} className={`num ${inputCls} text-right`}>
+                        {!['22', '9.5', '5', '0'].includes(r.vat) && <option value={r.vat}>{r.vat} %</option>}
+                        <option value="22">22 %</option>
+                        <option value="9.5">9,5 %</option>
+                        <option value="5">5 %</option>
+                        <option value="0">0 %</option>
+                      </select></label>
                     <div className="pb-1.5 text-right text-sm"><span className="text-[0.6rem] uppercase text-muted2">Neto</span><div className="num font-semibold text-ink">{formatMoneyMinor(String(Math.round(lineNet)))}</div></div>
                   </div>
                 </div>
