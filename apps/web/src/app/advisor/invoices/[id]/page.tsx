@@ -122,8 +122,10 @@ export default function InvoiceDetail() {
           <Row label="Skupaj" value={formatMoneyMinor(inv.totalGrossMinor, inv.currency)} big />
           <Row label="Plačano" value={formatMoneyMinor(inv.paidMinor, inv.currency)} />
         </div>
-        <div className="num mt-3 flex justify-between text-sm text-muted">
-          <span>Izdano {inv.issueDate ?? '—'}</span><span>Zapadlost {inv.dueDate ?? '—'}</span>
+        <div className="num mt-3 flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm text-muted">
+          <span>Izdano {inv.issueDate ?? '—'}</span>
+          <span>Dobava/storitev {inv.serviceDate ?? inv.deliveryDate ?? inv.issueDate ?? '—'}</span>
+          <span>Zapadlost {inv.dueDate ?? '—'}</span>
         </div>
       </Card>
 

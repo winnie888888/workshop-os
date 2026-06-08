@@ -80,6 +80,7 @@ export default function QuoteDetailPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-extrabold tracking-tight text-ink">Predračun <span className="num">{est.number ?? ''}</span></h1>
+        <Link href={`/print/quote/${id}`} target="_blank" className="inline-flex min-h-tap items-center rounded-tool border border-line px-3 text-sm font-semibold text-steel hover:border-brandring hover:text-brand">Natisni / PDF</Link>
         <StatusChip tone={estimateStatusTone(status)}>{estimateStatusLabel(status)}</StatusChip>
       </div>
 

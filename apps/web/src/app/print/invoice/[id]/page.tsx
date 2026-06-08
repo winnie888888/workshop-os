@@ -74,6 +74,7 @@ export default function InvoicePrint() {
             <div className="text-xl font-extrabold tracking-tight">{inv.kind === 'credit_note' ? 'Dobropis' : 'Račun'}</div>
             <div className="num text-lg font-bold">{inv.number}</div>
             <div className="num mt-1 text-steel">Izdano: {inv.issueDate ?? '—'}</div>
+            <div className="num text-steel">Dobava / storitev: {inv.serviceDate ?? inv.deliveryDate ?? inv.issueDate ?? '—'}</div>
             <div className="num text-steel">Zapadlost: {inv.dueDate ?? '—'}</div>
           </div>
         </div>
@@ -87,7 +88,12 @@ export default function InvoicePrint() {
           {customer?.vatId && <div className="num text-steel">ID za DDV: {customer.vatId}</div>}
         </div>
 
-        {inv.vatNote && <div className="mt-4 text-xs text-steel">{inv.vatNote}</div>}
+        {inv.reverseCharge && (
+          <div className="mt-4 rounded border border-line bg-floor px-3 py-2 text-xs">
+            <span className="font-semibold text-ink">Obrnjena davčna obveznost</span> — {String(inv.vatTreatment ?? '').includes('eu') ? 'čl. 196 Direktive 2006/112/ES (DDV obračuna prejemnik).' : '76.a člen ZDDV-1 (DDV obračuna prejemnik).'}
+          </div>
+        )}
+        {inv.vatNote && <div className="mt-2 text-xs text-steel">{inv.vatNote}</div>}
 
         {Array.isArray(inv.lines) && inv.lines.length > 0 && (
           <table className="mt-6 w-full border-collapse text-sm">
