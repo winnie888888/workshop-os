@@ -84,8 +84,8 @@ const NAV: NavItem[] = [
   { href: '/portal/invoices', label: 'Računi', icon: 'invoices' },
   { href: '/portal/history', label: 'Zgodovina', icon: 'history' },
   { href: '/portal/appointments', label: 'Najava servisa', icon: 'book' },
-  { label: 'Dokumenti', icon: 'docs', soon: true },
-  { label: 'Sporočila', icon: 'messages', soon: true },
+  { href: '/portal/documents', label: 'Dokumenti', icon: 'docs' },
+  { href: '/portal/messages', label: 'Sporočila', icon: 'messages' },
 ];
 
 function Rail({ onLogout }: { onLogout: () => void }) {
@@ -96,8 +96,11 @@ function Rail({ onLogout }: { onLogout: () => void }) {
   return (
     <aside className="hidden flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext lg:flex">
       <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
-        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 object-contain" />
-        <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
+        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 flex-none object-contain" />
+        <div className="leading-tight">
+          <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
+          <div className="text-[0.7rem] font-medium text-sidebartext">Portal</div>
+        </div>
       </div>
       {NAV.map((n) => {
         const Ic = I[n.icon];
@@ -112,10 +115,9 @@ function Rail({ onLogout }: { onLogout: () => void }) {
         const active = n.href === '/portal' ? path === n.href : path.startsWith(n.href);
         return (
           <Link key={n.href} href={n.href}
-            className={`relative flex items-center gap-3 rounded-tool px-3 py-2.5 font-semibold transition
-              ${active ? 'bg-sidebar2 text-white' : 'text-sidebartext hover:bg-white/5 hover:text-white'}`}>
-            {active && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-brand" />}
-            <Ic className="h-[18px] w-[18px]" />{n.label}
+            className={`flex items-center gap-3 rounded-tool px-3 py-2.5 font-semibold transition
+              ${active ? 'bg-brand text-white shadow-tool' : 'text-sidebartext hover:bg-white/5 hover:text-white'}`}>
+            <Ic className="h-[18px] w-[18px] flex-none" /><span className="flex-1">{n.label}</span>
           </Link>
         );
       })}

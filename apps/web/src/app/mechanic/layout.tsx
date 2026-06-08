@@ -61,7 +61,8 @@ function BottomNav() {
         const active = t.match(pathname);
         return (
           <Link key={t.href} href={t.href}
-            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-bold transition ${active ? 'text-white' : 'text-white/45'}`}>
+            className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.7rem] font-bold transition ${active ? 'text-white' : 'text-white/45'}`}>
+            {active && <span className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-brand" />}
             {t.icon('h-6 w-6')}
             {t.label}
           </Link>

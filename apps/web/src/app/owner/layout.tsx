@@ -2,18 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { getSession } from '@/lib/session';
+import { loadSettings } from '@/lib/workshop-settings';
 
 /*
- * Owner shell — dark navy navigation rail (design spec, image 2) with the brand
- * mark, the owner's navigation, and the signed-in owner pinned at the bottom.
- * The content area is light; pages render their own header + date range.
+ * Owner shell — redesigned to the A-SPRINT spec, matching the advisor & warehouse
+ * shells: dark navy rail (brand mark + subtitle, solid-fill active pill, a
+ * "connected" status card and the workshop account), a light top bar with a
+ * section breadcrumb + signed-in owner, a light content area, and a footer.
  */
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid min-h-screen grid-cols-[15rem_1fr] bg-floor">
+    <div className="grid min-h-screen grid-cols-[15.5rem_1fr] bg-floor">
       <Rail />
-      <main className="min-w-0 p-6">{children}</main>
+      <div className="flex min-w-0 flex-col">
+        <TopBar />
+        <main className="min-w-0 flex-1 p-6">{children}</main>
+        <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
+          A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
+        </footer>
+      </div>
     </div>
   );
 }
@@ -32,7 +41,7 @@ const I: Record<string, Icon> = {
   settings: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15H4.5a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 6 9.6l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 11 4.6V4.5a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 18 6l.06-.06a2 2 0 1 1 2.83 2.83L20.4 8.8A1.65 1.65 0 0 0 19.4 11h.1a2 2 0 1 1 0 4h-.1z"/></svg>),
 };
 
-type NavItem = { href?: string; label: string; icon: string; soon?: boolean };
+type NavItem = { href: string; label: string; icon: string };
 const NAV: NavItem[] = [
   { href: '/owner', label: 'Nadzorna plošča', icon: 'dashboard' },
   { href: '/owner/profitability', label: 'Profitabilnost', icon: 'profit' },
@@ -46,50 +55,92 @@ const NAV: NavItem[] = [
   { href: '/owner/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 
+function activeItem(path: string): NavItem | undefined {
+  return NAV.find((n) => (n.href === '/owner' ? path === n.href : path.startsWith(n.href)));
+}
+
 function Rail() {
   const path = usePathname() ?? '/owner';
+  const [company, setCompany] = useState('');
+  useEffect(() => {
+    let alive = true;
+    loadSettings().then((s) => { if (alive) setCompany(s.company?.name ?? ''); }).catch(() => { /* ignore */ });
+    return () => { alive = false; };
+  }, []);
+
+  return (
+    <aside className="flex flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext">
+      <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
+        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 flex-none object-contain" />
+        <div className="leading-tight">
+          <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
+          <div className="text-[0.7rem] font-medium text-sidebartext">Operativni OS</div>
+        </div>
+      </div>
+
+      {NAV.map((n) => {
+        const Ic = I[n.icon];
+        const active = n.href === '/owner' ? path === n.href : path.startsWith(n.href);
+        return (
+          <Link key={n.href} href={n.href}
+            className={`flex items-center gap-3 rounded-tool px-3 py-2.5 font-semibold transition
+              ${active ? 'bg-brand text-white shadow-tool' : 'text-sidebartext hover:bg-white/5 hover:text-white'}`}>
+            <Ic className="h-[18px] w-[18px] flex-none" />
+            <span className="flex-1">{n.label}</span>
+          </Link>
+        );
+      })}
+
+      <Link href="/" className="relative mt-auto overflow-hidden rounded-card bg-sidebar2 px-3 py-3 transition hover:brightness-110">
+        <div className="relative z-10 flex items-center gap-2">
+          <span className="h-2 w-2 flex-none rounded-full bg-go ring-4 ring-go/20" />
+          <span className="text-[0.7rem] font-bold uppercase tracking-wide text-white">Vsi vmesniki</span>
+        </div>
+        <div className="relative z-10 mt-0.5 pl-4 text-xs text-sidebartext">povezani</div>
+        <svg viewBox="0 0 120 60" className="pointer-events-none absolute right-0 top-0 h-full w-28 opacity-20" fill="none" stroke="#9fb0c3" strokeWidth="1">
+          <circle cx="92" cy="16" r="3"/><circle cx="110" cy="34" r="3"/><circle cx="78" cy="40" r="3"/><circle cx="100" cy="50" r="2.5"/>
+          <path d="M92 16 110 34M92 16 78 40M110 34 100 50M78 40 100 50"/>
+        </svg>
+      </Link>
+
+      <Link href="/owner/settings" className="mt-2 flex items-center gap-2.5 rounded-tool px-2 py-2 transition hover:bg-white/5">
+        <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-white/10 text-white">
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+        </span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-sm font-bold text-white">{company || 'A-SPRINT Demo'}</span>
+          <span className="block text-xs text-sidebartext">Lastnik</span>
+        </span>
+        <svg viewBox="0 0 24 24" className="h-4 w-4 flex-none text-sidebartext" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
+      </Link>
+    </aside>
+  );
+}
+
+function TopBar() {
+  const path = usePathname() ?? '/owner';
+  const section = activeItem(path)?.label ?? 'Lastnik';
   const session = getSession();
   const name = session?.user.name ?? 'Lastnik';
   const initial = name.trim().charAt(0).toUpperCase();
 
   return (
-    <aside className="flex flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext">
-      <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
-        <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 object-contain" />
-        <div className="text-lg font-extrabold tracking-tight text-white">A-SPRINT</div>
-      </div>
-
-      {NAV.map((n) => {
-        const Ic = I[n.icon];
-        if (n.soon || !n.href) {
-          return (
-            <span key={n.label} title="Kmalu"
-              className="flex cursor-default items-center gap-3 rounded-tool px-3 py-2.5 font-semibold text-white/30">
-              <Ic className="h-[18px] w-[18px]" />{n.label}
-            </span>
-          );
-        }
-        const active = n.href === '/owner' ? path === n.href : path.startsWith(n.href);
-        return (
-          <Link key={n.href} href={n.href}
-            className={`relative flex items-center gap-3 rounded-tool px-3 py-2.5 font-semibold transition
-              ${active ? 'bg-sidebar2 text-white' : 'text-sidebartext hover:bg-white/5 hover:text-white'}`}>
-            {active && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-brand" />}
-            <Ic className="h-[18px] w-[18px]" />{n.label}
-          </Link>
-        );
-      })}
-
-      <div className="mt-auto flex flex-col gap-2 pt-3">
-        <div className="flex items-center gap-2.5 rounded-tool px-2 py-2">
-          <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-brand text-sm font-bold text-white">{initial}</span>
-          <span className="leading-tight">
-            <span className="block text-sm font-bold text-white">{name}</span>
-            <span className="block text-xs text-white/45">Lastnik</span>
+    <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-surface px-6 py-3">
+      <nav className="flex items-center gap-2 text-sm">
+        <span className="font-semibold text-muted2">Lastnik</span>
+        <span className="text-linestrong">›</span>
+        <span className="font-bold text-ink">{section}</span>
+      </nav>
+      <div className="ml-auto flex items-center gap-3">
+        <button className="flex items-center gap-2.5 rounded-full border border-line py-1 pl-1 pr-2.5 transition hover:bg-floor">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-brandweak text-sm font-bold text-brand">{initial}</span>
+          <span className="hidden leading-tight sm:block">
+            <span className="block text-left text-sm font-bold text-ink">{name}</span>
+            <span className="block text-left text-xs text-muted2">Lastnik</span>
           </span>
-        </div>
-        <Link href="/" className="px-3 text-xs font-semibold text-white/40 hover:text-white">← vsi vmesniki</Link>
+          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-none text-muted2" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
       </div>
-    </aside>
+    </header>
   );
 }
