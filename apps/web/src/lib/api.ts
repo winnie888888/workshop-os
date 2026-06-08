@@ -136,6 +136,7 @@ export interface InvoiceDetail {
   reverseCharge: boolean; vatNote: string | null;
   totalNetMinor: string; totalVatMinor: string; totalGrossMinor: string; paidMinor: string;
   issueDate: string | null; dueDate: string | null;
+  serviceDate?: string | null; deliveryDate?: string | null;
   lines: Array<Record<string, unknown>>;
   vatBreakdown: Array<{ rate_pct: string; reverse_charge: boolean; net_minor: string; vat_minor: string }>;
 }
