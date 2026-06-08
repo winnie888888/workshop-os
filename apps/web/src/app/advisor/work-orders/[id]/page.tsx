@@ -435,8 +435,14 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
       </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
-        <input value={vat} inputMode="decimal" onChange={(e) => setVat(e.target.value.replace(/[^0-9.]/g, ''))}
-          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
+        <select value={String(vat)} onChange={(e: any) => setVat(e.target.value)}
+          className="rounded border border-linestrong bg-surface px-1 py-2 text-right font-mono focus:border-brandring focus:outline-none">
+          {!['22', '9.5', '5', '0'].includes(String(vat)) && <option value={String(vat)}>{String(vat)} %</option>}
+          <option value="22">22 %</option>
+          <option value="9.5">9,5 %</option>
+          <option value="5">5 %</option>
+          <option value="0">0 %</option>
+        </select>
       </td>
       <td className="p-2 text-right">
         <button onClick={add} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'dodaj'}</button>
@@ -488,8 +494,14 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
       </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
-        <input value={vat} inputMode="decimal" onChange={(e) => setVat(e.target.value.replace(/[^0-9.]/g, ''))}
-          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
+        <select value={String(vat)} onChange={(e: any) => setVat(e.target.value)}
+          className="rounded border border-linestrong bg-surface px-1 py-2 text-right font-mono focus:border-brandring focus:outline-none">
+          {!['22', '9.5', '5', '0'].includes(String(vat)) && <option value={String(vat)}>{String(vat)} %</option>}
+          <option value="22">22 %</option>
+          <option value="9.5">9,5 %</option>
+          <option value="5">5 %</option>
+          <option value="0">0 %</option>
+        </select>
       </td>
       <td className="p-2 text-right">
         <button onClick={save} disabled={busy} className="mr-2 font-semibold text-go">{busy ? '…' : 'shrani'}</button>
