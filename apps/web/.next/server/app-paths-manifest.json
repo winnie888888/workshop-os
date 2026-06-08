@@ -1,7 +1,8 @@
 {
   "/page": "app/page.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+  "/advisor/voice/page": "app/advisor/voice/page.js",
+  "/owner/page": "app/owner/page.js",
   "/advisor/messages/page": "app/advisor/messages/page.js",
-  "/portal/page": "app/portal/page.js",
-  "/advisor/page": "app/advisor/page.js",
-  "/portal/history/page": "app/portal/history/page.js"
+  "/advisor/page": "app/advisor/page.js"
 }

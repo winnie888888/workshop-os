@@ -100,6 +100,7 @@ export default function CustomerHub() {
 
       <WorkOrdersCard id={id} wos={wos} />
       <EstimatesCard id={id} />
+      <AppointmentsCard id={id} />
       <InvoicesCard invoices={invoices} />
     </div>
   );
@@ -284,6 +285,44 @@ function EstimatesCard({ id }: { id: string }) {
                 <td className="num p-3 text-muted">{e.createdAt ? String(e.createdAt).slice(0, 10) : '—'}</td>
                 <td className="p-3"><SoftChip tone={estimateStatusTone(e.status)}>{estimateStatusLabel(e.status)}</SoftChip></td>
                 <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(docTotalsMinor(e.lines).grossMinor)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  );
+}
+
+/* Termini (appointments) cross-link — this customer's bookings, central-store
+ * backed. Self-fetching, demo-only, mirrors the other cross-link cards. */
+function AppointmentsCard({ id }: { id: string }) {
+  const { data: appts } = useSWR(DEMO_MODE ? ['cust-appts', id] : null, () => api.appointments.list({ customerId: id }).catch(() => []));
+  if (!DEMO_MODE) return null;
+  const label = (s: string) => (s === 'done' ? 'Opravljeno' : s === 'cancelled' ? 'Preklicano' : 'Načrtovano');
+  const tone = (s: string): 'go' | 'stop' | 'info' => (s === 'done' ? 'go' : s === 'cancelled' ? 'stop' : 'info');
+  const rows = ((appts as any[] | undefined) ?? []).slice().sort((a, b) => String(a.start).localeCompare(String(b.start)));
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line p-4">
+        <h2 className="text-base font-bold text-ink">Termini</h2>
+        <Link href="/advisor/calendar" className="text-sm font-semibold text-brand hover:underline">Koledar ›</Link>
+      </div>
+      {!appts ? (
+        <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
+      ) : rows.length === 0 ? (
+        <p className="p-8 text-center text-muted">Ni terminov.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+            <tr><th className="p-3 font-bold">Datum / ura</th><th className="p-3 font-bold">Storitev</th><th className="p-3 font-bold">Status</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((a) => (
+              <tr key={a.id} className="border-t border-line hover:bg-surface2">
+                <td className="num p-3 text-ink">{String(a.start).slice(0, 10)} {String(a.start).slice(11, 16)}</td>
+                <td className="p-3 text-ink">{a.title || '—'}</td>
+                <td className="p-3"><SoftChip tone={tone(a.status ?? 'scheduled')}>{label(a.status ?? 'scheduled')}</SoftChip></td>
               </tr>
             ))}
           </tbody>

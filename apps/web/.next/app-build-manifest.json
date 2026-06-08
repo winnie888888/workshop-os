@@ -215,6 +215,11 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/advisor/reports/page.js"
+    ],
+    "/advisor/voice/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/advisor/voice/page.js"
     ]
   }
 }

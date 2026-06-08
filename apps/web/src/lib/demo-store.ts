@@ -69,7 +69,8 @@ export interface Invoice {
 export interface VoiceNote { id: string; transcript: string; workOrderId?: string; createdAt: string; }
 export interface PlateScan { id: string; plate: string; countryOfPlate?: string; vehicleId?: string; createdAt: string; }
 export interface Message { id: string; threadId: string; customerId?: string; direction: 'in' | 'out'; channel: 'sms' | 'email'; body: string; createdAt: string; }
-export interface Appointment { id: string; customerId?: string; vehicleId?: string; workOrderId?: string; title: string; start: string; end?: string; createdAt: string; }
+export type AppointmentStatus = 'scheduled' | 'done' | 'cancelled';
+export interface Appointment { id: string; customerId?: string; vehicleId?: string; workOrderId?: string; title: string; start: string; end?: string; durationMin?: number; note?: string; status?: AppointmentStatus; createdAt: string; }
 export interface Mechanic { id: string; name: string; }
 
 // Inventory item (full model + optional lot/batch tracking). Single demo location.
@@ -116,7 +117,8 @@ export type ActivityKind =
   | 'estimate_to_invoice' | 'invoice_issued' | 'invoice_paid' | 'invoice_credited'
   | 'minimax_sync' | 'mechanic_assigned' | 'vehicle_created' | 'customer_created'
   | 'plate_scanned' | 'voice_captured' | 'message_sent'
-  | 'item_created' | 'item_updated' | 'item_received' | 'stock_adjusted';
+  | 'item_created' | 'item_updated' | 'item_received' | 'stock_adjusted'
+  | 'appointment_created';
 export interface Activity {
   id: string; kind: ActivityKind; message: string;
   entityType?: string; entityId?: string; actor?: string; createdAt: string;
@@ -530,11 +532,24 @@ export const demoStore = {
     },
   },
   appointments: {
-    list(): Appointment[] { return [...load().appointments]; },
-    create(data: Omit<Appointment, 'id' | 'createdAt'>): Appointment {
-      const db = load(); const a: Appointment = { id: newId('apt'), ...data, createdAt: nowIso() };
-      db.appointments.push(a); persist(); return a;
+    list(filter?: { customerId?: string }): Appointment[] {
+      const all = [...load().appointments];
+      return filter?.customerId ? all.filter((a) => a.customerId === filter.customerId) : all;
     },
+    get(id: string): Appointment | undefined { return load().appointments.find((a) => a.id === id); },
+    create(data: Omit<Appointment, 'id' | 'createdAt'>): Appointment {
+      const db = load(); const a: Appointment = { id: newId('apt'), ...data, status: data.status ?? 'scheduled', createdAt: nowIso() };
+      db.appointments.push(a);
+      logActivity('appointment_created', `Nov termin${a.title ? ` — ${a.title}` : ''}`, 'appointment', a.id);
+      persist(); return a;
+    },
+    update(id: string, patch: Partial<Omit<Appointment, 'id' | 'createdAt'>>): Appointment | undefined {
+      const db = load(); const a = db.appointments.find((x) => x.id === id);
+      if (!a) return undefined;
+      Object.assign(a, patch);
+      persist(); return a;
+    },
+    remove(id: string): void { const db = load(); db.appointments = db.appointments.filter((a) => a.id !== id); persist(); },
   },
 
   // ---- notifications ----

@@ -304,6 +304,15 @@ export const api = {
     toInvoice: (id: string) => request<any>(`/estimates/${id}/to-invoice`, { method: 'POST' }),
   },
 
+  appointments: {
+    list: (q: { customerId?: string } = {}) =>
+      request<any[]>(`/appointments${q.customerId ? `?customerId=${encodeURIComponent(q.customerId)}` : ''}`),
+    get: (id: string) => request<any>(`/appointments/${id}`),
+    create: (dto: Record<string, any>) => request<any>(`/appointments`, { method: 'POST', body: dto }),
+    update: (id: string, patch: Record<string, any>) => request<any>(`/appointments/${id}`, { method: 'PATCH', body: patch }),
+    remove: (id: string) => request<any>(`/appointments/${id}`, { method: 'DELETE' }),
+  },
+
   invoices: {
     get: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
     byCustomer: (customerId: string) =>

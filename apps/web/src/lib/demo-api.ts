@@ -282,6 +282,16 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   if (seg[0] === 'estimates' && seg[1] && method === 'GET') return ok((demoStore.estimates.get(seg[1]) ?? {}) as any);
   if (seg[0] === 'estimates' && seg[1] && (method === 'PATCH' || method === 'PUT')) return ok((demoStore.estimates.update(seg[1], body ?? {}) ?? {}) as any);
 
+  // --- appointments / koledar (central store) ---
+  if (path === '/appointments' && method === 'GET') {
+    const cid = params.get('customerId');
+    return ok(demoStore.appointments.list(cid ? { customerId: cid } : undefined) as any);
+  }
+  if (path === '/appointments' && method === 'POST') return ok(demoStore.appointments.create(body ?? {}) as any);
+  if (seg[0] === 'appointments' && seg[1] && method === 'GET') return ok((demoStore.appointments.get(seg[1]) ?? {}) as any);
+  if (seg[0] === 'appointments' && seg[1] && (method === 'PATCH' || method === 'PUT')) return ok((demoStore.appointments.update(seg[1], body ?? {}) ?? {}) as any);
+  if (seg[0] === 'appointments' && seg[1] && method === 'DELETE') { demoStore.appointments.remove(seg[1]); return ok({ ok: true } as any); }
+
   // --- invoices ---
   if (path === '/invoices' && method === 'GET') {
     const customerId = params.get('customerId');
