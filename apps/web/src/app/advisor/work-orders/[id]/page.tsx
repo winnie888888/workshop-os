@@ -61,7 +61,7 @@ export default function WorkOrderWorkspace() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
       <nav className="flex items-center gap-2 text-xs font-semibold text-muted">
-        <button onClick={() => router.push('/advisor')} className="hover:text-brand">Delovni nalogi</button>
+        <button onClick={() => router.push('/advisor/work-orders')} className="hover:text-brand">Delovni nalogi</button>
         <span className="text-muted2">/</span>
         <span className="num text-ink">{wo.number ?? 'OSNUTEK'}</span>
       </nav>
