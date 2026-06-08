@@ -39,17 +39,17 @@ export const demoCustomers = [
 export const demoVehicles: Record<string, any[]> = {
   'cust-kralj': [
     { id: 'veh-man1', customerId: 'cust-kralj', plate: 'NMCK418', plateCountry: 'SI',
-      make: 'MAN', model: 'TGX 18.500', vin: 'WMA06XZZ7HM601234', type: 'tractor', odometer: 684500 },
+      make: 'MAN', model: 'TGX 18.500', vin: 'WMA06XZZ7HM601234', type: 'tractor', powertrain: 'diesel', odometer: 684500 },
   ],
   'cust-horvat': [
     { id: 'veh-man2', customerId: 'cust-horvat', plate: 'ZG7421CD', plateCountry: 'HR',
-      make: 'MAN', model: 'TGX 18.500', vin: 'WMA06XZZ7HM607777', type: 'tractor', odometer: 512300 },
+      make: 'MAN', model: 'TGX 18.500', vin: 'WMA06XZZ7HM607777', type: 'tractor', powertrain: 'diesel', odometer: 512300 },
     { id: 'veh-trail', customerId: 'cust-horvat', plate: 'ZG9001PT', plateCountry: 'HR',
       make: 'Schmitz', model: 'Cargobull', vin: 'WSM00000000123456', type: 'trailer', odometer: 0 },
   ],
   'cust-alpe': [
     { id: 'veh-volvo', customerId: 'cust-alpe', plate: 'LJ552MK', plateCountry: 'SI',
-      make: 'Volvo', model: 'FH 460', vin: 'YV2RT40A8KB812345', type: 'tractor', odometer: 401200 },
+      make: 'Volvo', model: 'FH Electric', vin: 'YV2RT40A8KB812345', type: 'tractor', powertrain: 'electric', odometer: 120400 },
   ],
 };
 
@@ -157,7 +157,7 @@ export const demoInvoices: Record<string, any> = {
     currency: 'EUR', vatTreatment: 'reverse_charge_eu', reverseCharge: true,
     vatNote: 'Reverse charge — VAT to be accounted for by the recipient.',
     totalNetMinor: eur(467.5), totalVatMinor: eur(0), totalGrossMinor: eur(467.5), paidMinor: eur(0),
-    issueDate: '2026-05-20', dueDate: '2026-07-04',
+    issueDate: '2026-05-20', dueDate: '2026-07-04', serviceDate: '2026-05-18',
     lines: [], vatBreakdown: [{ rate_pct: '0', reverse_charge: true, net_minor: eur(467.5), vat_minor: eur(0) }],
   },
 };

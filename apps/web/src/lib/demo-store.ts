@@ -62,7 +62,7 @@ export interface Estimate {
 export interface Invoice {
   id: string; number: string; customerId: string; vehicleId?: string;
   workOrderId?: string; estimateId?: string; status: InvoiceStatus;
-  lines: DocLine[]; issueDate?: string; dueDate?: string; paidDate?: string;
+  lines: DocLine[]; issueDate?: string; serviceDate?: string; dueDate?: string; paidDate?: string;
   minimaxSync: MinimaxSync; createdAt: string;
 }
 
@@ -461,7 +461,9 @@ export const demoStore = {
         customerId: w.customerId, vehicleId: w.vehicleId, workOrderId: w.id,
         lines: w.lines.map((l) => ({ ...l, id: newId('ln') })),
       });
+      inv.serviceDate = (w.updatedAt || '').slice(0, 10) || undefined;
       demoStore.workOrders.setStatus(w.id, 'invoiced');
+      persist();
       return inv;
     },
     issue(id: string): Invoice | undefined {
