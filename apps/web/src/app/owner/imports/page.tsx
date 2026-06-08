@@ -9,6 +9,7 @@ import { ENTITY_LIST, getSchema, planImport, ruleBasedMapper } from '@/lib/impor
 import type { ColumnMapping, DryRunResult, RowOutcome, SourceTable } from '@/lib/import-engine';
 import { readFileToSourceTable } from '@/lib/import-file';
 import { canCommit, commitImport, type CommitResult } from '@/lib/import-sink';
+import { dateStamp, downloadCsv, downloadText } from '@/lib/data-export';
 import Link from 'next/link';
 
 const VIEW_LINK: Record<string, { href: string; label: string }> = {
@@ -96,6 +97,28 @@ export default function ImportWizardPage() {
     setCommitting(true);
     try { setCommitted(commitImport(entity, dry)); }
     finally { setCommitting(false); }
+  }
+
+  function downloadTemplate() {
+    if (!schema) return;
+    const header = schema.fields.map((f) => `"${f.label.replace(/"/g, '""')}"`).join(';');
+    downloadText(`predloga_${schema.entity}_${dateStamp()}.csv`, '\ufeff' + header + '\r\n', 'text/csv;charset=utf-8');
+  }
+
+  function downloadReport() {
+    if (!schema || !dry) return;
+    const rows = dry.rows.map((r) => {
+      const row: Record<string, any> = {
+        Vrstica: r.index + 1,
+        Izid: OUT[r.outcome].label,
+        Ujemanje: r.matchedBy ?? '',
+        Napake: r.errors.join(' | '),
+        Opozorila: r.warnings.join(' | '),
+      };
+      for (const f of schema.fields) row[f.label] = displayVal(f.type, r.record[f.key]);
+      return row;
+    });
+    downloadCsv(`uvoz_porocilo_${schema.entity}_${dateStamp()}.csv`, rows);
   }
 
   async function onFile(file: File | null | undefined) {
@@ -197,6 +220,10 @@ export default function ImportWizardPage() {
             <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.xlsm" className="hidden" onChange={(ev: ChangeEvent<HTMLInputElement>) => onFile(ev.target.files?.[0])} />
           </label>
           {busy && <div className="mt-3 flex items-center gap-2 text-sm text-muted"><Spinner /> Berem datoteko…</div>}
+          <p className="mt-4 text-sm text-muted">
+            Ne veš, katere stolpce pripraviti?{' '}
+            <button onClick={downloadTemplate} className="font-medium text-brand underline-offset-2 hover:underline">Prenesi predlogo ({schema.label}) .csv</button>
+          </p>
         </div>
       )}
 
@@ -239,7 +266,10 @@ export default function ImportWizardPage() {
             <SoftChip tone="info">Posodobitev {dry.updated}</SoftChip>
             <SoftChip tone="hold">Preskočenih {dry.skipped}</SoftChip>
             <SoftChip tone="stop">Napak {dry.errored}</SoftChip>
-            <span className="ml-auto text-sm text-muted">skupaj {dry.total} vrstic</span>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-sm text-muted">skupaj {dry.total} vrstic</span>
+              <Button tone="neutral" size="sm" onClick={downloadReport}>Prenesi poročilo .csv</Button>
+            </div>
           </div>
 
           {dry.unmappedColumns.length > 0 && (
