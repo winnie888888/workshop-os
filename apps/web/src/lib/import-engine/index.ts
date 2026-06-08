@@ -12,6 +12,7 @@ export * from './schemas';
 export { ruleBasedMapper } from './mapper';
 export { parseCsv } from './parse-csv';
 export type { ParseOptions } from './parse-csv';
+export { planImport } from './plan';
 
 import type { ColumnMapper, ImportSchema } from './types';
 import { IMPORT_SCHEMAS } from './schemas';
