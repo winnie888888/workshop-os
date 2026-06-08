@@ -47,7 +47,7 @@ export default function OwnerDataExport() {
     );
   }
 
-  const data = snap?.data ?? {};
+  const data: Record<string, any[]> = snap?.data ?? {};
   const totalRows = ENTITIES.reduce((n, e) => n + (data[e.key]?.length ?? 0), 0);
 
   return (

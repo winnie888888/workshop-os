@@ -322,7 +322,7 @@ export async function demoRequest<T>(call: Call): Promise<T> {
         estimates: safe(() => demoStore.estimates.list()),
         invoices: byId([...Object.values(demoInvoices), ...safe(() => demoStore.invoices.list())]),
         items: safe(() => demoStore.items.list()),
-        presets: safe(() => demoStore.presets.list()),
+        presets: safe(() => demoStore.presets.all()),
         appointments: safe(() => demoStore.appointments.list()),
         mechanics: [...demoMechanics],
       },
