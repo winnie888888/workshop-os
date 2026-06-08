@@ -21,12 +21,16 @@ import { Spinner } from '@/components/ui';
 const OPEN_STATUSES = ['open', 'in_progress', 'awaiting_approval', 'awaiting_parts', 'on_hold', 'ready'];
 
 export default function AdvisorLayout({ children }: { children: React.ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+  const navPath = usePathname();
+  useEffect(() => { setNavOpen(false); }, [navPath]);
   return (
-    <div className="grid min-h-screen grid-cols-[15.5rem_1fr] bg-floor">
-      <Rail />
+    <div className="grid min-h-screen grid-cols-1 bg-floor lg:grid-cols-[15.5rem_1fr]">
+      <Rail open={navOpen} onClose={() => setNavOpen(false)} />
+      {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
       <div className="flex min-w-0 flex-col">
-        <CommandBar />
-        <main className="min-w-0 flex-1 p-6">{children}</main>
+        <CommandBar onMenu={() => setNavOpen(true)} />
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
         </footer>
@@ -63,7 +67,7 @@ const NAV: NavItem[] = [
   { href: '/advisor/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 
-function Rail() {
+function Rail({ open, onClose }: { open: boolean; onClose: () => void }) {
   const path = usePathname() ?? '/advisor';
   // Shares the SWR key with the dashboard (same key + fetcher → one request).
   const { data: openWos } = useSWR('advisor-open', () => api.workOrders.list({ statuses: OPEN_STATUSES, limit: 200 }));
@@ -79,7 +83,7 @@ function Rail() {
   const badges: Record<string, number> = { '/advisor/work-orders': woCount, '/advisor/invoices': invCount };
 
   return (
-    <aside className="flex flex-col gap-0.5 bg-sidebar px-3 pb-3 text-sidebartext">
+    <aside className={`fixed inset-y-0 left-0 z-50 flex w-[15.5rem] flex-col gap-0.5 overflow-y-auto bg-sidebar px-3 pb-3 text-sidebartext transition-transform duration-300 lg:static lg:z-auto lg:w-auto lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="flex items-center gap-2.5 px-2 pb-5 pt-4">
         <img src="/asprint-mark.png" alt="A-SPRINT" className="h-9 w-9 flex-none object-contain" />
         <div className="leading-tight">
@@ -93,7 +97,7 @@ function Rail() {
         const active = n.href === '/advisor' ? path === n.href : path.startsWith(n.href);
         const badge = badges[n.href];
         return (
-          <Link key={n.href} href={n.href}
+          <Link key={n.href} href={n.href} onClick={onClose}
             className={`flex items-center gap-3 rounded-tool px-3 py-2.5 font-semibold transition
               ${active ? 'bg-brand text-white shadow-tool' : 'text-sidebartext hover:bg-white/5 hover:text-white'}`}>
             <Ic className="h-[18px] w-[18px] flex-none" />
@@ -132,7 +136,7 @@ function Rail() {
   );
 }
 
-function CommandBar() {
+function CommandBar({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
   const session = getSession();
   const name = session?.user.name ?? 'Sprejemnik';
@@ -180,7 +184,10 @@ function CommandBar() {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-line bg-surface px-6 py-3">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface px-4 py-3 sm:gap-4 sm:px-6">
+      <button onClick={onMenu} aria-label="Meni" className="grid h-10 w-10 flex-none place-items-center rounded-tool text-muted transition hover:bg-floor hover:text-ink lg:hidden">
+        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
       <div className="relative max-w-3xl flex-1">
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted2">
           {loading
