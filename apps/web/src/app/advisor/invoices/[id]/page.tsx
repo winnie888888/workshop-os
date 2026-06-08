@@ -7,6 +7,8 @@ import { api } from '@/lib/api';
 import { formatMoneyMinor, formatVatRate, vatBreakdownMinor } from '@/lib/format';
 import { Card, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { DEMO_MODE } from '@/lib/demo';
+import { loadSettings } from '@/lib/workshop-settings';
+import Link from 'next/link';
 
 /*
  * Invoice detail — the issued, immutable document with its frozen VAT
@@ -24,6 +26,8 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: inv, isLoading } = useSWR(['invoice', id], () => api.invoices.get(id));
+  const [company, setCompany] = useState<{ name: string; address: string; vatId: string; iban: string } | null>(null);
+  useEffect(() => { loadSettings().then((s) => setCompany(s.company)).catch(() => { /* ignore */ }); }, []);
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
   if (!inv) return <Card className="p-6 text-muted">Računa ni mogoče najti.</Card>;
@@ -41,6 +45,31 @@ export default function InvoiceDetail() {
         </h1>
         <StatusChip tone={tone}>{invStatus(inv.status)}</StatusChip>
       </div>
+
+      {company && (
+        <Card className="p-5 text-sm">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wide text-muted2">Izdajatelj</div>
+              <div className="mt-1 font-semibold text-ink">{company.name || '—'}</div>
+              {company.address && <div className="text-muted">{company.address}</div>}
+              {company.vatId && <div className="num text-muted">ID za DDV: {company.vatId}</div>}
+            </div>
+            <div className="sm:text-right">
+              <div className="text-xs font-bold uppercase tracking-wide text-muted2">Plačilo</div>
+              {company.iban ? (
+                <>
+                  <div className="num mt-1 text-ink">IBAN: {company.iban}</div>
+                  <div className="num text-muted">Sklic: SI00 {String(inv.number ?? '').replace(/\D/g, '')}</div>
+                  <div className="num text-muted">Znesek: {formatMoneyMinor(inv.totalGrossMinor, inv.currency)}</div>
+                </>
+              ) : (
+                <div className="mt-1 text-muted">Dodaj IBAN v <Link href="/advisor/settings" className="font-medium text-brand hover:underline">Nastavitvah → Podjetje</Link> za plačilne podatke.</div>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-5">
         <div className="mb-3 flex flex-wrap gap-2">
