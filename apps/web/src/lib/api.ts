@@ -163,6 +163,13 @@ export interface ArAging {
   formatted: { current: string; d1_30: string; d31_60: string; d61_90: string; d90_plus: string; total: string };
 }
 
+/** A full snapshot of the tenant's data — the basis of the Export feature. */
+export interface DataSnapshot {
+  exportedAt: string;
+  tenant: string;
+  data: Record<string, any[]>;
+}
+
 export interface RevenueReport {
   from: string; to: string; documents: number;
   netMinor: string; vatMinor: string; grossMinor: string; net: string; gross: string;
@@ -484,6 +491,9 @@ export const api = {
   activity: {
     list: (limit = 30) => request<Array<{ id: string; kind: string; message: string; entityType?: string; entityId?: string; actor?: string; createdAt: string }>>(`/activity?limit=${limit}`),
   },
+
+  /** Full tenant data snapshot for export / portability. */
+  exportSnapshot: () => request<DataSnapshot>('/export/snapshot'),
 
   customerReceivables: (customerId: string, asOf?: string) =>
     request<{
