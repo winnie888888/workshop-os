@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { DEMO_MODE } from '@/lib/demo';
-import { displayPlate, formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
+import { displayPlate, formatMoneyMinor, statusLabel, statusTone, estimateStatusLabel, estimateStatusTone, docTotalsMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 
 /*
@@ -99,6 +99,7 @@ export default function CustomerHub() {
       </Card>
 
       <WorkOrdersCard id={id} wos={wos} />
+      <EstimatesCard id={id} />
       <InvoicesCard invoices={invoices} />
     </div>
   );
@@ -247,6 +248,42 @@ function InvoicesCard({ invoices }: { invoices: any[] | undefined }) {
                 <td className="num p-3 text-muted">{inv.issueDate ?? '—'}</td>
                 <td className="p-3"><SoftChip tone={INV_TONE[inv.status] ?? 'neutral'}>{INV_LABEL[inv.status] ?? inv.status}</SoftChip></td>
                 <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(inv.totalGrossMinor, inv.currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  );
+}
+
+/* Predračuni (estimates) cross-link — this customer's quotes, central-store backed.
+ * Self-fetching so it stays additive; demo-only like the other cross-link cards. */
+function EstimatesCard({ id }: { id: string }) {
+  const { data: estimates } = useSWR(DEMO_MODE ? ['cust-estimates', id] : null, () => api.estimates.list({ customerId: id }).catch(() => []));
+  if (!DEMO_MODE) return null;
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line p-4">
+        <h2 className="text-base font-bold text-ink">Predračuni</h2>
+        <Link href="/advisor/quotes" className="text-sm font-semibold text-brand hover:underline">Vsi ›</Link>
+      </div>
+      {!estimates ? (
+        <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
+      ) : estimates.length === 0 ? (
+        <p className="p-8 text-center text-muted">Ni predračunov.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+            <tr><th className="p-3 font-bold">Št.</th><th className="p-3 font-bold">Datum</th><th className="p-3 font-bold">Status</th><th className="p-3 text-right font-bold">Znesek</th></tr>
+          </thead>
+          <tbody>
+            {(estimates as any[]).map((e) => (
+              <tr key={e.id} className="border-t border-line hover:bg-surface2">
+                <td className="p-3"><Link href={`/advisor/quotes/${e.id}`} className="num font-semibold text-brand hover:underline">{e.number ?? '—'}</Link></td>
+                <td className="num p-3 text-muted">{e.createdAt ? String(e.createdAt).slice(0, 10) : '—'}</td>
+                <td className="p-3"><SoftChip tone={estimateStatusTone(e.status)}>{estimateStatusLabel(e.status)}</SoftChip></td>
+                <td className="num p-3 text-right font-semibold text-ink">{formatMoneyMinor(docTotalsMinor(e.lines).grossMinor)}</td>
               </tr>
             ))}
           </tbody>

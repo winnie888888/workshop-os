@@ -414,6 +414,12 @@ export const demoStore = {
       if (status === 'sent') notify('estimate_sent', `Predračun poslan ${e.number}`, undefined, 'estimate', e.id);
       persist(); return e;
     },
+    update(id: string, patch: Partial<Pick<Estimate, 'customerId' | 'vehicleId' | 'workOrderId' | 'lines' | 'status'>>): Estimate | undefined {
+      const db = load(); const e = db.estimates.find((x) => x.id === id);
+      if (!e) return undefined;
+      Object.assign(e, patch);
+      persist(); return e;
+    },
     toInvoice(id: string): Invoice | undefined {
       const db = load(); const e = db.estimates.find((x) => x.id === id);
       if (!e) return undefined;

@@ -69,3 +69,22 @@ export function displayPlate(plate: string): string {
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** Estimate (predračun) status → Slovenian label + chip tone. */
+export function estimateStatusLabel(s: string): string {
+  return ({ draft: 'Osnutek', sent: 'Poslan', accepted: 'Sprejet', rejected: 'Zavrnjen', invoiced: 'Računiran' } as Record<string, string>)[s] ?? s;
+}
+export function estimateStatusTone(s: string): 'go' | 'hold' | 'stop' | 'info' | 'neutral' {
+  return ({ draft: 'neutral', sent: 'info', accepted: 'go', rejected: 'stop', invoiced: 'hold' } as Record<string, 'go' | 'hold' | 'stop' | 'info' | 'neutral'>)[s] ?? 'neutral';
+}
+
+/** Sum DocLine[] into net / VAT / gross minor units (single source for document totals in the UI). */
+export function docTotalsMinor(lines: Array<{ qty?: number; unitPriceMinor?: number; vatRatePct?: number }> = []): { netMinor: number; vatMinor: number; grossMinor: number } {
+  let net = 0, vat = 0;
+  for (const l of lines) {
+    const lineNet = Math.round((l.qty || 0) * (l.unitPriceMinor || 0));
+    net += lineNet;
+    vat += Math.round((lineNet * (l.vatRatePct || 0)) / 100);
+  }
+  return { netMinor: net, vatMinor: vat, grossMinor: net + vat };
+}

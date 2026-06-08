@@ -294,6 +294,16 @@ export const api = {
     remove: (id: string) => request<any>(`/presets/${id}`, { method: 'DELETE' }),
   },
 
+  estimates: {
+    list: (q: { customerId?: string } = {}) =>
+      request<any[]>(`/estimates${q.customerId ? `?customerId=${encodeURIComponent(q.customerId)}` : ''}`),
+    get: (id: string) => request<any>(`/estimates/${id}`),
+    create: (dto: Record<string, any>) => request<any>(`/estimates`, { method: 'POST', body: dto }),
+    update: (id: string, patch: Record<string, any>) => request<any>(`/estimates/${id}`, { method: 'PATCH', body: patch }),
+    setStatus: (id: string, status: string) => request<any>(`/estimates/${id}/status`, { method: 'POST', body: { status } }),
+    toInvoice: (id: string) => request<any>(`/estimates/${id}/to-invoice`, { method: 'POST' }),
+  },
+
   invoices: {
     get: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
     byCustomer: (customerId: string) =>

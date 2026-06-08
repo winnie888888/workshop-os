@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { api, ApiError, type WorkOrderDetail, type WorkOrderLine, type WorkOrderStatus } from '@/lib/api';
 import { formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
 import { readDefaultsSync } from '@/lib/workshop-settings';
+import { DEMO_MODE } from '@/lib/demo';
 import { Button, Card, ProblemBanner, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { TextField, NumberField } from '@/components/form';
 
@@ -27,6 +28,29 @@ export default function WorkOrderWorkspace() {
     try { await api.workOrders.transition(id, to); await mutate(); }
     catch (e) { setError(e instanceof ApiError ? e.message : 'Sprememba stanja ni uspela'); }
     finally { setBusy(false); }
+  }
+
+  // Spin a work order's lines into a predračun (estimate) in the central store,
+  // then jump to it. The estimate keeps a back-reference to this work order, so
+  // "Izstavi račun" can route back to the existing invoice-issue flow.
+  async function createEstimate() {
+    if (!wo) return;
+    setBusy(true); setError(null);
+    try {
+      const lines = (wo.lines ?? []).map((l) => ({
+        id: crypto.randomUUID(),
+        kind: l.type === 'labour' ? 'labour' : 'part',
+        description: l.description,
+        qty: Number(l.quantity) || 0,
+        unitPriceMinor: Number(l.unitPriceMinor) || 0,
+        vatRatePct: Number(l.vatRatePct) || 22,
+      }));
+      const est = await api.estimates.create({ customerId: wo.customerId, vehicleId: (wo as any).assetId, workOrderId: wo.id, lines });
+      router.push(`/advisor/quotes/${est.id}`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Predračuna ni bilo mogoče ustvariti');
+      setBusy(false);
+    }
   }
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-info" /></div>;
@@ -65,6 +89,9 @@ export default function WorkOrderWorkspace() {
 
       {/* Action row — legal transitions + issue path */}
       <div className="flex flex-wrap items-center gap-3">
+        {DEMO_MODE && (wo.lines?.length ?? 0) > 0 && (
+          <Button tone="neutral" onClick={createEstimate} disabled={busy}>Ustvari predračun</Button>
+        )}
         {wo.status === 'ready' && (
           <Button tone="go" size="lg" onClick={() => router.push(`/advisor/invoices/issue/${id}`)}>Izstavi račun →</Button>
         )}

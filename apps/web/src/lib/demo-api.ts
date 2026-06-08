@@ -271,6 +271,17 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   if (seg[0] === 'presets' && seg[1] && (method === 'PATCH' || method === 'PUT')) return ok((demoStore.presets.update(seg[1], body ?? {}) ?? {}) as any);
   if (seg[0] === 'presets' && seg[1] && method === 'DELETE') { demoStore.presets.remove(seg[1]); return ok({ ok: true } as any); }
 
+  // --- estimates / predračuni (central store) ---
+  if (path === '/estimates' && method === 'GET') {
+    const cid = params.get('customerId');
+    return ok(demoStore.estimates.list(cid ? { customerId: cid } : undefined) as any);
+  }
+  if (path === '/estimates' && method === 'POST') return ok(demoStore.estimates.create(body ?? {}) as any);
+  if (seg[0] === 'estimates' && seg[1] && seg[2] === 'status' && method === 'POST') return ok((demoStore.estimates.setStatus(seg[1], body?.status) ?? {}) as any);
+  if (seg[0] === 'estimates' && seg[1] && seg[2] === 'to-invoice' && method === 'POST') return ok((demoStore.estimates.toInvoice(seg[1]) ?? {}) as any);
+  if (seg[0] === 'estimates' && seg[1] && method === 'GET') return ok((demoStore.estimates.get(seg[1]) ?? {}) as any);
+  if (seg[0] === 'estimates' && seg[1] && (method === 'PATCH' || method === 'PUT')) return ok((demoStore.estimates.update(seg[1], body ?? {}) ?? {}) as any);
+
   // --- invoices ---
   if (path === '/invoices' && method === 'GET') {
     const customerId = params.get('customerId');
