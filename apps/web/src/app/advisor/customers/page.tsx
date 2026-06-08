@@ -58,8 +58,8 @@ export default function CustomersList() {
       {isLoading && <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>}
 
       {data && (
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
+        <Card className="overflow-x-auto">
+          <table className="w-full min-w-[34rem] text-sm">
             <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
               <tr>
                 <th className="px-4 py-2.5 font-bold">Naziv</th>

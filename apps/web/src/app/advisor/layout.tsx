@@ -184,7 +184,7 @@ function CommandBar({ onMenu }: { onMenu: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface px-4 py-3 sm:gap-4 sm:px-6">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6">
       <button onClick={onMenu} aria-label="Meni" className="grid h-10 w-10 flex-none place-items-center rounded-tool text-muted transition hover:bg-floor hover:text-ink lg:hidden">
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>

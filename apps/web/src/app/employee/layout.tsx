@@ -10,7 +10,7 @@
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto min-h-screen max-w-md bg-floor">
-      <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-3">
+      <header className="flex items-center justify-between border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <span className="flex items-center gap-2">
           <img src="/asprint-mark.png" alt="A-SPRINT" className="h-8 w-8 object-contain" />
           <span className="text-lg font-extrabold tracking-tight text-ink">Moj delovni čas</span>

@@ -37,7 +37,7 @@ function SyncStrip() {
   const syncTone = !online ? 'bg-hold' : pending > 0 ? 'bg-info' : 'bg-go';
 
   return (
-    <div className="flex items-center justify-end gap-4 px-4 pt-3 text-[0.7rem] font-semibold text-white/70">
+    <div className="flex items-center justify-end gap-4 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] text-[0.7rem] font-semibold text-white/70">
       <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${syncTone}`} />{syncLabel}</span>
       <span className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${online ? 'bg-go' : 'bg-white/30'}`} />{online ? 'Online' : 'Brez povezave'}</span>
     </div>
@@ -56,7 +56,7 @@ const TABS = [
 function BottomNav() {
   const pathname = usePathname() ?? '/mechanic';
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-stretch border-t border-white/10 bg-[#0f1a2a]/95 backdrop-blur">
+    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-stretch border-t border-white/10 bg-[#0f1a2a]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       {TABS.map((t) => {
         const active = t.match(pathname);
         return (

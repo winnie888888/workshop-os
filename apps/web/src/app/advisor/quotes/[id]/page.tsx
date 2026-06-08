@@ -98,8 +98,8 @@ export default function QuoteDetailPage() {
         )}
       </Card>
 
-      <Card className="overflow-hidden">
-        <table className="w-full text-sm">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[36rem] text-sm">
           <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
             <tr><th className="p-3 font-bold">Vrsta</th><th className="p-3 font-bold">Opis</th><th className="p-3 text-right font-bold">Kol.</th><th className="p-3 text-right font-bold">Cena</th><th className="p-3 text-right font-bold">Popust</th><th className="p-3 text-right font-bold">DDV</th><th className="p-3 text-right font-bold">Neto</th></tr>
           </thead>

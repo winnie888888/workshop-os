@@ -429,6 +429,7 @@ export const demoStore = {
         customerId: e.customerId, vehicleId: e.vehicleId, workOrderId: e.workOrderId, estimateId: e.id,
         lines: e.lines.map((l) => ({ ...l, id: newId('ln') })),
       });
+      inv.serviceDate = nowIso().slice(0, 10);
       e.status = 'invoiced';
       logActivity('estimate_to_invoice', `Predračun ${e.number} → račun ${inv.number}`, 'invoice', inv.id);
       persist();
