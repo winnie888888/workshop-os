@@ -138,7 +138,9 @@ function Rail({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 function CommandBar({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
-  const session = getSession();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const session = mounted ? getSession() : null;
   const name = session?.user.name ?? 'Sprejemnik';
   const initial = name.trim().charAt(0).toUpperCase();
 

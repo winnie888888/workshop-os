@@ -121,7 +121,9 @@ function Rail({ open, onClose }: { open: boolean; onClose: () => void }) {
 function TopBar({ onMenu }: { onMenu: () => void }) {
   const path = usePathname() ?? '/warehouse';
   const section = activeItem(path)?.label ?? 'Skladišče';
-  const session = getSession();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const session = mounted ? getSession() : null;
   const name = session?.user.name ?? 'Skladiščnik';
   const initial = name.trim().charAt(0).toUpperCase();
 
