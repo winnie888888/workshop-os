@@ -9,6 +9,8 @@ import { Card, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { DEMO_MODE } from '@/lib/demo';
 import { loadSettings } from '@/lib/workshop-settings';
 import Link from 'next/link';
+import { buildInvoiceUbl } from '@/lib/eslog';
+import { downloadText } from '@/lib/data-export';
 
 /*
  * Invoice detail — the issued, immutable document with its frozen VAT
@@ -35,6 +37,12 @@ export default function InvoiceDetail() {
   const tone = inv.status === 'paid' ? 'go' : inv.status === 'overdue' ? 'stop' : inv.status === 'credited' ? 'hold' : 'info';
   const vatRows = vatBreakdownMinor((inv.lines ?? []).map((l: any) => ({ qty: 1, unitPriceMinor: Number(l.net_minor) || 0, vatRatePct: Number(l.vat_rate_pct) || 0 })));
 
+  async function exportEslog() {
+    const customer = inv.customerId ? await api.customers.get(inv.customerId).catch(() => null) : null;
+    const num = String(inv.number ?? 'racun').replace(/[^a-z0-9]+/gi, '-');
+    downloadText(`eslog-${num}.xml`, buildInvoiceUbl(inv, company, customer), 'application/xml');
+  }
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       <button onClick={() => router.push('/advisor/invoices')} className="self-start text-sm font-semibold text-muted hover:text-brand">‹ Računi</button>
@@ -44,6 +52,7 @@ export default function InvoiceDetail() {
           {inv.kind === 'credit_note' ? 'Dobropis' : 'Račun'} {inv.number}
         </h1>
         <div className="flex items-center gap-2">
+          <button onClick={exportEslog} title="EN 16931 / UBL 2.1 — pred produkcijo validiraj proti uradni e-SLOG 2.0 shemi in oddaj prek ponudnika" className="inline-flex min-h-tap items-center rounded-tool border border-line px-3 text-sm font-semibold text-steel hover:border-brandring hover:text-brand">e-SLOG XML</button>
           <Link href={`/print/invoice/${id}`} target="_blank" className="inline-flex min-h-tap items-center rounded-tool border border-line px-3 text-sm font-semibold text-steel hover:border-brandring hover:text-brand">Natisni / PDF</Link>
           <StatusChip tone={tone}>{invStatus(inv.status)}</StatusChip>
         </div>
