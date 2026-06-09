@@ -38,6 +38,7 @@ export default function InvoiceDetail() {
   const vatRows = vatBreakdownMinor((inv.lines ?? []).map((l: any) => ({ qty: 1, unitPriceMinor: Number(l.net_minor) || 0, vatRatePct: Number(l.vat_rate_pct) || 0 })));
 
   async function exportEslog() {
+    if (!inv) return;
     const customer = inv.customerId ? await api.customers.get(inv.customerId).catch(() => null) : null;
     const num = String(inv.number ?? 'racun').replace(/[^a-z0-9]+/gi, '-');
     downloadText(`eslog-${num}.xml`, buildInvoiceUbl(inv, company, customer), 'application/xml');
