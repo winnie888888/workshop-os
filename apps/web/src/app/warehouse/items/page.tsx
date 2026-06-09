@@ -48,11 +48,11 @@ export default function ItemsPage() {
           className="w-full rounded-tool border border-line bg-surface py-3 pl-10 pr-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-2 focus:ring-brandring" />
       </div>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         {items === null ? <div className="p-6"><Spinner className="text-brand" /></div>
           : items.length === 0 ? <p className="p-8 text-center text-muted">{q ? 'Ni zadetkov.' : 'Ni postavk na zalogi.'}</p>
           : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[44rem] text-sm">
               <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
                 <tr><th className="px-5 py-2.5 font-bold">Naziv</th><th className="px-4 py-2.5 font-bold">SKU</th><th className="hidden px-4 py-2.5 font-bold sm:table-cell">OEM</th><th className="px-4 py-2.5 text-right font-bold">Zaloga</th><th className="px-4 py-2.5 text-right font-bold">Cena</th><th className="px-4 py-2.5 text-right font-bold">DDV</th><th className="px-5 py-2.5 font-bold">Enota</th></tr>
               </thead>

@@ -33,7 +33,7 @@ export default function VehiclesBrowser() {
       </Card>
 
       {customerId && (
-        <Card className="overflow-hidden">
+        <Card className="overflow-x-auto">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-base font-bold text-ink">Vozni park</h2>
             <Link href={`/advisor/customers/${customerId}/vehicles/new`} className="text-sm font-bold text-brand hover:underline">+ Dodaj vozilo</Link>
@@ -43,7 +43,7 @@ export default function VehiclesBrowser() {
           ) : (vehicles as any[]).length === 0 ? (
             <p className="p-8 text-center text-muted">Ta stranka še nima vozil.</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
                 <tr>
                   <th className="px-4 py-2.5 font-bold">Tablica</th>

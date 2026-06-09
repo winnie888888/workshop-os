@@ -126,6 +126,12 @@ export default function Home() {
               )}
             </div>
 
+            {/* Install-as-app hint (mobile only) */}
+            <div className="mx-auto mt-6 flex w-full max-w-md items-center gap-2.5 rounded-tool border border-brandring bg-brandweak px-4 py-3 text-sm text-ink md:hidden">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none text-brand" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v6M9.5 10.5 12 13l2.5-2.5"/></svg>
+              <span>Namesti kot aplikacijo — v meniju brskalnika izberi <span className="font-semibold">»Dodaj na začetni zaslon«</span>.</span>
+            </div>
+
             {/* Interface grid */}
             <section className="mt-10">
               <div className="mb-4 flex items-center gap-3">
