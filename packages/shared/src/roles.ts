@@ -57,6 +57,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
   [Role.Owner]: new Set([
     Permission.WorkOrderCreate,
     Permission.WorkOrderEdit,
+    Permission.WorkOrderLineTime,
     Permission.InvoiceIssue,
     Permission.PricingEdit,
     Permission.StockReceive,
@@ -75,6 +76,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
   [Role.Advisor]: new Set([
     Permission.WorkOrderCreate,
     Permission.WorkOrderEdit,
+    Permission.WorkOrderLineTime,
     Permission.InvoiceIssue,
     Permission.AiApproveFinancial,
     Permission.CustomerManage,
@@ -99,6 +101,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
   [Role.Admin]: new Set([
     Permission.WorkOrderCreate,
     Permission.WorkOrderEdit,
+    Permission.WorkOrderLineTime,
     Permission.InvoiceIssue,
     Permission.PricingEdit,
     Permission.StockReceive,
