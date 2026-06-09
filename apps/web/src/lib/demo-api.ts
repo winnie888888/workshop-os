@@ -58,7 +58,7 @@ function recompute(wo: any): void {
   for (const l of wo.lines) {
     const q = parseFloat(l.quantity) || 0;
     const unit = Number(l.unitPriceMinor) / 100;
-    const lineNet = q * unit;
+    const lineNet = q * unit * (1 - (parseFloat(l.discountPct) || 0) / 100);
     const lineVat = lineNet * (parseFloat(l.vatRatePct) / 100);
     l.netMinor = String(Math.round(lineNet * 100));
     l.vatMinor = String(Math.round(lineVat * 100));

@@ -43,6 +43,7 @@ export default function WorkOrderWorkspace() {
         description: l.description,
         qty: Number(l.quantity) || 0,
         unitPriceMinor: Number(l.unitPriceMinor) || 0,
+        discountPct: Number(l.discountPct) || 0,
         vatRatePct: Number(l.vatRatePct) || 22,
       }));
       const est = await api.estimates.create({ customerId: wo.customerId, vehicleId: (wo as any).assetId, workOrderId: wo.id, lines });
@@ -299,6 +300,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
           <tr>
             <th className="p-3">#</th><th className="p-3">Vrsta</th><th className="p-3">Opis</th>
             <th className="p-3 text-right">Količina</th><th className="p-3 text-right">Cena/EM</th>
+            <th className="p-3 text-right">Popust</th>
             <th className="p-3 text-right">Neto</th><th className="p-3 text-right">DDV</th>
             <th className="p-3"></th>
           </tr>
@@ -317,6 +319,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
                 <td className="p-3">{l.description}{l.issued && <span className="ml-2 text-xs text-go">vgrajeno</span>}</td>
                 <td className="p-3 text-right font-mono">{l.quantity}</td>
                 <td className="p-3 text-right font-mono">{formatMoneyMinor(l.unitPriceMinor, wo.currency)}</td>
+                <td className="p-3 text-right font-mono text-steel">{Number(l.discountPct) > 0 ? `−${formatVatRate(Number(l.discountPct))} %` : '—'}</td>
                 <td className="p-3 text-right font-mono">{formatMoneyMinor(l.netMinor, wo.currency)}</td>
                 <td className="p-3 text-right font-mono">{l.vatRatePct}%</td>
                 <td className="p-3 text-right">
@@ -332,7 +335,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
             )
           ))}
           {wo.lines.length === 0 && (
-            <tr><td colSpan={8} className="p-6 text-center text-steel">Ni postavk. Dodaj delo in dele za sestavo naloga.</td></tr>
+            <tr><td colSpan={9} className="p-6 text-center text-steel">Ni postavk. Dodaj delo in dele za sestavo naloga.</td></tr>
           )}
           {adding && (
             <LineAddRow wo={wo} kind={adding}
@@ -346,7 +349,7 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
             const vatRows = vatBreakdownMinor((wo.lines ?? []).map((l: any) => ({ qty: 1, unitPriceMinor: Number(l.netMinor) || 0, vatRatePct: Number(l.vatRatePct) || 0 })));
             return vatRows.length > 1 ? vatRows.map((b) => (
               <tr key={`vr${b.ratePct}`} className="text-xs text-muted">
-                <td className="px-3 pt-2 text-right" colSpan={5}>DDV {formatVatRate(b.ratePct)} % — osnova</td>
+                <td className="px-3 pt-2 text-right" colSpan={6}>DDV {formatVatRate(b.ratePct)} % — osnova</td>
                 <td className="px-3 pt-2 text-right font-mono">{formatMoneyMinor(b.netMinor, wo.currency)}</td>
                 <td className="px-3 pt-2 text-right font-mono">{formatMoneyMinor(b.vatMinor, wo.currency)}</td>
                 <td></td>
@@ -354,13 +357,13 @@ function LineEditor({ wo, editable, onChanged }: { wo: WorkOrderDetail; editable
             )) : null;
           })()}
           <tr className="font-bold">
-            <td className="p-3" colSpan={5}>Vsote</td>
+            <td className="p-3" colSpan={6}>Vsote</td>
             <td className="p-3 text-right font-mono">{formatMoneyMinor(wo.totalNetMinor, wo.currency)}</td>
             <td className="p-3 text-right font-mono">{formatMoneyMinor(wo.totalVatMinor, wo.currency)}</td>
             <td></td>
           </tr>
           <tr>
-            <td className="p-3 text-right text-steel" colSpan={6}>Za plačilo (z DDV)</td>
+            <td className="p-3 text-right text-steel" colSpan={7}>Za plačilo (z DDV)</td>
             <td className="p-3 text-right font-mono text-lg font-bold" colSpan={2}>{formatMoneyMinor(wo.totalGrossMinor, wo.currency)}</td>
           </tr>
         </tfoot>
@@ -392,6 +395,7 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
   const [qty, setQty] = useState(kind === 'labour' ? '1' : '1');
   const [unit, setUnit] = useState(kind === 'labour' ? defs.labourRateEur : '');
   const [vat, setVat] = useState(defs.vatRatePct);
+  const [disc, setDisc] = useState('0');
   const [busy, setBusy] = useState(false);
 
   async function add() {
@@ -405,6 +409,7 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
         description: description.trim(),
         quantity: qty || '1',
         unitPriceMinor: unitMinor,
+        discountPct: disc || '0',
         vatRatePct: vat || '22',
       });
       onAdded();
@@ -433,6 +438,10 @@ function LineAddRow({ wo, kind, onCancel, onAdded, onError }: {
           placeholder={kind === 'labour' ? '€/h' : '€'}
           className="w-20 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
       </td>
+      <td className="p-2">
+        <input value={disc} inputMode="decimal" onChange={(e: any) => setDisc(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" title="popust %" />
+      </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
         <select value={String(vat)} onChange={(e: any) => setVat(e.target.value)}
@@ -459,6 +468,7 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
   const [qty, setQty] = useState(line.quantity);
   const [unit, setUnit] = useState((Number(line.unitPriceMinor) / 100).toString());
   const [vat, setVat] = useState(line.vatRatePct);
+  const [disc, setDisc] = useState(line.discountPct);
   const [busy, setBusy] = useState(false);
 
   async function save() {
@@ -467,7 +477,7 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
     setBusy(true); onError(null);
     try {
       await api.workOrders.updateLine(wo.id, line.id, {
-        description: description.trim(), quantity: qty || '1', unitPriceMinor: unitMinor, vatRatePct: vat || '22',
+        description: description.trim(), quantity: qty || '1', unitPriceMinor: unitMinor, discountPct: disc || '0', vatRatePct: vat || '22',
       });
       onSaved();
     } catch (e) {
@@ -491,6 +501,10 @@ function LineEditRow({ wo, line, onCancel, onSaved, onError }: {
       <td className="p-2">
         <input value={unit} inputMode="decimal" onChange={(e) => setUnit(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
           className="w-20 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" />
+      </td>
+      <td className="p-2">
+        <input value={disc} inputMode="decimal" onChange={(e: any) => setDisc(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+          className="w-14 rounded border border-linestrong bg-surface px-2 py-2 text-right font-mono focus:border-brandring focus:outline-none" title="popust %" />
       </td>
       <td className="p-2 text-right text-steel">—</td>
       <td className="p-2">
