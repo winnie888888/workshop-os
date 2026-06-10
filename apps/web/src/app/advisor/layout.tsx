@@ -68,6 +68,7 @@ const NAV: NavItem[] = [
   { href: '/advisor/invoices', label: 'Računi', icon: 'invoices' },
   { href: '/advisor/calendar', label: 'Koledar', icon: 'calendar' },
   { href: '/advisor/messages', label: 'Sporočila', icon: 'messages' },
+  { href: '/advisor/bank-import', label: 'Plačila (banka)', icon: 'receivables' },
   { href: '/advisor/reports', label: 'Poročila', icon: 'reports' },
   { href: '/advisor/settings', label: 'Nastavitve', icon: 'settings' },
 ];

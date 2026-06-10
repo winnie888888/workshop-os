@@ -361,6 +361,63 @@ export class InvoicesService {
     });
   }
 
+  /**
+   * Knjiži plačilo na KONKRETEN račun (Plačila P2 — uvoz bančnih izpiskov):
+   * sklic z izpiska pove točno, kateri račun je plačan, zato tu ni
+   * oldest-first alokacije. Uporablja isti zapis (payments +
+   * payment_allocations + repo.applyPayment) kot ročni recordPayment, da
+   * statusi in saldo računa živijo na enem mestu. Morebitno preplačilo ostane
+   * kot unapplied na plačilu — vidno, ne izgubljeno.
+   */
+  async applyPaymentToInvoice(input: {
+    invoiceId: string; amountMinor: string; receivedAt: string;
+    reference?: string | null; payerName?: string | null; source?: string;
+  }) {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const header = await this.repo.findHeader(tx, input.invoiceId);
+      if (!header) throw new NotFoundException('Invoice not found');
+      const remaining = BigInt(header.totalGrossMinor) - BigInt(header.paidMinor ?? 0);
+      if (remaining <= 0n) throw new ConflictException(`Račun ${header.number} je že poravnan.`);
+      const amount = BigInt(input.amountMinor);
+      if (amount <= 0n) throw new BadRequestException('Znesek plačila mora biti pozitiven.');
+      const applied = amount < remaining ? amount : remaining;
+      const unapplied = amount - applied;
+
+      const paymentId = newId();
+      await tx.query(
+        `INSERT INTO app.payments (id, tenant_id, customer_id, currency, amount_minor, method, received_at, reference, unapplied_minor, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [
+          paymentId, ctx.tenantId, header.customerId, header.currency ?? 'EUR', amount.toString(),
+          'bank_transfer', input.receivedAt, input.reference ?? null, unapplied.toString(), ctx.userId,
+        ],
+      );
+      await tx.query(
+        `INSERT INTO app.payment_allocations (id, tenant_id, payment_id, invoice_id, applied_minor)
+         VALUES (gen_random_uuid(),$1,$2,$3,$4)`,
+        [ctx.tenantId, paymentId, input.invoiceId, applied.toString()],
+      );
+      await this.repo.applyPayment(tx, input.invoiceId, applied);
+
+      await this.audit.append(tx, {
+        tenantId: ctx.tenantId, actorId: ctx.userId, action: 'payment.recorded',
+        entityType: 'payment', entityId: paymentId,
+        before: null,
+        after: {
+          amountMinor: amount.toString(), appliedMinor: applied.toString(),
+          unappliedMinor: unapplied.toString(), invoiceId: input.invoiceId,
+          invoiceNumber: header.number, source: input.source ?? 'manual',
+          payerName: input.payerName ?? null, reference: input.reference ?? null,
+        },
+      });
+      return {
+        paymentId, invoiceNumber: header.number,
+        appliedMinor: applied.toString(), unappliedMinor: unapplied.toString(),
+      };
+    });
+  }
+
   /** Record a customer payment and allocate it oldest-due-first across open invoices. */
   async recordPayment(dto: RecordPaymentDto) {
     const ctx = getContext();

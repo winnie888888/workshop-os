@@ -62,4 +62,28 @@
 - [ ] API smoke testi za money path (nalog → račun → plačilo → dobropis)
 - [ ] HR lokalizacija temelj (i18n okvir) — Fiskalizacija 2.0 odpira trg 2026
 
+### Delovni nalog 2.0 — urgentni feedback iz delavnice (10. 6. 2026)
+- [x] **Tiskani A4 nalog** `/print/work-order/[id]` po papirnem obrazcu »Delovni nalog MEHANIČNI«: glava podjetja + logo, stranka, vozilo (znamka/reg/VIN/km), opis napake + diagnoza, mehanska dela, izvajalci z urami (Datum/Izvajalec/Od–do/Ure + skupaj), material s šifro, vsote, podpisa, noga z davčno; gumb »Natisni / PDF« na nalogu (app UI ostaja moderen — papir je samo izpis)
+- [x] **Več mehanikov na nalogu**: sekcija »Mehaniki in ure« (vnosi + seštevek po mehaniku + skupaj — Janez 1.5 h + Marko 0.5 h = 2 h) ter ročni vnos ur (`POST /work-orders/:id/time`, mehanik/datum/ure, audit); mehanikov clock-on/off nedotaknjen
+- [x] **Statusi v UI**: gumba »Čaka dele« in »Čaka stranko« + »Deli prispeli → nadaljuj« (stanja so v state machine obstajala, manjkali so gumbi)
+- [x] **Vrstica postavke**: izrazit gumb »✓ Shrani« (prejšnji »dodaj« je bil na telefonu odrezan), Enter shrani, po shranjeni vrstici vnos teče naprej (zaporedni vnos)
+- [x] **Material: šifra** (sku iz zaloge) v nalog payloadu in na izpisu
+- [x] **Logo na izpisih**: nalog + račun + predračun (interim: prikaz za sidrnega najemnika; per-tenant nalaganje loga = backlog). Minimaxov PDF računa se ureja v Minimaxu (Nastavitve → Izpisi), ne pri nas
+- [x] **Nadzorna plošča**: velika gumba »+ Nov nalog« in »Pregled nalogov« na vrhu; kartica »Prvi koraki« dobila »Skrij ✕« (trajno, localStorage)
+- [x] Iskanje po registrski/VIN/št. naloga: obstoječi globalni search to že pokriva (potrjeno v kodi)
+
+- [x] **Priloge na nalogu** (blok 2): sekcija na nalogu — foto gumbi »📷 Poškodba / Števec km / VIN« (kamera telefona, oznaka v imenu datoteke; ključno za reklamacije) + »📎 Priloži PDF/dokument« (homologacija, prometno, dobavnica); obstoječi presign→PUT→complete tok, nov `uploadWorkOrderDocument` (OCR-jev `uploadDocument` brez naloga nedotaknjen); klik na prilogo odpre datoteko
+- [x] **Zgodovina vozila**: nova stran vozila `/advisor/vehicles/[id]` (klik iz seznama vozil/stranke/plate-scan zdaj vodi sem, Uredi gumb ostaja): čipi Zadnji servis / Menjava olja / Zavore (pošteno označeno kot hevristika po opisih postavk) + pretekli nalogi in računi s povezavami; API `GET /assets/:id/history`
+- [x] **Marža na materialu**: izbirnik delov na nalogu zdaj pod prodajno ceno pokaže nabavno (cost_minor je v shemi že obstajal) in maržo v % — svetovalec vidi zaslužek pred dodajanjem
+
+**Preostali backlog:** dobavitelj na artiklu (zahteva migracijo — informacija o dobavitelju danes živi na nabavnih naročilih); per-tenant logo upload v Nastavitvah; statusna postavka na posameznem delu naloga.
+
+### Sprint 6 — Plačila P2: uvoz bančnih izpiskov ✓ KONČAN (10. 6. 2026)
+- [x] **camt.053 parser** (lasten, brez odvisnosti; selftest na realističnem izpisku ALL PASS): IBAN računa, obdobje, Ntry → znesek/valuta/datum/plačnik/IBAN/sklic (CdtrRefInf + fallback iz Ustrd z mejami besed); prstni odtis = AcctSvcrRef / EndToEndId / hash. POŠTENO: ozek ISO 20022 bralnik za zapiranje računov, ne polna implementacija standarda
+- [x] **Ujemanje po sklicu**: RF validiran po ISO 11649 (mod-97) → točno en odprt račun = samodejni predizbor; SI sklic po vsebovani številki; brez sklica = predlogi po točnem odprtem saldu (NIKOLI samodejno); odlivi in že knjiženi prilivi označeni
+- [x] **Idempotentna knjižba**: UNIQUE (tenant, fingerprint); vrstica 'pending' PRED knjižbo → 'applied' PO njej; ponovni uvoz istega izpiska ne podvoji ničesar, prekinjen poskus se varno dokonča; migracija 0022 (bank_imports + bank_import_entries, RLS)
+- [x] **Knjiženje skozi invoices domeno**: nova `applyPaymentToInvoice` (ciljno na račun iz sklica; payments + allocations + repo.applyPayment + audit `payment.recorded` s source='bank_import'; preplačilo ostane vidno kot unapplied) — ena resnica o saldu/statusu računa
+- [x] **Zaslon Plačila (banka)** (advisor NAV): uvoz .xml → predogled ujemanj (nič se ne knjiži) → izbor → »Knjiži izbrana plačila (N)« → rezultat s povezavami; main.ts json limit 10mb za večje izpiske
+- [ ] Naprej (P2.1): zgodovina uvozov na zaslonu; ročno »razknjiži« plačilo; samodejno obvestilo stranki »plačilo prejeto«
+
 **Code-complete = vsi checkboxi Sprint 1–5: DOSEŽENO (10. 6. 2026)** — edina odprta podpostavka je platform-fakturni handler (gl. Sprint 4), zavestno vezan na Stripe test ključe. Naprej: Plačila P2 (camt.053, Sprint 6) in P3 (Stripe Connect + blagajna, Sprint 7).

@@ -222,6 +222,8 @@ export const api = {
 
     // Phase 4B: the tenant's assignable mechanics.
     mechanics: () => request<Array<{ id: string; name: string }>>(`/work-orders/mechanics`),
+    addTime: (id: string, body: { mechanicId: string; date: string; hours?: string; from?: string; to?: string }) =>
+      request<{ timeEntryId: string; durationSeconds: number }>(`/work-orders/${id}/time`, { method: 'POST', body }),
 
     // Phase 4B: edit a line (re-priced server-side by the shared core).
     updateLine: (id: string, lineId: string, dto: {
@@ -282,6 +284,7 @@ export const api = {
 
   assets: {
     get: (id: string) => request<any>(`/assets/${id}`),
+    history: (id: string) => request<any>(`/assets/${id}/history`),
     // Vehicles are listed PER CUSTOMER (the backend requires customerId). The
     // previous client called /assets with no customer, which returned nothing.
     list: (customerId: string) => request<any[]>(`/assets?customerId=${encodeURIComponent(customerId)}`),
@@ -604,5 +607,9 @@ export const api = {
       request<{ url: string }>(`/billing/checkout`, { method: 'POST', body: { plan } }),
     portal: () =>
       request<{ url: string }>(`/billing/portal`, { method: 'POST' }),
+  },
+  bankImport: {
+    preview: (xml: string) => request<any>(`/bank-import/preview`, { method: 'POST', body: { xml } }),
+    apply: (body: Record<string, unknown>) => request<any>(`/bank-import/apply`, { method: 'POST', body }),
   },
 };
