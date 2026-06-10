@@ -2,7 +2,6 @@
 
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { Button, Card, Spinner } from '@/components/ui';
 import { downloadCsv, downloadJson, dateStamp } from '@/lib/data-export';
 
@@ -11,7 +10,7 @@ import { downloadCsv, downloadJson, dateStamp } from '@/lib/data-export';
  * pillar). Every core entity can be exported to CSV (Excel-ready) and the whole
  * company dataset to a single JSON archive ("take all my data"), with no
  * vendor lock-in. It reads a full tenant snapshot from one endpoint
- * (api.exportSnapshot); in production that endpoint runs server-side. Import
+ * (api.exportSnapshot — real backend: GET /export/snapshot, Sprint 3). Import
  * (Excel / other systems, with AI column mapping) is the next phase.
  */
 
@@ -22,30 +21,14 @@ const ENTITIES: { key: string; label: string; slug: string }[] = [
   { key: 'estimates', label: 'Predračuni', slug: 'predracuni' },
   { key: 'invoices', label: 'Računi', slug: 'racuni' },
   { key: 'items', label: 'Postavke (zaloga)', slug: 'postavke' },
+  { key: 'suppliers', label: 'Dobavitelji', slug: 'dobavitelji' },
   { key: 'presets', label: 'Paketi', slug: 'paketi' },
   { key: 'appointments', label: 'Termini', slug: 'termini' },
   { key: 'mechanics', label: 'Zaposleni / mehaniki', slug: 'mehaniki' },
 ];
 
 export default function OwnerDataExport() {
-  const { data: snap, isLoading, error } = useSWR(
-    DEMO_MODE ? 'owner-export-snapshot' : null,
-    () => api.exportSnapshot(),
-  );
-
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-ink">Izvoz podatkov</h1>
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Strežniški izvoz je v pripravi.</p>
-          <p className="mt-1 text-sm text-muted">
-            Polni izvoz prek API-ja (vse entitete + arhiv) je naslednja zaledna faza. V demo načinu je izvoz že na voljo.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  const { data: snap, isLoading, error } = useSWR('owner-export-snapshot', () => api.exportSnapshot());
 
   const data: Record<string, any[]> = snap?.data ?? {};
   const totalRows = ENTITIES.reduce((n, e) => n + (data[e.key]?.length ?? 0), 0);

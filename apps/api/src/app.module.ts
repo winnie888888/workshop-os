@@ -24,6 +24,7 @@ import { WorkerModule } from './worker/worker.module';
 import { SignupModule } from './modules/signup/signup.module';
 import { InAppNotificationsModule } from './modules/notifications/notifications.module';
 import { PresetsModule } from './modules/presets/presets.module';
+import { ExportModule } from './modules/export/export.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -71,6 +72,7 @@ import { HealthController } from './common/health.controller';
     SignupModule,       // /public: self-serve signup, verify, login (Faza A)
     InAppNotificationsModule, // /notifications: zvonček (Sprint 3)
     PresetsModule,      // /presets: servisni paketi (Sprint 3)
+    ExportModule,       // /export/snapshot: GDPR/prenosljivost (Sprint 3)
     AttachmentsModule,  // uploads (photos, voice notes, documents)
     SearchModule,       // global search
     SyncModule,

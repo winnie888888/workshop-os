@@ -54,6 +54,7 @@ export const Permission = {
   EstimateManage: "estimate:manage",       // create/edit quotes, change their status
   AppointmentManage: "appointment:manage", // create/edit/delete calendar bookings
   PresetManage: "preset:manage",           // create/edit/delete service packages (presets)
+  DataExport: "data:export",               // full tenant data snapshot (GDPR/portability)
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -80,6 +81,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.RentalManage,
     Permission.EstimateManage,
     Permission.AppointmentManage,
+    Permission.DataExport,
   ]),
   [Role.Advisor]: new Set([
     Permission.WorkOrderCreate,
@@ -122,6 +124,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.PurchaseManage,
     Permission.AnalyticsFinancialView,
     Permission.TenantManage,
+    Permission.DataExport,
     Permission.IntegrationsManage,
     Permission.AiApproveFinancial,
     Permission.CustomerManage,
