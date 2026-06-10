@@ -57,6 +57,8 @@ export default function AdvisorDashboard() {
         </span>
       </div>
 
+      <OnboardingCard />
+
       {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Današnji urnik" value={String(jobs.length)} unit="nalogi" href="/advisor/work-orders"
@@ -324,4 +326,101 @@ function activityTime(iso: string) {
   if (Number.isNaN(d.getTime())) return '';
   const sameDay = d.toDateString() === new Date().toDateString();
   return sameDay ? `danes ${hhmm(iso)}` : d.toLocaleDateString('sl-SI', { day: 'numeric', month: 'short' });
+}
+
+/**
+ * Prvi koraki — onboarding za svežo delavnico (Faza A). Koraki NISO zastavice
+ * v bazi, ampak so izvedeni iz DEJANSKIH podatkov (število strank, nalogov,
+ * predračunov, terminov), zato kartica nikoli ne laže in pri vpeljanem tenantu
+ * (vključno z demom) sama izgine. Seed gumb ustvari vzorčne podatke prek
+ * istih REST klicev kot ročni vnos — nič posebnih poti.
+ */
+function OnboardingCard() {
+  const { data: cust, mutate: mCust } = useSWR('onb-cust', () =>
+    api.customers.search({ limit: 1 }).then((r: any) => ((r?.items ?? []) as any[]).length).catch(() => null));
+  const { data: wos, mutate: mWos } = useSWR('onb-wo', () =>
+    api.workOrders.list({ limit: 1 }).then((r: any) => (Array.isArray(r) ? r : r?.items ?? []).length).catch(() => null));
+  const { data: ests } = useSWR('onb-est', () =>
+    api.estimates.list().then((r: any) => (Array.isArray(r) ? r : r?.items ?? []).length).catch(() => null));
+  const { data: apps } = useSWR('onb-app', () =>
+    api.appointments.list().then((r: any) => (Array.isArray(r) ? r : r?.items ?? []).length).catch(() => null));
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [seedErr, setSeedErr] = useState<string | null>(null);
+
+  const counts = [cust, wos, ests, apps];
+  if (counts.some((c) => c == null)) return null; // nalaganje ali napaka -> ne ugibamo
+  const done = counts.filter((c) => (c as number) > 0).length;
+  if (done === 4) return null;
+
+  const steps = [
+    { ok: (cust as number) > 0, label: 'Dodajte prvo stranko', hint: 'VIES uvoz po ID za DDV je vgrajen.', href: '/advisor/customers/new', cta: 'Nova stranka' },
+    { ok: (wos as number) > 0, label: 'Ustvarite prvi delovni nalog', hint: 'Sprejem vozila, postavke, čas.', href: '/advisor/work-orders/new', cta: 'Nov nalog' },
+    { ok: (ests as number) > 0, label: 'Pripravite prvi predračun', hint: 'Stranki ga pošljete v potrditev.', href: '/advisor/quotes/new', cta: 'Nov predračun' },
+    { ok: (apps as number) > 0, label: 'Vpišite prvi termin', hint: 'Koledar sprejema in kapacitet.', href: '/advisor/calendar', cta: 'Koledar' },
+  ];
+  const allZero = counts.every((c) => c === 0);
+
+  async function seed() {
+    setSeedBusy(true); setSeedErr(null);
+    try {
+      const c1 = await api.customers.create({
+        name: 'Prevozi Vzorec d.o.o.', type: 'company', country: 'SI', vatLiable: true, vatId: 'SI12345678',
+        address: 'Industrijska cesta 1', postCode: '8340', city: 'Črnomelj',
+        currency: 'EUR', paymentTermsDays: 30, discountPct: 0,
+      });
+      await api.customers.create({
+        name: 'Avtoprevozništvo Novak s.p.', type: 'company', country: 'SI', vatLiable: true,
+        address: 'Obrtna ulica 5', postCode: '8000', city: 'Novo mesto',
+        currency: 'EUR', paymentTermsDays: 15, discountPct: 0,
+      });
+      if (c1?.id) {
+        await api.assets.create({ customerId: c1.id, type: 'truck', plate: 'NM AB-123', countryOfPlate: 'SI', make: 'MAN', model: 'TGX' });
+      }
+      await Promise.all([mCust(), mWos()]);
+    } catch (e) {
+      setSeedErr(e instanceof Error ? e.message : 'Vzorčnih podatkov ni bilo mogoče ustvariti.');
+    } finally {
+      setSeedBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-card border border-brandring bg-brandweak/40 p-5 shadow-card">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-base font-extrabold text-ink">Prvi koraki</h2>
+          <p className="text-sm text-muted">Postavite delavnico v nekaj minutah.</p>
+        </div>
+        <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-brand shadow-card">{done}/4</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {steps.map((st, i) => (
+          <div key={st.label} className={`flex items-center gap-3 rounded-tool border px-3 py-2.5 ${st.ok ? 'border-line bg-surface/60' : 'border-line bg-surface'}`}>
+            <span className={`grid h-7 w-7 flex-none place-items-center rounded-full text-xs font-bold ${st.ok ? 'bg-emerald-500 text-white' : 'bg-brandweak text-brand'}`}>
+              {st.ok ? '✓' : i + 1}
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className={`block truncate text-sm font-bold ${st.ok ? 'text-muted line-through' : 'text-ink'}`}>{st.label}</span>
+              <span className="block truncate text-xs text-muted2">{st.hint}</span>
+            </span>
+            {!st.ok && (
+              <Link href={st.href} className="flex-none rounded-tool bg-brand px-3 py-1.5 text-xs font-bold text-white transition hover:bg-brand700">
+                {st.cta}
+              </Link>
+            )}
+          </div>
+        ))}
+      </div>
+      {allZero && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button onClick={seed} disabled={seedBusy}
+            className="rounded-tool border border-brandring bg-surface px-3 py-2 text-xs font-bold text-brand transition hover:bg-brandweak disabled:opacity-60">
+            {seedBusy ? 'Ustvarjam …' : 'Začni s preizkusnimi podatki'}
+          </button>
+          <span className="text-xs text-muted2">Ustvari 2 vzorčni stranki in tovornjak — prek istih API klicev kot ročni vnos.</span>
+        </div>
+      )}
+      {seedErr && <p className="mt-2 text-xs font-semibold text-rose-600">{seedErr}</p>}
+    </section>
+  );
 }

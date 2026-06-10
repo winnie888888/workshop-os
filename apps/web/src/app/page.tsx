@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { startAutoFlush } from '@/lib/offline-queue';
 import { Button, Card, Spinner, ProblemBanner } from '@/components/ui';
 import { DEMO_MODE, DEV_AUTH, planDevSession } from '@/lib/demo';
+import { loginLocal } from '@/lib/local-auth';
 import { DemoShare } from '@/components/share';
 
 /*
@@ -92,13 +93,32 @@ export default function Home() {
           <div className="mx-auto mt-10 w-full max-w-md">
             <Card className="p-7">
               <h2 className="mb-1 text-xl font-bold text-ink">Dobrodošli</h2>
-              <p className="mb-5 text-sm text-muted">
-                Preusmerjeni boste na varni prijavni sistem vaše delavnice in nato vrnjeni sem.
-                Aplikacija nikoli ne obdeluje gesla.
-              </p>
-              <Button tone="info" size="lg" full onClick={login} disabled={loading}>
-                {loading ? <Spinner /> : 'Prijava z računom delavnice'}
-              </Button>
+              {DEMO_MODE ? (
+                <>
+                  <p className="mb-5 text-sm text-muted">
+                    Preusmerjeni boste na varni prijavni sistem vaše delavnice in nato vrnjeni sem.
+                    Aplikacija nikoli ne obdeluje gesla.
+                  </p>
+                  <Button tone="info" size="lg" full onClick={login} disabled={loading}>
+                    {loading ? <Spinner /> : 'Prijava z računom delavnice'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="mb-5 text-sm text-muted">Prijavite se z e-naslovom svoje delavnice.</p>
+                  <LocalLoginForm onLoggedIn={setLocal} />
+                  <div className="my-5 flex items-center gap-3 text-[0.65rem] font-bold uppercase tracking-wide text-muted2">
+                    <span className="h-px flex-1 bg-line" />ali<span className="h-px flex-1 bg-line" />
+                  </div>
+                  <Button tone="neutral" full onClick={login} disabled={loading}>
+                    {loading ? <Spinner /> : 'SSO prijava (podjetja)'}
+                  </Button>
+                  <p className="mt-5 text-center text-sm text-muted">
+                    Nova delavnica?{' '}
+                    <Link href="/signup" className="font-semibold text-brand hover:underline">Ustvarite račun</Link>
+                  </p>
+                </>
+              )}
               {DEV_AUTH && (
                 <button onClick={() => setLocal(planDevSession())}
                   className="mt-3 w-full rounded-tool border border-line py-2.5 text-sm font-semibold text-steel transition hover:border-brandring hover:text-brand">
@@ -195,5 +215,44 @@ function TenantPicker({ session, onPicked }: { session: Session; onPicked: (s: S
         ))}
       </div>
     </Card>
+  );
+}
+
+/** Lokalna prijava (email+geslo) — Faza A. OIDC ostaja kot SSO pot zgoraj. */
+function LocalLoginForm({ onLoggedIn }: { onLoggedIn: (s: Session) => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    if (!email.trim() || !password) { setErr('Vpišite e-naslov in geslo.'); return; }
+    setBusy(true); setErr(null);
+    try { onLoggedIn(await loginLocal(email, password)); }
+    catch (e) { setErr(e instanceof Error ? e.message : 'Prijava ni uspela.'); }
+    finally { setBusy(false); }
+  }
+
+  const inputCls =
+    'h-11 w-full rounded-tool border border-line bg-surface2 px-3 text-sm transition focus:border-brandring focus:bg-surface focus:outline-none focus:ring-4 focus:ring-brandweak';
+  return (
+    <div className="flex flex-col gap-3">
+      {err && <ProblemBanner message={err} />}
+      <label className="block">
+        <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted2">E-naslov</span>
+        <input type="email" autoComplete="email" value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }} className={inputCls} />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted2">Geslo</span>
+        <input type="password" autoComplete="current-password" value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }} className={inputCls} />
+      </label>
+      <Button tone="info" size="lg" full onClick={submit} disabled={busy}>
+        {busy ? <Spinner /> : 'Prijava'}
+      </Button>
+    </div>
   );
 }

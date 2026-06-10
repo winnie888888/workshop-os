@@ -20,11 +20,11 @@
 - [x] **Scheduler primitiv**: worker zanka pokriva outbox retry + reaper; trial-expiry job pride s Fazo A (stolpec `trial_ends_at` še ne obstaja).
 - [x] Quick-win ungates: WO → "Ustvari predračun" gumb (stale gate — estimates so realni!); warehouse ai-import (OcrModule obstaja — preveri wiring).
 
-### Sprint 2 — Faza A: self-serve signup & provisioning
+### Sprint 2 — Faza A: self-serve signup & provisioning ✓ KONČAN
 - [x] Migracija 0018: `app.user_credentials`, `app.signup_tokens`, `tenants.plan/billing_status/trial_ends_at` (KDF: Node scrypt namesto argon2id — brez native odvisnosti; parametri v hashu, migracija na argon2id kadar koli čista)
 - [x] `/public/signup|verify|login` modul: registracija, e-mail verifikacija (prek Sprint-1 mailerja), rate limit + Turnstile (config-driven), enumeration zaščita, lockout
 - [x] Provisioning transakcija: tenant + owner + membership + credentials + audit `tenant.created` (prvi člen verige); demo seed → del web onboardinga (naslednji ship)
-- [ ] Web: /signup, /verify, onboarding checklist kartica (4 koraki), VIES lookup za tenant podatke
+- [x] Web: /signup, /verify (Suspense + enkratni žeton), lokalna prijava na vstopni strani (OIDC ostaja kot SSO), onboarding kartica »Prvi koraki« — 4 koraki IZVEDENI iz dejanskih podatkov (stranka → nalog → predračun → termin) + seed prek pravih REST klicev; VIES za STRANKO je v koraku 1, VIES za podatke delavnice → nastavitve tenanta (Sprint 3/4)
 - [x] Lastna prijava (email+geslo): lokalni HS256 žetoni skozi OBSTOJEČI TokenVerifier (`local|<userId>` ↔ external_subject); OIDC nedotaknjen
 
 ### Sprint 3 — Feature-complete blok (luknje iz avdita)
