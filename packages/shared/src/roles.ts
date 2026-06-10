@@ -49,6 +49,10 @@ export const Permission = {
   TravelOrderManage: "travel_order:manage",
   PayrollExport: "payroll:export",
   RentalManage: "rental:manage", // create rental vehicles, reserve, handover/return, invoice
+  // Front-of-house planning documents (quotes + calendar). Converting a quote
+  // into an invoice is additionally gated by InvoiceIssue at the endpoint.
+  EstimateManage: "estimate:manage",       // create/edit quotes, change their status
+  AppointmentManage: "appointment:manage", // create/edit/delete calendar bookings
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -72,6 +76,8 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.TravelOrderManage,
     Permission.PayrollExport,
     Permission.RentalManage,
+    Permission.EstimateManage,
+    Permission.AppointmentManage,
   ]),
   [Role.Advisor]: new Set([
     Permission.WorkOrderCreate,
@@ -83,6 +89,8 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.TravelOrderManage,
     Permission.LeaveApprove,
     Permission.RentalManage,
+    Permission.EstimateManage,
+    Permission.AppointmentManage,
   ]),
   [Role.Mechanic]: new Set([Permission.WorkOrderLineTime]),
   [Role.Warehouse]: new Set([
@@ -118,6 +126,8 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.TravelOrderManage,
     Permission.PayrollExport,
     Permission.RentalManage,
+    Permission.EstimateManage,
+    Permission.AppointmentManage,
   ]),
   [Role.FleetManager]: new Set<Permission>([]), // portal-only; no console permissions
 };

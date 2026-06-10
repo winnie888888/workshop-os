@@ -262,7 +262,29 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   if (path === '/customers/lookup' && method === 'GET') {
     return ok(demoCompanyLookup(params.get('vat') ?? '', params.get('regNo') ?? '') as any);
   }
-  if (path === '/customers' && method === 'GET') return ok({ items: allCustomers(), nextCursor: null } as any);
+  if (path === '/customers' && method === 'GET') {
+    // Mirror the real endpoint: q search + keyset pagination over (name, id),
+    // so the register's search and "load more" behave identically in demo.
+    let items = allCustomers().slice().sort((a, b) =>
+      (String(a.name).toLowerCase().localeCompare(String(b.name).toLowerCase())) || String(a.id).localeCompare(String(b.id)));
+    const q = (params.get('q') ?? '').trim().toLowerCase();
+    if (q) {
+      items = items.filter((c) => [c.name, c.vatId, c.city, c.code].some((v) => String(v ?? '').toLowerCase().includes(q)));
+    }
+    const afterName = params.get('afterName'); const afterId = params.get('afterId');
+    if (afterName !== null && afterId !== null) {
+      const an = afterName.toLowerCase();
+      items = items.filter((c) => {
+        const n = String(c.name).toLowerCase();
+        return n > an || (n === an && String(c.id) > afterId);
+      });
+    }
+    const limit = Math.min(Math.max(parseInt(params.get('limit') ?? '50', 10) || 50, 1), 100);
+    const page = items.slice(0, limit);
+    const last = page[page.length - 1];
+    const nextCursor = page.length === limit && last ? { afterName: last.name, afterId: last.id } : null;
+    return ok({ items: page, nextCursor } as any);
+  }
   if (seg[0] === 'customers' && seg[1]) {
     const cust = allCustomers().find((c) => c.id === seg[1]);
     if (seg.length === 2 && method === 'GET') return ok((cust ?? {}) as any);

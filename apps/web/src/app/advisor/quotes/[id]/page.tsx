@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor, estimateStatusLabel, estimateStatusTone, docTotalsMinor, displayPlate, vatBreakdownMinor, formatVatRate } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner, ProblemBanner, StatusChip } from '@/components/ui';
 
@@ -24,23 +23,13 @@ import { Button, Card, SoftChip, Spinner, ProblemBanner, StatusChip } from '@/co
 export default function QuoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: est, isLoading, mutate } = useSWR(DEMO_MODE ? ['estimate', id] : null, () => api.estimates.get(id).catch(() => null));
+  const { data: est, isLoading, mutate } = useSWR(['estimate', id], () => api.estimates.get(id).catch(() => null));
   const { data: customer } = useSWR(est?.customerId ? ['est-cust', est.customerId] : null, () => api.customers.get(est.customerId).catch(() => null));
   const { data: vehicle } = useSWR(est?.vehicleId ? ['est-veh', est.vehicleId] : null, () => api.assets.get(est.vehicleId).catch(() => null));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [invoiceNote, setInvoiceNote] = useState<string | null>(null);
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Predračuni so na voljo v demo načinu.</p>
-          <Link href="/advisor/quotes" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Predračuni</Link>
-        </Card>
-      </div>
-    );
-  }
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
   if (!est || !est.id) return <Card className="p-6 text-muted">Predračun ni najden.</Card>;
 

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { readDefaultsSync } from '@/lib/workshop-settings';
 import { formatMoneyMinor, docTotalsMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner, ProblemBanner } from '@/components/ui';
@@ -24,26 +23,16 @@ const inputCls = 'w-full rounded-tool border border-line bg-surface px-2.5 py-1.
 
 export default function NewQuotePage() {
   const router = useRouter();
-  const { data: customers } = useSWR(DEMO_MODE ? ['customers-new-quote'] : null, () => api.customers.list().catch(() => []));
+  const { data: customers } = useSWR(['customers-new-quote'], () => api.customers.list().catch(() => []));
   const [customerId, setCustomerId] = useState('');
-  const { data: vehicles } = useSWR(DEMO_MODE && customerId ? ['veh-new-quote', customerId] : null, () => api.assets.list(customerId).catch(() => []));
+  const { data: vehicles } = useSWR(customerId ? ['veh-new-quote', customerId] : null, () => api.assets.list(customerId).catch(() => []));
   const [vehicleId, setVehicleId] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState('');
-  const { data: results } = useSWR(DEMO_MODE && q.trim().length >= 2 ? ['cat-new-quote', q] : null, () => api.inventory.search(q).catch(() => []));
+  const { data: results } = useSWR(q.trim().length >= 2 ? ['cat-new-quote', q] : null, () => api.inventory.search(q).catch(() => []));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Predračuni so na voljo v demo načinu.</p>
-          <Link href="/advisor/quotes" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Predračuni</Link>
-        </Card>
-      </div>
-    );
-  }
 
   const addLabour = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'labour', description: 'Delo', qty: '1', priceEur: d.labourRateEur, vat: d.vatRatePct, discountPct: '0' }]); };
   const addPart = () => { const d = readDefaultsSync(); setRows((r) => [...r, { id: uid(), kind: 'part', description: '', qty: '1', priceEur: '0.00', vat: d.vatRatePct, discountPct: '0' }]); };

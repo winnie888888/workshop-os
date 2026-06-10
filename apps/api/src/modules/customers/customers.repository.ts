@@ -139,13 +139,29 @@ export class CustomersRepository {
   }
 
   /** Cursor pagination by (name, id). Returns up to `limit` rows. */
-  async list(tx: TxClient, limit: number, afterName?: string, afterId?: string): Promise<Customer[]> {
+  async list(tx: TxClient, limit: number, afterName?: string, afterId?: string, q?: string): Promise<Customer[]> {
+    // Server-side search: one needle across the fields an advisor actually
+    // types at the counter — name, VAT id, city, code. Combined with the same
+    // keyset pagination so a filtered list pages exactly like the full one.
+    const needle = q?.trim() ? `%${q.trim()}%` : undefined;
+    const search = needle
+      ? `(name ILIKE $N OR vat_id ILIKE $N OR city ILIKE $N OR code ILIKE $N)`
+      : undefined;
+
     if (afterName !== undefined && afterId !== undefined) {
+      const params: any[] = [afterName, afterId, limit];
+      let where = `(lower(name), id) > (lower($1), $2)`;
+      if (search) { params.push(needle); where += ` AND ${search.replace(/\$N/g, `$${params.length}`)}`; }
       const res = await tx.query<CustomerRow>(
-        `SELECT * FROM app.customers
-          WHERE (lower(name), id) > (lower($1), $2)
-          ORDER BY lower(name), id LIMIT $3`,
-        [afterName, afterId, limit],
+        `SELECT * FROM app.customers WHERE ${where} ORDER BY lower(name), id LIMIT $3`,
+        params,
+      );
+      return res.rows.map(toDomain);
+    }
+    if (search) {
+      const res = await tx.query<CustomerRow>(
+        `SELECT * FROM app.customers WHERE ${search.replace(/\$N/g, '$2')} ORDER BY lower(name), id LIMIT $1`,
+        [limit, needle],
       );
       return res.rows.map(toDomain);
     }

@@ -115,10 +115,10 @@ export class CustomersService {
     return customer;
   }
 
-  async list(limit: number, afterName?: string, afterId?: string): Promise<Customer[]> {
+  async list(limit: number, afterName?: string, afterId?: string, q?: string): Promise<Customer[]> {
     const ctx = getContext();
     const capped = Math.min(Math.max(limit, 1), 100);
-    return this.pg.withTenant(ctx.tenantId, (tx) => this.repo.list(tx, capped, afterName, afterId));
+    return this.pg.withTenant(ctx.tenantId, (tx) => this.repo.list(tx, capped, afterName, afterId, q));
   }
 
   /**

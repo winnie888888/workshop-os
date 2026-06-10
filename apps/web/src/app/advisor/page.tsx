@@ -29,7 +29,7 @@ export default function AdvisorDashboard() {
   );
   const { data: recent } = useSWR('advisor-recent', () => api.workOrders.list({ limit: 8 }));
   const { data: aging } = useSWR('advisor-aging', () => api.reports.arAging().catch(() => null));
-  const { data: appts } = useSWR(DEMO_MODE ? 'advisor-appts' : null, () => api.appointments.list().catch(() => []));
+  const { data: appts } = useSWR('advisor-appts', () => api.appointments.list().catch(() => []));
 
   const jobs = open ?? [];
   const inProgress = jobs.filter((w) => w.hasOpenClock || w.status === 'in_progress').length;

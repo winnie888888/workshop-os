@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { Button, Card, ProblemBanner, Spinner } from '@/components/ui';
 import { SelectField, TextField, TextAreaField, NumberField } from '@/components/form';
 import { isoDate, startOfWeek, addDays, WEEKDAY_LABELS } from '@/lib/calendar-store';
@@ -27,20 +26,10 @@ export default function CalendarPage() {
   const [error, setError] = useState<string | null>(null);
   const [savedNote, setSavedNote] = useState<string | null>(null);
 
-  const { data: appts, mutate } = useSWR(DEMO_MODE ? ['appointments'] : null, () => api.appointments.list().catch(() => []));
-  const { data: customers } = useSWR(DEMO_MODE ? ['cal-customers'] : null, () => api.customers.list().catch(() => []));
-  const { data: vehicles } = useSWR(DEMO_MODE && form?.customerId ? ['cal-veh', form.customerId] : null, () => api.assets.list(form!.customerId).catch(() => []));
+  const { data: appts, mutate } = useSWR(['appointments'], () => api.appointments.list().catch(() => []));
+  const { data: customers } = useSWR(['cal-customers'], () => api.customers.list().catch(() => []));
+  const { data: vehicles } = useSWR(form?.customerId ? ['cal-veh', form.customerId] : null, () => api.assets.list(form!.customerId).catch(() => []));
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Koledar je povezan z demo bazo.</p>
-          <p className="mt-1 text-sm text-muted">V produkciji teče prek API-ja /appointments (v pripravi).</p>
-        </Card>
-      </div>
-    );
-  }
 
   const list = (appts as any[] | undefined) ?? [];
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));

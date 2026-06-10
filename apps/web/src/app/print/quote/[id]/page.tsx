@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor, formatVatRate, vatBreakdownMinor, docTotalsMinor } from '@/lib/format';
 import { loadSettings } from '@/lib/workshop-settings';
 
@@ -17,7 +16,7 @@ import { loadSettings } from '@/lib/workshop-settings';
  */
 export default function QuotePrint() {
   const { id } = useParams<{ id: string }>();
-  const { data: est } = useSWR(DEMO_MODE ? ['print-est', id] : null, () => api.estimates.get(id).catch(() => null));
+  const { data: est } = useSWR(['print-est', id], () => api.estimates.get(id).catch(() => null));
   const { data: customer } = useSWR(est?.customerId ? ['print-est-cust', est.customerId] : null, () => api.customers.get(est!.customerId).catch(() => null));
   const { data: vehicle } = useSWR(est?.vehicleId ? ['print-est-veh', est.vehicleId] : null, () => api.assets.get(est!.vehicleId).catch(() => null));
   const [company, setCompany] = useState<{ name: string; address: string; vatId: string; iban: string } | null>(null);
@@ -32,7 +31,6 @@ export default function QuotePrint() {
     }
   }, [est, company]);
 
-  if (!DEMO_MODE) return <div className="p-10 text-center text-muted">Predračuni so na voljo v demo načinu.</div>;
   if (!est) return <div className="p-10 text-center text-muted">Nalagam predračun…</div>;
 
   const cur = est.currency || 'EUR';

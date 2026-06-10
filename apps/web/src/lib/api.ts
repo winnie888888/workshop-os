@@ -252,6 +252,15 @@ export const api = {
       return res.items ?? [];
     },
     create: (dto: Record<string, unknown>) => request<any>(`/customers`, { method: 'POST', body: dto }),
+    // Server-side search + keyset pagination for the register screen. Returns
+    // the {items, nextCursor} envelope verbatim so the page can load more.
+    search: (p: { q?: string; limit?: number; afterName?: string; afterId?: string } = {}) => {
+      const s = new URLSearchParams();
+      s.set('limit', String(p.limit ?? 50));
+      if (p.q) s.set('q', p.q);
+      if (p.afterName !== undefined && p.afterId !== undefined) { s.set('afterName', p.afterName); s.set('afterId', p.afterId); }
+      return request<{ items: any[]; nextCursor: { afterName: string; afterId: string } | null }>(`/customers?${s.toString()}`);
+    },
     // Phase 4B: edit an existing customer.
     update: (id: string, dto: Record<string, unknown>) =>
       request<any>(`/customers/${id}`, { method: 'PATCH', body: dto }),

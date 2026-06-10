@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { displayPlate, formatMoneyMinor, statusLabel, statusTone, estimateStatusLabel, estimateStatusTone, docTotalsMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 import { downloadJson, dateStamp } from '@/lib/data-export';
@@ -219,7 +218,6 @@ function VatStatusCard({ customer, onChanged }: { customer: any; onChanged: () =
 
 /* Linked work orders for this customer (cross-link). */
 function WorkOrdersCard({ id, wos }: { id: string; wos: any[] | undefined }) {
-  if (!DEMO_MODE) return null;
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-line p-4">
@@ -256,7 +254,6 @@ const INV_TONE: Record<string, 'go' | 'hold' | 'stop' | 'info' | 'neutral'> = { 
 
 /* Linked invoices for this customer (cross-link). */
 function InvoicesCard({ invoices }: { invoices: any[] | undefined }) {
-  if (!DEMO_MODE) return null;
   return (
     <Card className="overflow-hidden">
       <div className="border-b border-line p-4"><h2 className="text-base font-bold text-ink">Računi</h2></div>
@@ -288,8 +285,7 @@ function InvoicesCard({ invoices }: { invoices: any[] | undefined }) {
 /* Predračuni (estimates) cross-link — this customer's quotes, central-store backed.
  * Self-fetching so it stays additive; demo-only like the other cross-link cards. */
 function EstimatesCard({ id }: { id: string }) {
-  const { data: estimates } = useSWR(DEMO_MODE ? ['cust-estimates', id] : null, () => api.estimates.list({ customerId: id }).catch(() => []));
-  if (!DEMO_MODE) return null;
+  const { data: estimates } = useSWR(['cust-estimates', id], () => api.estimates.list({ customerId: id }).catch(() => []));
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-line p-4">
@@ -324,8 +320,7 @@ function EstimatesCard({ id }: { id: string }) {
 /* Termini (appointments) cross-link — this customer's bookings, central-store
  * backed. Self-fetching, demo-only, mirrors the other cross-link cards. */
 function AppointmentsCard({ id }: { id: string }) {
-  const { data: appts } = useSWR(DEMO_MODE ? ['cust-appts', id] : null, () => api.appointments.list({ customerId: id }).catch(() => []));
-  if (!DEMO_MODE) return null;
+  const { data: appts } = useSWR(['cust-appts', id], () => api.appointments.list({ customerId: id }).catch(() => []));
   const label = (s: string) => (s === 'done' ? 'Opravljeno' : s === 'cancelled' ? 'Preklicano' : 'Načrtovano');
   const tone = (s: string): 'go' | 'stop' | 'info' => (s === 'done' ? 'go' : s === 'cancelled' ? 'stop' : 'info');
   const rows = ((appts as any[] | undefined) ?? []).slice().sort((a, b) => String(a.start).localeCompare(String(b.start)));

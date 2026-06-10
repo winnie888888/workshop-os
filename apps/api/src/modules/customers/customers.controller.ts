@@ -73,10 +73,13 @@ export class CustomersController {
     @Query('limit') limit = '50',
     @Query('afterName') afterName?: string,
     @Query('afterId') afterId?: string,
+    @Query('q') q?: string,
   ) {
-    const items = await this.customers.list(parseInt(limit, 10) || 50, afterName, afterId);
+    const size = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+    const items = await this.customers.list(size, afterName, afterId, q);
     const last = items[items.length - 1];
-    const nextCursor = last ? { afterName: last.name, afterId: last.id } : null;
+    // A cursor only when the page came back full — a short page IS the end.
+    const nextCursor = items.length === size && last ? { afterName: last.name, afterId: last.id } : null;
     return { items, nextCursor };
   }
 }

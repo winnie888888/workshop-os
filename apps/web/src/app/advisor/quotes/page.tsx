@@ -1,10 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor, estimateStatusLabel, estimateStatusTone, docTotalsMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 
@@ -16,20 +14,9 @@ import { Button, Card, SoftChip, Spinner } from '@/components/ui';
  */
 export default function QuotesPage() {
   const router = useRouter();
-  const { data: estimates, isLoading } = useSWR(DEMO_MODE ? ['estimates-all'] : null, () => api.estimates.list().catch(() => []));
-  const { data: customers } = useSWR(DEMO_MODE ? ['customers-for-quotes'] : null, () => api.customers.list().catch(() => []));
+  const { data: estimates, isLoading } = useSWR(['estimates-all'], () => api.estimates.list().catch(() => []));
+  const { data: customers } = useSWR(['customers-for-quotes'], () => api.customers.list().catch(() => []));
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Predračuni so povezani z demo bazo.</p>
-          <p className="mt-1 text-sm text-muted">V produkciji tečejo prek API-ja /estimates (v pripravi) — enaka veriga nalog → predračun → račun.</p>
-          <Link href="/advisor" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Nazaj</Link>
-        </Card>
-      </div>
-    );
-  }
 
   const custName = (cid: string) => (customers as any[] | undefined)?.find((c) => c.id === cid)?.name ?? '—';
 

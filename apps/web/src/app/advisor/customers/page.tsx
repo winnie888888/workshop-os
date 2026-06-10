@@ -1,42 +1,58 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import useSWR from 'swr';
+import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Card, Spinner } from '@/components/ui';
 
 /*
  * Customers register — the on-ramp to the operational loop. Each row links to
- * the customer hub (vehicles, balance, new job). With a large book this list can
- * be long, so a quick client-side search (name / VAT / country) and a per-row
- * action menu are provided. Header offers New customer.
+ * the customer hub (vehicles, balance, new job). The register is server-driven:
+ * search (name / VAT / city / code) and keyset pagination happen in the API, so
+ * the screen stays fast at any book size. Header offers New customer.
  */
 export default function CustomersList() {
-  const { data, isLoading } = useSWR('customers-list', () => api.customers.list());
+  // Server-side search + keyset pagination: the register stays fast at any
+  // book size. The needle is debounced so we query once per pause, not per key.
   const [q, setQ] = useState('');
-  const all = (data as any[]) ?? [];
+  const [dq, setDq] = useState('');
+  const [rows, setRows] = useState<any[]>([]);
+  const [cursor, setCursor] = useState<{ afterName: string; afterId: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [more, setMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const rows = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return all;
-    return all.filter((c) => {
-      const vat = String(c.vatId ?? c.vat_id ?? '');
-      const country = String(c.country ?? c.countryCode ?? '');
-      return String(c.name ?? '').toLowerCase().includes(needle)
-        || vat.toLowerCase().includes(needle)
-        || country.toLowerCase().includes(needle);
-    });
-  }, [all, q]);
+  useEffect(() => { const t = setTimeout(() => setDq(q.trim()), 250); return () => clearTimeout(t); }, [q]);
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true); setError(null);
+    api.customers.search({ q: dq || undefined, limit: 50 })
+      .then((r) => { if (live) { setRows(r.items ?? []); setCursor(r.nextCursor ?? null); } })
+      .catch(() => { if (live) { setRows([]); setCursor(null); setError('Strank ni bilo mogoče naložiti.'); } })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [dq]);
+
+  async function loadMore() {
+    if (!cursor || more) return;
+    setMore(true);
+    try {
+      const r = await api.customers.search({ q: dq || undefined, limit: 50, afterName: cursor.afterName, afterId: cursor.afterId });
+      setRows((p) => [...p, ...(r.items ?? [])]);
+      setCursor(r.nextCursor ?? null);
+    } catch { setError('Naslednje strani ni bilo mogoče naložiti.'); }
+    finally { setMore(false); }
+  }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">Stranke</h1>
-          {data && (
+          {!loading && (
             <p className="mt-0.5 text-sm text-muted">
-              <span className="num">{q.trim() ? rows.length : all.length}</span> {q.trim() ? `od ${all.length} strank` : 'strank'}
+              <span className="num">{rows.length}{cursor ? '+' : ''}</span> {dq ? `zadetkov za „${dq}“` : 'strank'}
             </p>
           )}
         </div>
@@ -51,13 +67,14 @@ export default function CustomersList() {
         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted2">
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
         </span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Išči (naziv, ID za DDV, država)…"
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Išči (naziv, ID za DDV, kraj, šifra)…"
           className="h-10 w-full rounded-full border border-line bg-surface2 pl-9 pr-3 text-sm transition focus:border-brandring focus:bg-surface focus:outline-none focus:ring-4 focus:ring-brandweak" />
       </div>
 
-      {isLoading && <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>}
+      {error && <p className="text-sm font-semibold text-stop">{error}</p>}
+      {loading && <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>}
 
-      {data && (
+      {!loading && (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm">
             <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
@@ -81,17 +98,26 @@ export default function CustomersList() {
                   <td className="px-2 py-3 text-right"><RowMenu id={c.id} /></td>
                 </tr>
               ))}
-              {all.length === 0 && (
+              {rows.length === 0 && !dq && (
                 <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">
                   Še ni strank. <Link href="/advisor/customers/new" className="font-semibold text-brand hover:underline">Dodaj prvo →</Link>
                 </td></tr>
               )}
-              {all.length > 0 && rows.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Ni zadetkov za „{q.trim()}".</td></tr>
+              {rows.length === 0 && dq && (
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-muted">Ni zadetkov za „{dq}“.</td></tr>
               )}
             </tbody>
           </table>
         </Card>
+      )}
+
+      {!loading && cursor && (
+        <div className="flex justify-center">
+          <button onClick={loadMore} disabled={more}
+            className="inline-flex min-h-tap items-center gap-2 rounded-tool border border-line bg-surface px-5 text-sm font-bold text-steel transition hover:border-brandring hover:text-brand disabled:opacity-50">
+            {more ? <Spinner /> : 'Naloži več'}
+          </button>
+        </div>
       )}
     </div>
   );
