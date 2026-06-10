@@ -46,6 +46,7 @@ export default function AdvisorLayout({ children }: { children: React.ReactNode 
 
 type Icon = (p: { className?: string }) => JSX.Element;
 const I: Record<string, Icon> = {
+  receivables: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>),
   today: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>),
   customers: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>),
   vehicles: (p) => (<svg viewBox="0 0 24 24" className={p.className} fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V9l2-4h11l3 4v6a2 2 0 0 1-2 2M5 17v2M19 17v2"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/></svg>),
@@ -99,7 +100,7 @@ function Rail({ open, onClose }: { open: boolean; onClose: () => void }) {
       </div>
 
       {NAV.map((n) => {
-        const Ic = I[n.icon];
+        const Ic = I[n.icon] ?? I.settings; // fallback: neznana ikona ne podre aplikacije
         const active = n.href === '/advisor' ? path === n.href : path.startsWith(n.href);
         const badge = badges[n.href];
         return (
