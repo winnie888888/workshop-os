@@ -28,9 +28,9 @@
 - [x] Lastna prijava (email+geslo): lokalni HS256 žetoni skozi OBSTOJEČI TokenVerifier (`local|<userId>` ↔ external_subject); OIDC nedotaknjen
 
 ### Sprint 3 — Feature-complete blok (luknje iz avdita)
-- [ ] **Notifications backend** (`/notifications` list/markRead/markAllRead — web kontrakt obstaja, controllerja NI; zvonček v advisor layoutu je v real mode disabled): tabela + pisanje ob ključnih dogodkih + ungate layouta
-- [ ] **Presets backend** (`/presets` CRUD — paketi storitev; demo kontrakt obstaja, backenda NI) + ungate 3 strani
-- [ ] **Items CRUD dopolnitev**: PATCH /inventory/items/:id + GET detail (POST/GET/receive/transfer že obstajajo) + ungate items strani
+- [x] **Notifications backend**: migracija 0019 (per-prejemnik vrstice), `/notifications` list/read/read-all 1:1 z web kontraktom, globalni NotifyService (fan-out po vlogah prek withAdmin — memberships je admin-only); hooki: `invoice.issued` (×2, near-commit) + outbox dead-letter → sistemsko opozorilo ownerjem; zvonček ungated. WO-status hook → blok 2 (modul nima ene transition točke, ne vstavljam na slepo)
+- [x] **Presets backend**: tabela + CRUD 1:1 z demo obliko (lines jsonb, vehicleClasses/powertrains), Permission.PresetManage (owner/admin/warehouse), audit preset.*; 3 strani ungated
+- [x] **Items CRUD dopolnitev**: GET /inventory/items/:id + PATCH (COALESCE delni update, StockReceive permission); 3 items strani ungated (list klik-vrstica, new, detail/edit)
 - [ ] **GDPR export** `/export/snapshot` backend (web kliče, backenda NI) + ungate owner/data — DPA obljuba!
 - [ ] **CSV uvozi** (owner/imports demo-only → real: stranke + artikli, strict validacija, dry-run pregled) — ključna migracija z legacy programov
 - [ ] MinimaxSyncPanel na real outbox status (po Sprint 1 workerju)
