@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from 'react';
 import { Button, Card, ProblemBanner, SoftChip, Spinner } from '@/components/ui';
 import { SelectField } from '@/components/form';
 import { DEMO_MODE } from '@/lib/demo';
@@ -9,6 +9,7 @@ import { ENTITY_LIST, getSchema, planImport, ruleBasedMapper } from '@/lib/impor
 import type { ColumnMapping, DryRunResult, RowOutcome, SourceTable } from '@/lib/import-engine';
 import { readFileToSourceTable } from '@/lib/import-file';
 import { canCommit, commitImport, type CommitResult } from '@/lib/import-sink';
+import { canCommitReal, commitImportReal, fetchExistingReal } from '@/lib/import-sink-real';
 import { dateStamp, downloadCsv, downloadText } from '@/lib/data-export';
 import Link from 'next/link';
 
@@ -75,28 +76,54 @@ export default function ImportWizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [committed, setCommitted] = useState<CommitResult | null>(null);
   const [committing, setCommitting] = useState(false);
+  // Obstoječi zapisi za dry-run matching: demo iz store-a (sinhrono), realno
+  // iz API (asinhrono ob izbiri entitete). Dokler niso naloženi, je dry null.
+  const [existing, setExisting] = useState<any[] | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const schema = entity ? getSchema(entity) : undefined;
 
+  useEffect(() => {
+    if (!entity) { setExisting(null); return; }
+    if (DEMO_MODE) { setExisting(existingFor(entity)); return; }
+    let live = true;
+    setExisting(null);
+    fetchExistingReal(entity)
+      .then((rows) => { if (live) setExisting(rows); })
+      .catch(() => { if (live) setExisting([]); });
+    return () => { live = false; };
+  }, [entity]);
+
   const dry = useMemo<DryRunResult | null>(() => {
-    if (!entity || !table) return null;
+    if (!entity || !table || existing === null) return null;
     const s = getSchema(entity);
     if (!s) return null;
-    return planImport(table, s, mapping, existingFor(entity));
-  }, [entity, table, mapping]);
+    return planImport(table, s, mapping, existing);
+  }, [entity, table, mapping, existing]);
 
+  const commitOk = entity ? (DEMO_MODE ? canCommit(entity) : canCommitReal(entity)) : false;
   const mappedKeys = new Set(mapping.filter((m) => m.targetField && !m.ignored).map((m) => m.targetField as string));
   const missingReq = schema ? schema.fields.filter((f) => f.required && !mappedKeys.has(f.key)).map((f) => f.label) : [];
 
   function reset() {
-    setStep(1); setEntity(null); setTable(null); setMapping([]); setError(null); setCommitted(null);
+    setStep(1); setEntity(null); setTable(null); setMapping([]); setError(null); setCommitted(null); setProgress(null);
   }
 
-  function doImport() {
-    if (!entity || !dry || !canCommit(entity) || dry.created + dry.updated === 0) return;
-    setCommitting(true);
-    try { setCommitted(commitImport(entity, dry)); }
-    finally { setCommitting(false); }
+  async function doImport() {
+    if (!entity || !dry || !commitOk || dry.created + dry.updated === 0) return;
+    setCommitting(true); setError(null);
+    try {
+      if (DEMO_MODE) {
+        setCommitted(commitImport(entity, dry));
+      } else {
+        const res = await commitImportReal(entity, dry, existing ?? [], (done, total) => setProgress({ done, total }));
+        setCommitted(res);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Uvoz ni uspel.');
+    } finally {
+      setCommitting(false); setProgress(null);
+    }
   }
 
   function downloadTemplate() {
@@ -148,17 +175,6 @@ export default function ImportWizardPage() {
         reason: key === '' ? 'prezrto' : manual ? 'ročno izbrano' : m.reason,
       };
     }));
-  }
-
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-2xl p-6">
-        <h1 className="text-2xl font-bold text-ink">Uvoz podatkov</h1>
-        <Card className="mt-4 p-5">
-          <p className="text-steel">Uvoz v živo (zapis v bazo prek API) pride v fazi P2. Čarovnik trenutno deluje v demo načinu.</p>
-        </Card>
-      </div>
-    );
   }
 
   const fieldOptions = schema
@@ -327,17 +343,17 @@ export default function ImportWizardPage() {
             <div className="mt-5 rounded-card border border-line bg-surface2 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  {canCommit(entity ?? '') ? (
+                  {commitOk ? (
                     <>
                       <Button tone="go" size="lg" disabled={committing || dry.created + dry.updated === 0} onClick={doImport}>
-                        {committing ? 'Uvažam…' : `Uvozi ${dry.created + dry.updated} zapisov`}
+                        {committing ? (progress ? `Uvažam… ${progress.done}/${progress.total}` : 'Uvažam…') : `Uvozi ${dry.created + dry.updated} zapisov`}
                       </Button>
                       <p className="mt-2 max-w-xl text-sm text-muted">Zapiše {dry.created} novih in {dry.updated} posodobljenih v skupno bazo. Preskočene in napačne vrstice se ne uvozijo.</p>
                     </>
                   ) : (
                     <>
                       <Button tone="go" size="lg" disabled>Uvozi</Button>
-                      <p className="mt-2 max-w-xl text-sm text-muted">Uvoz računov v bazo pride z računovodskim uvozom (prejeti računi, e-SLOG) v fazi P2. Tu deluje predogled; zapis za to entiteto še ni na voljo.</p>
+                      <p className="mt-2 max-w-xl text-sm text-muted">Zapis te entitete v tem načinu še ni na voljo (vozila: vezava na stranko; računi: računovodski uvoz / e-SLOG). Predogled in poročilo .csv delujeta.</p>
                     </>
                   )}
                 </div>

@@ -32,7 +32,7 @@
 - [x] **Presets backend**: tabela + CRUD 1:1 z demo obliko (lines jsonb, vehicleClasses/powertrains), Permission.PresetManage (owner/admin/warehouse), audit preset.*; 3 strani ungated
 - [x] **Items CRUD dopolnitev**: GET /inventory/items/:id + PATCH (COALESCE delni update, StockReceive permission); 3 items strani ungated (list klik-vrstica, new, detail/edit)
 - [x] **GDPR export** `/export/snapshot`: poln posnetek (15 entitet, SELECT * = resnica sheme; postavke/DDV kot jsonb agregati; roster prek withAdmin), nova `Permission.DataExport` (owner+admin), avditiran dostop `export.snapshot`; owner/data ungated + dobavitelji v tabeli
-- [ ] **CSV uvozi** (owner/imports demo-only → real: stranke + artikli, strict validacija, dry-run pregled) — ključna migracija z legacy programov
+- [x] **CSV uvozi v realnem načinu**: čarovnik ungatan; matching za dry-run iz API (stranke prek customers.list, artikli prek kataloga), zapis prek ISTIH REST poti kot ročni vnos (polna validacija+audit+RLS, sekvenčno z napredkom, napake po vrsticah v opombe); ISO-2 država + DDV prefiks fix; nepersistabilna polja pošteno javljena (stranke: email/tel; artikli: opis/EAN; zaloge → Prevzem); posodobitve strank preskočene do PATCH /customers; vozila/računi ostajajo predogled
 - [ ] MinimaxSyncPanel na real outbox status (po Sprint 1 workerju)
 
 ### Sprint 4 — Faza B: entitlements & billing
