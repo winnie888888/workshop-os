@@ -7,7 +7,29 @@ import { AuditService } from '../../common/audit/audit.service';
 import { OutboxService } from '../../common/outbox/outbox.service';
 import { CustomersRepository } from './customers.repository';
 import { CreateCustomerDto } from './dto/create-customer.dto';
-import { VAT_ID_VALIDATION_PORT, type VatIdValidationPort } from '../../integrations/vies/vat-id-validation.port';
+import { VAT_ID_VALIDATION_PORT, type VatIdValidationPort, type ViesCheckResult } from '../../integrations/vies/vat-id-validation.port';
+
+/**
+ * Result of a pre-creation company lookup. EU VAT ids resolve via VIES; Slovenian
+ * registration numbers resolve via AJPES/Bizi (a registry provider, wired behind
+ * config like ViesModule). Drives the new-customer form's auto-fill so the advisor
+ * types a single identifier instead of the whole company (Customer Creation spec).
+ */
+export interface CompanyLookupResult {
+  found: boolean;
+  source: 'vies' | 'ajpes' | 'bizi' | null;
+  vatId?: string;
+  vatValid?: boolean;
+  validatedAt?: string;
+  countryCode?: string;
+  name?: string;
+  address?: string;
+  postCode?: string;
+  city?: string;
+  registrationNo?: string;
+  status?: string;
+  message?: string;
+}
 
 /**
  * Demonstrates the connected foundation: a single transaction
@@ -241,6 +263,104 @@ export class CustomersService {
 
       return { validated, source, viesName, reason };
     });
+  }
+
+  /**
+   * Pre-creation company lookup (Customer Creation spec). The advisor enters one
+   * identifier and we return registry data to auto-fill the new-customer form,
+   * so they don't retype the company by hand:
+   *
+   *   - A VAT id (any EU country, incl. SI) is checked against VIES, which
+   *     returns the registered name + address. A VIES check is a validation
+   *     action, so it is written to the tamper-evident audit chain even though
+   *     no customer row exists yet (entity 'company_lookup', keyed by the id).
+   *   - A Slovenian registration (matična) number resolves via AJPES/Bizi. That
+   *     provider is wired behind config like ViesModule; when it isn't present we
+   *     return a clear message rather than fabricating data.
+   *
+   * The per-customer validation flag (status + timestamp) is persisted later by
+   * validateVatId at/after creation; this method only reads + audits the check.
+   */
+  async lookupCompany(input: { vat?: string; regNo?: string; country?: string }): Promise<CompanyLookupResult> {
+    const ctx = getContext();
+    const rawVat = (input.vat ?? '').trim();
+    const regNo = (input.regNo ?? '').trim();
+
+    if (rawVat) {
+      const parsed = Vat.parseVatId(rawVat);
+      if (!parsed) throw new BadRequestException('VAT id is not a valid format');
+      const vatId = rawVat.toUpperCase();
+
+      if (!this.vies.available) {
+        return {
+          found: false, source: null, vatId, countryCode: parsed.country,
+          message: 'VIES validation is not configured in this deployment; enter the company details manually.',
+        };
+      }
+
+      let result: ViesCheckResult;
+      try {
+        result = await this.vies.check(parsed.country, parsed.number);
+      } catch {
+        // Upstream momentarily down — surface it; the advisor can retry or type.
+        return {
+          found: false, source: 'vies', vatId, countryCode: parsed.country,
+          message: 'VIES is momentarily unavailable; retry or enter the details manually.',
+        };
+      }
+
+      const at = new Date().toISOString();
+      const addr = this.splitAddress(result.address, parsed.country);
+
+      // Audit the validation action (EU requirement), keyed by the queried id.
+      await this.pg.withTenant(ctx.tenantId, (tx) => this.audit.append(tx, {
+        tenantId: ctx.tenantId, actorId: ctx.userId, action: 'customer.vat_lookup',
+        entityType: 'company_lookup', entityId: vatId,
+        before: null,
+        after: { source: 'vies', valid: result.valid, name: result.name, requestId: result.requestId, at },
+      }));
+
+      return {
+        found: result.valid, source: 'vies', vatId,
+        vatValid: result.valid, validatedAt: at, countryCode: parsed.country,
+        name: result.name ?? undefined,
+        address: addr.street, postCode: addr.postCode, city: addr.city,
+        message: result.valid ? undefined : 'VIES reports this VAT id is not valid.',
+      };
+    }
+
+    if (regNo) {
+      // Registration-number lookup is a Slovenian-registry feature (AJPES/Bizi),
+      // wired behind config like ViesModule. Not present here → say so plainly
+      // instead of inventing a company.
+      return {
+        found: false, source: null, registrationNo: regNo,
+        message: 'Registration-number lookup needs an AJPES/Bizi connection (not configured). Enter the VAT id to look up via VIES.',
+      };
+    }
+
+    throw new BadRequestException('Provide a VAT id or a registration number to look up.');
+  }
+
+  /**
+   * Split a registry address blob into street / postal code / city. VIES (and SI
+   * registries) return the address as one string, usually with a "1000 City" or
+   * "SI-1000 City" line; we lift that out and treat the rest as the street.
+   * Best-effort — on no match the whole string becomes the street so nothing is
+   * lost, and the advisor can adjust the prefilled fields before saving.
+   */
+  private splitAddress(address: string | null, _country: string): { street?: string; postCode?: string; city?: string } {
+    if (!address) return {};
+    const parts = address.replace(/\r/g, '').split(/\n|,/).map((s) => s.trim()).filter(Boolean);
+    let postCode: string | undefined;
+    let city: string | undefined;
+    const streetParts: string[] = [];
+    for (const p of parts) {
+      const m = p.match(/^(?:[A-Z]{2}[- ]?)?(\d{4,5})\s+(.+)$/);
+      if (m && !postCode) { postCode = m[1]; city = m[2].trim(); }
+      else streetParts.push(p);
+    }
+    return { street: streetParts.join(', ') || undefined, postCode, city };
   }
 
   /**

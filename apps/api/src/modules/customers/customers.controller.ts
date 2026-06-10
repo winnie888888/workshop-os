@@ -41,6 +41,20 @@ export class CustomersController {
     return this.customers.validateVatId(id, { mode: dto.mode, note: dto.note });
   }
 
+  // Pre-creation company lookup (Customer Creation spec): the advisor enters a
+  // VAT id (EU → VIES) or a Slovenian registration number (→ AJPES/Bizi) and we
+  // return registry data to auto-fill the form. Declared BEFORE ':id' so the
+  // literal "lookup" segment is not matched as a customer id.
+  @Get('lookup')
+  @RequirePermissions(Permission.CustomerManage)
+  lookup(
+    @Query('vat') vat?: string,
+    @Query('regNo') regNo?: string,
+    @Query('country') country?: string,
+  ) {
+    return this.customers.lookupCompany({ vat, regNo, country });
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.customers.findById(id);

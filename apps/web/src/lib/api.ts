@@ -259,6 +259,16 @@ export const api = {
     validateVat: (id: string, body: { mode: 'vies' | 'manual'; note?: string }) =>
       request<{ validated: boolean; source: 'vies' | 'manual'; viesName?: string | null; reason?: string }>(
         `/customers/${id}/validate-vat`, { method: 'POST', body }),
+    // Pre-creation company lookup: a VAT id (EU → VIES) or SI registration number
+    // (→ AJPES/Bizi) resolves to registry data that auto-fills the new-customer
+    // form, so the advisor types one identifier instead of the whole company.
+    lookup: (params: { vat?: string; regNo?: string; country?: string }) => {
+      const q = new URLSearchParams();
+      if (params.vat) q.set('vat', params.vat);
+      if (params.regNo) q.set('regNo', params.regNo);
+      if (params.country) q.set('country', params.country);
+      return request<any>(`/customers/lookup?${q.toString()}`);
+    },
   },
 
   assets: {

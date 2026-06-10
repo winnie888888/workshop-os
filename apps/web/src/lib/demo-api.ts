@@ -38,6 +38,36 @@ function allCustomers(): any[] {
   return [...extras, ...demoCustomers.filter((c) => !seen.has(c.id))];
 }
 
+/**
+ * Demo company lookup. Mirrors what VIES/AJPES return for the demo's sample
+ * companies so the auto-fill flow is explorable offline. For any other input we
+ * say plainly that the demo only carries sample data — no fabricated companies.
+ */
+function demoCompanyLookup(vat: string, regNo: string): any {
+  const v = vat.replace(/[\s-]/g, '').toUpperCase();
+  const known: Record<string, any> = {
+    SI58962317: { name: 'Prevozi Kralj d.o.o.', countryCode: 'SI', address: 'Industrijska cesta 12', postCode: '8000', city: 'Novo mesto', registrationNo: '5294710000', status: 'Aktivno' },
+    HR47263849152: { name: 'Transport Horvat d.o.o.', countryCode: 'HR', address: 'Slavonska avenija 3', postCode: '10000', city: 'Zagreb', status: 'Aktivno' },
+    SI11223344: { name: 'Alpe Logistika d.o.o.', countryCode: 'SI', address: 'Tržaška cesta 88', postCode: '1000', city: 'Ljubljana', registrationNo: '3917284000', status: 'Aktivno' },
+  };
+  if (v && known[v]) {
+    return { found: true, source: 'vies', vatId: v, vatValid: true, validatedAt: new Date().toISOString(), ...known[v] };
+  }
+  if (v && /^[A-Z]{2}\d{6,12}$/.test(v)) {
+    return {
+      found: false, source: 'vies', vatId: v, vatValid: false, countryCode: v.slice(0, 2),
+      message: 'Demo: vzorčni podatki so na voljo le za vzorčna podjetja (npr. SI58962317). V produkciji se podatki pridobijo iz VIES/AJPES.',
+    };
+  }
+  if (regNo) {
+    return {
+      found: false, source: null, registrationNo: regNo,
+      message: 'Demo: iskanje po matični številki zahteva AJPES/Bizi (v produkciji). Uporabi vzorčni ID za DDV, npr. SI58962317.',
+    };
+  }
+  return { found: false, source: null, message: 'Vnesite veljaven ID za DDV (npr. SI58962317).' };
+}
+
 /*
  * In-memory attendance day for the demo. Because the demo has no server, we keep
  * the current clock state at module scope so clock-in, break, and clock-out feel
@@ -229,6 +259,9 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   }
 
   // --- customers ---
+  if (path === '/customers/lookup' && method === 'GET') {
+    return ok(demoCompanyLookup(params.get('vat') ?? '', params.get('regNo') ?? '') as any);
+  }
   if (path === '/customers' && method === 'GET') return ok({ items: allCustomers(), nextCursor: null } as any);
   if (seg[0] === 'customers' && seg[1]) {
     const cust = allCustomers().find((c) => c.id === seg[1]);
