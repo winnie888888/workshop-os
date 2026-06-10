@@ -74,7 +74,7 @@ export default function AdvisorDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Left: timeline + recent table */}
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <Card className="overflow-hidden">
             <SectionHead title="Današnji urnik" href="/advisor/work-orders" />
             <div className="px-2 py-2">
@@ -89,8 +89,8 @@ export default function AdvisorDashboard() {
                         {i < arr.length - 1 && <span className="absolute bottom-0 left-1/2 top-1/2 w-px -translate-x-1/2 bg-line" />}
                         <span className={`relative z-10 mt-2 h-3 w-3 rounded-full ring-4 ring-surface ${dotClass(w)}`} />
                       </span>
-                      <span className="num w-24 flex-none font-bold text-brand">{w.number ?? '—'}</span>
-                      <span className="num w-28 flex-none font-bold text-ink">{w.plate ? displayPlate(w.plate) : '—'}</span>
+                      <span className="num flex-none font-bold text-brand sm:w-24">{w.number ?? '—'}</span>
+                      <span className="num flex-none font-bold text-ink sm:w-28">{w.plate ? displayPlate(w.plate) : '—'}</span>
                       <span className="hidden min-w-0 flex-1 truncate text-sm text-muted md:block">{w.customerName ?? ''}</span>
                       <SoftChip tone={w.hasOpenClock ? 'go' : statusTone(w.status)}>{w.hasOpenClock ? 'V delu' : statusLabel(w.status)}</SoftChip>
                       <Ico className="h-4 w-4 flex-none text-muted2 transition group-hover:translate-x-0.5 group-hover:text-muted" d={<path d="m9 18 6-6-6-6" />} />
@@ -103,7 +103,8 @@ export default function AdvisorDashboard() {
 
           <Card className="overflow-hidden">
             <SectionHead title="Zadnji delovni nalogi" href="/advisor/work-orders" />
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-sm">
               <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
                 <tr>
                   <th className="px-4 py-2 font-bold">Št. naloga</th>
@@ -128,11 +129,12 @@ export default function AdvisorDashboard() {
                 {(recent ?? []).length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted">Ni nalogov.</td></tr>}
               </tbody>
             </table>
+            </div>
           </Card>
         </div>
 
         {/* Right: quick access, alerts, finance, activity */}
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card className="p-4">
             <h2 className="mb-3 text-base font-bold text-ink">Hitri dostop</h2>
             <div className="grid grid-cols-2 gap-3">

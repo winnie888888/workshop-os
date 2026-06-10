@@ -31,7 +31,9 @@ export interface PlateScan {
 
 export const plateStore = createLocalCollection<PlateScan>('wos.plate.scans.v1');
 
-export const PLATE_DEMO_SET = ['LJ MB-123', 'NM AB-456', 'KP CK-789', 'MB GH-321'];
+// Real demo-vehicle plates, so "Demo tablica" demonstrates a successful match
+// (NMCK418→Prevozi Kralj, ZG7421CD/ZG9001PT→Transport Horvat, LJ552MK→Alpe).
+export const PLATE_DEMO_SET = ['NMCK418', 'ZG7421CD', 'LJ552MK', 'ZG9001PT'];
 
 /** Uppercase, collapse internal whitespace, trim. */
 export function normalizePlate(raw: string): string {

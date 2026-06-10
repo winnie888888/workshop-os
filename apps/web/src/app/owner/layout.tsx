@@ -16,12 +16,17 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const [navOpen, setNavOpen] = useState(false);
   const navPath = usePathname();
   useEffect(() => { setNavOpen(false); }, [navPath]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   return (
     <div className="grid min-h-screen grid-cols-1 bg-floor lg:grid-cols-[15.5rem_1fr]">
       <Rail open={navOpen} onClose={() => setNavOpen(false)} />
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
       <div className="flex min-w-0 flex-col">
-        <TopBar onMenu={() => setNavOpen(true)} />
+        <TopBar onMenu={() => setNavOpen((o) => !o)} />
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
@@ -133,6 +138,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
   const session = mounted ? getSession() : null;
   const name = session?.user.name ?? 'Lastnik';
   const initial = name.trim().charAt(0).toUpperCase();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-surface px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6">
@@ -145,14 +151,34 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
         <span className="font-bold text-ink">{section}</span>
       </nav>
       <div className="ml-auto flex items-center gap-3">
-        <button className="flex items-center gap-2.5 rounded-full border border-line py-1 pl-1 pr-2.5 transition hover:bg-floor">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-brandweak text-sm font-bold text-brand">{initial}</span>
-          <span className="hidden leading-tight sm:block">
-            <span className="block text-left text-sm font-bold text-ink">{name}</span>
-            <span className="block text-left text-xs text-muted2">Lastnik</span>
-          </span>
-          <svg viewBox="0 0 24 24" className="h-4 w-4 flex-none text-muted2" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
+        <div className="relative">
+          <button onClick={() => setMenuOpen((o) => !o)} onBlur={() => setTimeout(() => setMenuOpen(false), 160)}
+            aria-haspopup="menu" aria-expanded={menuOpen}
+            className="flex items-center gap-2.5 rounded-full border border-line py-1 pl-1 pr-2.5 transition hover:bg-floor">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-brandweak text-sm font-bold text-brand">{initial}</span>
+            <span className="hidden leading-tight sm:block">
+              <span className="block text-left text-sm font-bold text-ink">{name}</span>
+              <span className="block text-left text-xs text-muted2">Lastnik</span>
+            </span>
+            <svg viewBox="0 0 24 24" className={`h-4 w-4 flex-none text-muted2 transition ${menuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {menuOpen && (
+            <div role="menu" className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-lift">
+              <div className="border-b border-line px-4 py-2">
+                <p className="truncate text-sm font-bold text-ink">{name}</p>
+                <p className="text-xs text-muted2">Lastnik · A-SPRINT</p>
+              </div>
+              <Link href="/owner/settings" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-floor">
+                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] flex-none text-muted2" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15H4.5a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 6 9.6l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 11 4.6V4.5a2 2 0 1 1 4 0v.09A1.65 1.65 0 0 0 18 6l.06-.06a2 2 0 1 1 2.83 2.83L20.4 8.8A1.65 1.65 0 0 0 19.4 11h.1a2 2 0 1 1 0 4h-.1z"/></svg>
+                Nastavitve
+              </Link>
+              <Link href="/" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-ink hover:bg-floor">
+                <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] flex-none text-muted2" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></svg>
+                Zamenjaj vmesnik
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -13,12 +13,22 @@ const mono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], 
 export const metadata: Metadata = {
   title: 'A-SPRINT Workshop OS',
   description: 'AI-native operating system for commercial-vehicle workshops',
+  metadataBase: new URL('http://localhost:3000'),
+  openGraph: {
+    title: 'A-SPRINT GARAGE — Operacijski sistem delavnice',
+    description: 'AI-podprt operacijski sistem za delavnice gospodarskih vozil.',
+    images: ['/og-image.png'],
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image', images: ['/og-image.png'] },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'Workshop OS',
   },
+  // Modern, non-deprecated PWA install hint (alongside the Apple one above).
+  other: { 'mobile-web-app-capable': 'yes' },
   icons: {
     icon: [{ url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
            { url: '/icon-512.png', sizes: '512x512', type: 'image/png' }],

@@ -217,7 +217,7 @@ export default function PlateScanPage() {
                 </label>
               </div>
               <div className="flex items-end gap-2">
-                <div className="flex-1"><TextField label="Ročni vnos tablice" value={manual} onChange={setManual} placeholder="npr. NM AB-456" uppercase /></div>
+                <div className="flex-1"><TextField label="Ročni vnos tablice" value={manual} onChange={setManual} placeholder="npr. NMCK418" uppercase /></div>
                 <Button tone="neutral" onClick={recognizeManual}>Prepoznaj</Button>
               </div>
               <button onClick={demoPlate} className="text-sm font-semibold text-brand hover:underline">Demo tablica</button>

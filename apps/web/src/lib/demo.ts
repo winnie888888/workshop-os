@@ -43,7 +43,10 @@ function demoSession(): Session {
     user: {
       id: DEMO_OWNER_ID,
       name: 'A-SPRINT Demo',
-      mechanicId: DEMO_OWNER_ID,
+      // Matches demo-data MECHANIC_ID (Marko Kovač) so the mechanic console shows
+      // this account's assigned, in-progress job with its running clock — a richer,
+      // unmistakably-working demo rather than an empty job list.
+      mechanicId: '00000000-0000-0000-0000-0000000a5002',
       roles: ['owner', 'admin', 'advisor', 'mechanic'],
       locale: 'sl',
     },

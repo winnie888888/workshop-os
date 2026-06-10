@@ -19,6 +19,26 @@ import { demoStore, demoEmit } from './demo-store';
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }
 
 /*
+ * Created customers persist to localStorage so they survive a reload and show up
+ * in the customers list. (demoCustomers is a module-scope seed that resets on
+ * reload, so without this a freshly created customer would vanish on navigation.)
+ */
+const EXTRA_CUSTOMERS_KEY = 'wos.demo.customers.extra.v1';
+function extraCustomersGet(): any[] {
+  if (typeof window === 'undefined') return [];
+  try { const r = window.localStorage.getItem(EXTRA_CUSTOMERS_KEY); return r ? JSON.parse(r) : []; } catch { return []; }
+}
+function extraCustomersSet(arr: any[]): void {
+  try { window.localStorage.setItem(EXTRA_CUSTOMERS_KEY, JSON.stringify(arr)); } catch { /* ignore */ }
+}
+/** Seed customers + any persisted created ones (created first = newest on top). */
+function allCustomers(): any[] {
+  const extras = extraCustomersGet();
+  const seen = new Set(extras.map((c) => c.id));
+  return [...extras, ...demoCustomers.filter((c) => !seen.has(c.id))];
+}
+
+/*
  * In-memory attendance day for the demo. Because the demo has no server, we keep
  * the current clock state at module scope so clock-in, break, and clock-out feel
  * real within a session (it resets on page reload, which is fine for a demo).
@@ -194,13 +214,24 @@ export async function demoRequest<T>(call: Call): Promise<T> {
       if (line) line.issued = true;
       return ok({ ok: true } as any);
     }
-    if (seg[2] === 'nalog') return ok({} as any);
+    if (seg[2] === 'nalog') {
+      const cust = allCustomers().find((c) => c.id === wo.customerId);
+      const veh = Object.values(demoVehicles).flat().find((v: any) => v.id === wo.assetId);
+      return ok({
+        id: wo.id, number: wo.number, status: wo.status, complaint: wo.complaint, odometer: wo.odometer,
+        issuedFor: cust ? {
+          customer: cust.name, vatId: cust.vatId ?? null,
+          address: [cust.address, [cust.postCode, cust.city].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
+        } : null,
+        vehicle: veh ? { makeModel: `${veh.make ?? ''} ${veh.model ?? ''}`.trim(), plate: veh.plate, vin: veh.vin ?? null } : null,
+      } as any);
+    }
   }
 
   // --- customers ---
-  if (path === '/customers' && method === 'GET') return ok({ items: demoCustomers, nextCursor: null } as any);
+  if (path === '/customers' && method === 'GET') return ok({ items: allCustomers(), nextCursor: null } as any);
   if (seg[0] === 'customers' && seg[1]) {
-    const cust = demoCustomers.find((c) => c.id === seg[1]);
+    const cust = allCustomers().find((c) => c.id === seg[1]);
     if (seg.length === 2 && method === 'GET') return ok((cust ?? {}) as any);
     if (seg[2] === 'receivables') {
       const overdue = seg[1] === 'cust-horvat';
@@ -211,15 +242,23 @@ export async function demoRequest<T>(call: Call): Promise<T> {
       } as any);
     }
     if (seg[2] === 'validate-vat' && method === 'POST') {
-      if (cust) { (cust as any).vatIdValidated = true; (cust as any).vatIdValidationSource = call.body?.mode ?? 'manual'; }
+      const ex = extraCustomersGet(); const i = ex.findIndex((c) => c.id === seg[1]);
+      if (i >= 0) { ex[i] = { ...ex[i], vatIdValidated: true, vatIdValidationSource: call.body?.mode ?? 'manual' }; extraCustomersSet(ex); }
+      else if (cust) { (cust as any).vatIdValidated = true; (cust as any).vatIdValidationSource = call.body?.mode ?? 'manual'; }
       return ok({ validated: true, source: call.body?.mode ?? 'manual' } as any);
     }
-    if (method === 'PATCH') { if (cust) Object.assign(cust, call.body ?? {}); return ok((cust ?? {}) as any); }
+    if (method === 'PATCH') {
+      const body = call.body ?? {};
+      const ex = extraCustomersGet(); const i = ex.findIndex((c) => c.id === seg[1]);
+      if (i >= 0) { ex[i] = { ...ex[i], ...body }; extraCustomersSet(ex); return ok(ex[i] as any); }
+      if (cust) Object.assign(cust, body);
+      return ok((cust ?? {}) as any);
+    }
   }
   if (path === '/customers' && method === 'POST') {
     const id = `cust-${Date.now()}`;
     const c = { id, vatIdValidated: false, vatIdValidationSource: null, ...call.body };
-    demoCustomers.push(c as any);
+    const ex = extraCustomersGet(); ex.unshift(c); extraCustomersSet(ex);
     return ok(c as any);
   }
 
@@ -335,12 +374,24 @@ export async function demoRequest<T>(call: Call): Promise<T> {
 
   // --- search ---
   if (path === '/search') {
-    const q = (params.get('q') ?? '').toLowerCase();
+    const raw = params.get('q') ?? '';
+    const q = raw.toLowerCase();
+    const qPlate = q.replace(/[\s-]/g, '');
+    const plateNorm = (p: string) => String(p ?? '').replace(/[\s-]/g, '').toLowerCase();
+    const customers = allCustomers();
+    const vehMatches = qPlate.length >= 2
+      ? Object.values(demoVehicles).flat().filter((v: any) => plateNorm(v.plate).includes(qPlate))
+      : [];
+    const ownerIds = new Set(vehMatches.map((v: any) => v.customerId));
     const hits = [
-      ...demoCustomers.filter((c) => c.name.toLowerCase().includes(q)).map((c) => ({ type: 'customer', id: c.id, label: c.name, exact: false })),
+      ...customers.filter((c) => c.name.toLowerCase().includes(q) || ownerIds.has(c.id)).map((c) => ({ type: 'customer', id: c.id, label: c.name, exact: false })),
+      ...vehMatches.map((v: any) => {
+        const owner = customers.find((c) => c.id === v.customerId);
+        return { type: 'vehicle', id: v.id, label: v.plate, sublabel: owner?.name, exact: false };
+      }),
       ...Object.values(demoWorkOrders).filter((w: any) => (w.number ?? '').includes(q)).map((w: any) => ({ type: 'work_order', id: w.id, label: w.number, exact: false })),
     ];
-    return ok({ query: params.get('q') ?? '', intent: 'text', hits } as any);
+    return ok({ query: raw, intent: 'text', hits } as any);
   }
 
   // --- warehouse reads (return empty so those screens render gracefully) ---
