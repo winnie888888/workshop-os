@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 import { NumberField, TextField } from '@/components/form';
@@ -17,17 +16,6 @@ export default function ItemDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: item, isLoading, mutate } = useSWR(['item', id], () => api.inventory.get(id));
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Urejanje artikla je na voljo v demo načinu.</p>
-          <p className="mt-1 text-sm text-muted">Zaledni del še nima končnih točk za artikel (GET/PATCH /inventory/items/:id).</p>
-          <Link href="/warehouse/items" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Nazaj na Postavke</Link>
-        </Card>
-      </div>
-    );
-  }
 
   if (isLoading || !item) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
   if (!item.id) return <div className="mx-auto max-w-3xl"><Card className="p-6"><p className="text-muted">Artikel ni najden.</p><Link href="/warehouse/items" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Postavke</Link></Card></div>;

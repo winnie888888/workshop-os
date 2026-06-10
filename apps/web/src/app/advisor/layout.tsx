@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { getSession } from '@/lib/session';
-import { DEMO_MODE } from '@/lib/demo';
 import { subscribe } from '@/lib/demo-store';
 import { loadSettings } from '@/lib/workshop-settings';
 import { Spinner } from '@/components/ui';
@@ -277,9 +276,9 @@ function timeAgo(iso: string): string {
 }
 
 /**
- * Notification bell. In demo mode it reads the central store (live, via
- * subscribe + poll). The real backend has no notifications route yet, so there
- * the bell is shown disabled with an explanation rather than firing 404s.
+ * Notification bell. Reads /notifications (real backend, Sprint 3) oz. v demo
+ * načinu centralni store — api.notifications je v obeh primerih isti kontrakt.
+ * Poll 20 s + refresh ob fokusu; klik označi prebrano in skoči na entiteto.
  */
 function NotificationBell() {
   const router = useRouter();
@@ -290,7 +289,6 @@ function NotificationBell() {
     try { setItems(await api.notifications.list()); } catch { setItems([]); }
   }
   useEffect(() => {
-    if (!DEMO_MODE) return;
     load();
     const t = setInterval(load, 20000);
     const onFocus = () => load();
@@ -299,14 +297,6 @@ function NotificationBell() {
     return () => { clearInterval(t); window.removeEventListener('focus', onFocus); unsub(); };
   }, []);
 
-  if (!DEMO_MODE) {
-    return (
-      <button disabled title="Obvestila — na voljo v demo načinu"
-        className="relative grid h-10 w-10 cursor-not-allowed place-items-center rounded-full text-muted2">
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-      </button>
-    );
-  }
 
   const unread = items.filter((n) => !n.read).length;
 

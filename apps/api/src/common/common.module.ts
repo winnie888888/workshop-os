@@ -5,6 +5,7 @@ import { AuditService } from './audit/audit.service';
 import { OutboxService } from './outbox/outbox.service';
 import { CounterService } from './numbering/counter.service';
 import { ChangeFeedService } from './sync/change-feed.service';
+import { NotifyService } from './notify/notify.service';
 
 /**
  * Global cross-cutting providers. Available to every module without re-import
@@ -12,7 +13,7 @@ import { ChangeFeedService } from './sync/change-feed.service';
  */
 @Global()
 @Module({
-  providers: [AppConfig, PgService, AuditService, OutboxService, CounterService, ChangeFeedService],
-  exports: [AppConfig, PgService, AuditService, OutboxService, CounterService, ChangeFeedService],
+  providers: [AppConfig, PgService, AuditService, OutboxService, CounterService, ChangeFeedService, NotifyService],
+  exports: [AppConfig, PgService, AuditService, OutboxService, CounterService, ChangeFeedService, NotifyService],
 })
 export class CommonModule {}

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
 
@@ -38,7 +37,7 @@ export default function ItemsPage() {
               Vrednost zaloge: <span className="num">{formatMoneyMinor(valuation.totalValueMinor)}</span>
             </span>
           )}
-          {DEMO_MODE && <Link href="/warehouse/items/new"><Button tone="go">+ Nov artikel</Button></Link>}
+          <Link href="/warehouse/items/new"><Button tone="go">+ Nov artikel</Button></Link>
         </div>
       </div>
 
@@ -59,8 +58,8 @@ export default function ItemsPage() {
               <tbody>
                 {items.map((it, i) => (
                   <tr key={it.id ?? i}
-                    onClick={() => { if (DEMO_MODE && it.id) router.push(`/warehouse/items/${it.id}`); }}
-                    className={`border-t border-line ${DEMO_MODE ? 'cursor-pointer hover:bg-surface2' : ''}`}>
+                    onClick={() => { if (it.id) router.push(`/warehouse/items/${it.id}`); }}
+                    className="border-t border-line cursor-pointer hover:bg-surface2">
                     <td className="px-5 py-3 font-semibold text-ink">{it.name}</td>
                     <td className="num px-4 py-3 text-muted">{it.sku ?? '—'}</td>
                     <td className="num hidden px-4 py-3 text-muted2 sm:table-cell">{it.oemRef ?? '—'}</td>
@@ -79,7 +78,7 @@ export default function ItemsPage() {
           )}
       </Card>
 
-      {DEMO_MODE && <p className="text-center text-xs text-muted2">Klikni vrstico za podrobnosti, urejanje in prejem zaloge.</p>}
+      <p className="text-center text-xs text-muted2">Klikni vrstico za podrobnosti, urejanje in prejem zaloge.</p>
     </div>
   );
 }

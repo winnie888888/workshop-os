@@ -158,6 +158,22 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         `UPDATE app.outbox SET status='dead', attempts=COALESCE($2, attempts), last_error=$3 WHERE id=$1`,
         [ev.id, attempts ?? null, error],
       );
+      // Sistemsko opozorilo ownerjem v zvonček — dead-letter ni tiha smrt.
+      // Fan-out inline v ISTI admin transakciji (atomarno s flipom v 'dead');
+      // memberships je admin-only tabela, zato tu ne gre prek tenant poti.
+      const owners = await tx.query<{ user_id: string }>(
+        `SELECT user_id FROM app.memberships
+          WHERE tenant_id = $1 AND active = true AND 'owner' = ANY(roles)`,
+        [ev.tenantId],
+      );
+      for (const o of owners.rows) {
+        await tx.query(
+          `INSERT INTO app.notifications (tenant_id, recipient_user_id, kind, title, body)
+           VALUES ($1, $2, 'system', $3, $4)`,
+          [ev.tenantId, o.user_id, `Integracija ni uspela: ${ev.eventType}`,
+           `Dogodek je po vseh poskusih označen kot neuspešen. Napaka: ${error.slice(0, 300)}`],
+        );
+      }
     });
   }
 

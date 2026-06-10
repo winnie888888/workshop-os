@@ -30,15 +30,10 @@ export default function PresetsPage() {
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">Servisni paketi</h1>
           <p className="text-sm text-muted">Sklopi dela in delov za hiter vnos na nalog. Dodaš jih na nalogu prek „+ Paket".</p>
         </div>
-        {DEMO_MODE && <Link href="/warehouse/presets/new"><Button tone="go">+ Nov paket</Button></Link>}
+        <Link href="/warehouse/presets/new"><Button tone="go">+ Nov paket</Button></Link>
       </div>
 
-      {!DEMO_MODE ? (
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">Paketi so na voljo v demo načinu.</p>
-          <p className="mt-1 text-sm text-muted">Zaledni del še nima končnih točk za pakete (/presets). Ko jih dodava, bo ta razdelek deloval tudi v realnem načinu.</p>
-        </Card>
-      ) : isLoading || !presets ? (
+      {isLoading || !presets ? (
         <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>
       ) : presets.length === 0 ? (
         <Card className="p-8 text-center text-muted">Ni paketov.</Card>

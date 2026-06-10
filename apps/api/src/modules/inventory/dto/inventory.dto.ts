@@ -12,6 +12,18 @@ export class CreateItemDto {
   @IsOptional() @IsBoolean() isCore?: boolean;
 }
 
+export class UpdateItemDto {
+  @IsOptional() @IsString() @Length(1, 200) name?: string;
+  @IsOptional() @IsString() sku?: string;
+  @IsOptional() @IsString() oemRef?: string;
+  @IsOptional() @IsString() unit?: string;
+  @IsOptional() @IsInt() @Min(0) costMinor?: number;
+  @IsOptional() @IsInt() @Min(0) priceMinor?: number;
+  @IsOptional() @Matches(/^[A-Z]{3}$/) currency?: string;
+  @IsOptional() @Matches(/^\d+(\.\d{1,2})?$/) vatRatePct?: string;
+  @IsOptional() @IsBoolean() isCore?: boolean;
+}
+
 export class ReceiveStockDto {
   @IsString() @Length(1, 36) itemId!: string;
   @IsString() @Length(1, 36) locationId!: string;

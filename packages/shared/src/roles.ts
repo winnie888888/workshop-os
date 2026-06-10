@@ -53,6 +53,7 @@ export const Permission = {
   // into an invoice is additionally gated by InvoiceIssue at the endpoint.
   EstimateManage: "estimate:manage",       // create/edit quotes, change their status
   AppointmentManage: "appointment:manage", // create/edit/delete calendar bookings
+  PresetManage: "preset:manage",           // create/edit/delete service packages (presets)
 } as const;
 export type Permission = (typeof Permission)[keyof typeof Permission];
 
@@ -65,6 +66,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.InvoiceIssue,
     Permission.PricingEdit,
     Permission.StockReceive,
+    Permission.PresetManage,
     Permission.StockAdjust,
     Permission.StockTransfer,
     Permission.PurchaseManage,
@@ -95,6 +97,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
   [Role.Mechanic]: new Set([Permission.WorkOrderLineTime]),
   [Role.Warehouse]: new Set([
     Permission.StockReceive,
+    Permission.PresetManage,
     Permission.StockAdjust,
     Permission.StockTransfer,
     Permission.PurchaseManage,
@@ -113,6 +116,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.InvoiceIssue,
     Permission.PricingEdit,
     Permission.StockReceive,
+    Permission.PresetManage,
     Permission.StockAdjust,
     Permission.StockTransfer,
     Permission.PurchaseManage,

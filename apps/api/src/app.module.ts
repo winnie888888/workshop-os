@@ -22,6 +22,8 @@ import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { WorkerModule } from './worker/worker.module';
 import { SignupModule } from './modules/signup/signup.module';
+import { InAppNotificationsModule } from './modules/notifications/notifications.module';
+import { PresetsModule } from './modules/presets/presets.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -67,6 +69,8 @@ import { HealthController } from './common/health.controller';
     ActivityModule,     // dashboard feed read from the audit chain
     WorkerModule,       // outbox drain loop (Minimax, e-invoice, notifications)
     SignupModule,       // /public: self-serve signup, verify, login (Faza A)
+    InAppNotificationsModule, // /notifications: zvonček (Sprint 3)
+    PresetsModule,      // /presets: servisni paketi (Sprint 3)
     AttachmentsModule,  // uploads (photos, voice notes, documents)
     SearchModule,       // global search
     SyncModule,

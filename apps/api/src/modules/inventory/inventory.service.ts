@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { newId, getContext, Inventory, Valuation } from '@workshop/shared';
 import { PgService, type TxClient } from '../../common/db/pg.service';
-import { CreateItemDto, ReceiveStockDto } from './dto/inventory.dto';
+import { CreateItemDto, UpdateItemDto, ReceiveStockDto } from './dto/inventory.dto';
 
 export interface InventoryItem {
   id: string; name: string; sku: string | null; oemRef: string | null;
@@ -226,6 +226,42 @@ export class InventoryService {
    * returns priced catalogue items. Read-only; RLS-scoped like everything else.
    * An empty query returns the first page of items so the picker opens populated.
    */
+  async getItem(id: string): Promise<InventoryItem> {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const res = await tx.query<any>(`SELECT * FROM app.inventory_items WHERE id = $1`, [id]);
+      if (res.rowCount === 0) throw new NotFoundException('Item not found');
+      return this.itemToDomain(res.rows[0]);
+    });
+  }
+
+  /** PATCH kataloškega artikla — samo podana polja (COALESCE), preostalo nedotaknjeno. */
+  async updateItem(id: string, dto: UpdateItemDto): Promise<InventoryItem> {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const cur = await tx.query<any>(`SELECT id FROM app.inventory_items WHERE id = $1 FOR UPDATE`, [id]);
+      if (cur.rowCount === 0) throw new NotFoundException('Item not found');
+      const res = await tx.query<any>(
+        `UPDATE app.inventory_items SET
+           name = COALESCE($2, name),
+           sku = COALESCE($3, sku),
+           oem_ref = COALESCE($4, oem_ref),
+           unit = COALESCE($5, unit),
+           cost_minor = COALESCE($6, cost_minor),
+           price_minor = COALESCE($7, price_minor),
+           currency = COALESCE($8, currency),
+           vat_rate_pct = COALESCE($9, vat_rate_pct),
+           is_core = COALESCE($10, is_core)
+         WHERE id = $1
+         RETURNING *`,
+        [id, dto.name?.trim() ?? null, dto.sku ?? null, dto.oemRef ?? null, dto.unit ?? null,
+         dto.costMinor ?? null, dto.priceMinor ?? null, dto.currency ?? null,
+         dto.vatRatePct ?? null, dto.isCore ?? null],
+      );
+      return this.itemToDomain(res.rows[0]);
+    });
+  }
+
   async searchItems(q: string | undefined, limit = 25): Promise<InventoryItem[]> {
     const ctx = getContext();
     return this.pg.withTenant(ctx.tenantId, async (tx) => {

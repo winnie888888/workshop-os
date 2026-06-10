@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { Permission } from '@workshop/shared';
 import { InventoryService } from './inventory.service';
-import { CreateItemDto, ReceiveStockDto, TransferStockDto } from './dto/inventory.dto';
+import { CreateItemDto, UpdateItemDto, ReceiveStockDto, TransferStockDto } from './dto/inventory.dto';
 import { PermissionsGuard, RequirePermissions } from '../../auth/permissions.guard';
 
 @Controller('inventory')
@@ -41,5 +41,16 @@ export class InventoryController {
   @Get('items/:id/stock')
   stock(@Param('id') itemId: string) {
     return this.inventory.stockForItem(itemId);
+  }
+
+  @Get('items/:id')
+  getItem(@Param('id') id: string) {
+    return this.inventory.getItem(id);
+  }
+
+  @Patch('items/:id')
+  @RequirePermissions(Permission.StockReceive)
+  updateItem(@Param('id') id: string, @Body() dto: UpdateItemDto) {
+    return this.inventory.updateItem(id, dto);
   }
 }

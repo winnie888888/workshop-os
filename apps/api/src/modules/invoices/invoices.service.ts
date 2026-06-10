@@ -4,6 +4,7 @@ import {
 } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { NotifyService } from '../../common/notify/notify.service';
 import { OutboxService } from '../../common/outbox/outbox.service';
 import { CounterService } from '../../common/numbering/counter.service';
 import { AppConfig } from '../../config/configuration';
@@ -34,6 +35,7 @@ export class InvoicesService {
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
     private readonly config: AppConfig,
+    private readonly notify: NotifyService,
   ) {}
 
   async issueFromWorkOrder(dto: IssueInvoiceDto): Promise<InvoiceHeader> {
@@ -163,6 +165,13 @@ export class InvoicesService {
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
       });
 
+      // Obvestilo v zvonček (near-commit: tik pred uspešnim zaključkom tx;
+      // NotifyService teče po lastni admin poti in posla ne more podreti).
+      await this.notify.toRoles(ctx.tenantId, ['owner', 'advisor'], {
+        kind: 'invoice', title: `Izdan račun ${number}`,
+        entityType: 'invoice', entityId: invoiceId, excludeUserId: ctx.userId,
+      });
+
       return header;
     });
   }
@@ -276,6 +285,13 @@ export class InvoicesService {
       await this.outbox.enqueue(tx, {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
+      });
+
+      // Obvestilo v zvonček (near-commit: tik pred uspešnim zaključkom tx;
+      // NotifyService teče po lastni admin poti in posla ne more podreti).
+      await this.notify.toRoles(ctx.tenantId, ['owner', 'advisor'], {
+        kind: 'invoice', title: `Izdan račun ${number}`,
+        entityType: 'invoice', entityId: invoiceId, excludeUserId: ctx.userId,
       });
 
       return header;
