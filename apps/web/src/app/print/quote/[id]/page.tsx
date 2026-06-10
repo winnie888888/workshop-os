@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { formatMoneyMinor, formatVatRate, vatBreakdownMinor, docTotalsMinor } from '@/lib/format';
 import { loadSettings } from '@/lib/workshop-settings';
+import { PrintLogo } from '@/components/print-logo';
 
 /*
  * Print / PDF view of a predračun (quote) — a clean A4 sheet rendered OUTSIDE
@@ -48,6 +49,7 @@ export default function QuotePrint() {
       <div className="mx-auto max-w-[210mm] bg-white p-[16mm] text-[13px] leading-relaxed text-ink shadow-card print:max-w-none print:p-0 print:shadow-none">
         <div className="flex items-start justify-between gap-6">
           <div>
+            <PrintLogo companyName={company?.name} />
             <div className="text-lg font-extrabold">{company?.name || 'Delavnica'}</div>
             {company?.address && <div className="text-steel">{company.address}</div>}
             {company?.vatId && <div className="num text-steel">ID za DDV: {company.vatId}</div>}

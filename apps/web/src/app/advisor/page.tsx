@@ -57,6 +57,18 @@ export default function AdvisorDashboard() {
         </span>
       </div>
 
+      {/* Hitri akciji — zahteva delavnice: vrh plošče sta SAMO ti dve dejanji. */}
+      <div className="flex flex-wrap gap-3">
+        <Link href="/advisor/work-orders/new"
+          className="flex-1 rounded-card bg-brand px-5 py-4 text-center text-lg font-extrabold text-white shadow-card hover:opacity-90 sm:flex-none sm:min-w-56">
+          + Nov nalog
+        </Link>
+        <Link href="/advisor/work-orders"
+          className="flex-1 rounded-card border-2 border-brand bg-surface px-5 py-4 text-center text-lg font-extrabold text-brand shadow-card hover:bg-brandweak/40 sm:flex-none sm:min-w-56">
+          Pregled nalogov
+        </Link>
+      </div>
+
       <OnboardingCard />
 
       {/* KPI cards */}
@@ -336,6 +348,10 @@ function activityTime(iso: string) {
  * istih REST klicev kot ročni vnos — nič posebnih poti.
  */
 function OnboardingCard() {
+  // Vpeljana delavnica čarovnika ne potrebuje — »Skrij« ga trajno umakne
+  // (localStorage); pri done==4 izgine že sam (obstoječa logika spodaj).
+  const [hidden, setHidden] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem('asg.hideFirstSteps') === '1');
   const { data: cust, mutate: mCust } = useSWR('onb-cust', () =>
     api.customers.search({ limit: 1 }).then((r: any) => ((r?.items ?? []) as any[]).length).catch(() => null));
   const { data: wos, mutate: mWos } = useSWR('onb-wo', () =>
@@ -384,6 +400,7 @@ function OnboardingCard() {
     }
   }
 
+  if (hidden) return null;
   return (
     <section className="rounded-card border border-brandring bg-brandweak/40 p-5 shadow-card">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -391,7 +408,15 @@ function OnboardingCard() {
           <h2 className="text-base font-extrabold text-ink">Prvi koraki</h2>
           <p className="text-sm text-muted">Postavite delavnico v nekaj minutah.</p>
         </div>
-        <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-brand shadow-card">{done}/4</span>
+        <span className="flex items-center gap-2">
+          <span className="rounded-full bg-surface px-3 py-1 text-xs font-bold text-brand shadow-card">{done}/4</span>
+          <button
+            onClick={() => { window.localStorage.setItem('asg.hideFirstSteps', '1'); setHidden(true); }}
+            className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-bold text-steel hover:text-ink"
+            title="Trajno skrij to kartico">
+            Skrij ✕
+          </button>
+        </span>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {steps.map((st, i) => (

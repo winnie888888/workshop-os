@@ -180,6 +180,15 @@ export interface RevenueReport {
  * Endpoint methods — one per real route.
  * -------------------------------------------------------------------------- */
 
+export interface TenantProfile {
+  id: string; name: string; country: string; vatId: string | null;
+  iban: string | null; bankName: string | null;
+  address: string | null; postCode: string | null; city: string | null;
+  phone: string | null; fax: string | null; email: string | null; website: string | null;
+  bic: string | null; iban2: string | null; bic2: string | null;
+  registrationNote: string | null;
+}
+
 export const api = {
   workOrders: {
     list: (params: { statuses?: string[]; assignedMechanicId?: string; clockedMechanicId?: string; customerId?: string; limit?: number } = {}) => {
@@ -397,7 +406,7 @@ export const api = {
 
   me: {
     profile: () => request<any>(`/me/profile`),
-    updateProfile: (body: { displayName?: string; locale?: string; phone?: string }) =>
+    updateProfile: (body: Partial<Omit<TenantProfile, 'id' | 'name' | 'country' | 'vatId'>> & Record<string, unknown>) =>
       request<any>(`/me/profile`, { method: 'PATCH', body }),
   },
 
@@ -593,8 +602,8 @@ export const api = {
   // GET je odprt vsem članom; PATCH zahteva TenantManage (owner/admin).
   tenant: {
     profile: () =>
-      request<{ id: string; name: string; country: string; vatId: string | null; iban: string | null; bankName: string | null; address: string | null; postCode: string | null; city: string | null }>(`/tenant/profile`),
-    updateProfile: (dto: { iban?: string; bankName?: string; address?: string; postCode?: string; city?: string }) =>
+      request<TenantProfile>(`/tenant/profile`),
+    updateProfile: (dto: { iban?: string; bankName?: string; address?: string; postCode?: string; city?: string; phone?: string; fax?: string; email?: string; website?: string; bic?: string; iban2?: string; bic2?: string; registrationNote?: string }) =>
       request<any>(`/tenant/profile`, { method: 'PATCH', body: dto }),
   },
 
