@@ -45,6 +45,11 @@ export class AppConfig {
   readonly outboxPollMs = parseInt(optional('OUTBOX_POLL_MS', '1000'), 10);
   readonly outboxMaxAttempts = parseInt(optional('OUTBOX_MAX_ATTEMPTS', '12'), 10);
 
+  // Transactional e-mail (Resend). Empty key => email routes to the log stub,
+  // so dev/demo environments work end-to-end without sending anything.
+  readonly resendApiKey = optional('RESEND_API_KEY', '');
+  readonly emailFrom = optional('EMAIL_FROM', 'A-SPRINT GARAGE <obvestila@asprint-garage.si>');
+
   // Default labour rate (minor units) used to cost time entries at clock-out
   // until per-tenant/per-mechanic rate cards arrive in a later phase.
   readonly defaultLabourRateMinor = BigInt(optional('DEFAULT_LABOUR_RATE_MINOR', '6500'));

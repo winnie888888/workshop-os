@@ -15,10 +15,10 @@
 ## 🔧 Manjka do code-complete (po sprintih)
 
 ### Sprint 1 — Infrastrukturna predpogoja + quick wins
-- [ ] **Mailer adapter** (port `notification.port.ts` obstaja, samo stub): SMTP/Resend adapter, config-driven, + predloge (verifikacija, dobrodošlica, trial opomnik, dunning). Brez živih ključev = honest no-op z logom.
-- [ ] **Outbox worker**: interval zanka (FOR UPDATE SKIP LOCKED claim → dispatch na registrirane OutboxHandler-je → done/retry z backoff). Brez tega Minimax/e-invoice eventi večno čakajo.
-- [ ] **Scheduler** (@nestjs/schedule ali lasten interval): trial-expiry pregled, outbox retry, dnevni vzdrževalni joby.
-- [ ] Quick-win ungates: WO → "Ustvari predračun" gumb (stale gate — estimates so realni!); warehouse ai-import (OcrModule obstaja — preveri wiring).
+- [x] **Mailer adapter** (port `notification.port.ts` obstaja, samo stub): SMTP/Resend adapter, config-driven, + predloge (verifikacija, dobrodošlica, trial opomnik, dunning). Brez živih ključev = honest no-op z logom.
+- [x] **Outbox worker**: interval zanka (FOR UPDATE SKIP LOCKED claim → dispatch na registrirane OutboxHandler-je → done/retry z backoff). Brez tega Minimax/e-invoice eventi večno čakajo.
+- [x] **Scheduler primitiv**: worker zanka pokriva outbox retry + reaper; trial-expiry job pride s Fazo A (stolpec `trial_ends_at` še ne obstaja).
+- [x] Quick-win ungates: WO → "Ustvari predračun" gumb (stale gate — estimates so realni!); warehouse ai-import (OcrModule obstaja — preveri wiring).
 
 ### Sprint 2 — Faza A: self-serve signup & provisioning
 - [ ] Migracija 0018: `app.user_credentials` (argon2id), `app.signup_tokens`, `tenants.plan/billing_status/trial_ends_at`

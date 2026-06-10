@@ -3,6 +3,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { NOTIFICATION_PORT } from './notification.port';
 import type { NotificationPort } from './notification.port';
 import { StubNotificationAdapter } from './stub-notification.adapter';
+import { ResendEmailSender } from './resend-email.adapter';
+import { RoutingNotificationAdapter } from './routing-notification.adapter';
 import type { OutboxHandler, OutboxEvent } from '../../common/events/outbox-handler.interface';
 
 /**
@@ -37,7 +39,11 @@ export class NotificationSendHandler implements OutboxHandler {
 @Module({
   providers: [
     StubNotificationAdapter,
-    { provide: NOTIFICATION_PORT, useExisting: StubNotificationAdapter },
+    ResendEmailSender,
+    RoutingNotificationAdapter,
+    // Real channels route here; unconfigured channels honestly fall back to the
+    // logging stub (see RoutingNotificationAdapter).
+    { provide: NOTIFICATION_PORT, useExisting: RoutingNotificationAdapter },
     NotificationSendHandler,
   ],
   exports: [NOTIFICATION_PORT, NotificationSendHandler],

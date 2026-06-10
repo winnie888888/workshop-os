@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { readDefaultsSync } from '@/lib/workshop-settings';
 import { formatMoneyMinor } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner } from '@/components/ui';
@@ -71,17 +70,6 @@ export default function AiImportPage() {
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState<{ created: number; updated: number } | null>(null);
 
-  if (!DEMO_MODE) {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <Card className="border-hold/40 bg-hold/5 p-6">
-          <p className="font-semibold text-ink">AI uvoz je na voljo v demo načinu.</p>
-          <p className="mt-1 text-sm text-muted">V produkciji fotografijo računa prebere AI prehod (OCR + model) in artikle ustvari prek pravih končnih točk.</p>
-          <Link href="/warehouse/items" className="mt-3 inline-block text-sm font-semibold text-brand">‹ Postavke</Link>
-        </Card>
-      </div>
-    );
-  }
 
   function analyse() {
     setRows(parseInvoice(text, (catalog as any[]) ?? []));

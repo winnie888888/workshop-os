@@ -6,7 +6,6 @@ import useSWR from 'swr';
 import { api, ApiError, type WorkOrderDetail, type WorkOrderLine, type WorkOrderStatus } from '@/lib/api';
 import { formatMoneyMinor, statusLabel, statusTone, vatBreakdownMinor, formatVatRate } from '@/lib/format';
 import { readDefaultsSync } from '@/lib/workshop-settings';
-import { DEMO_MODE } from '@/lib/demo';
 import { Button, Card, ProblemBanner, SoftChip, Spinner, StatusChip } from '@/components/ui';
 import { TextField, NumberField } from '@/components/form';
 
@@ -90,7 +89,7 @@ export default function WorkOrderWorkspace() {
 
       {/* Action row — legal transitions + issue path */}
       <div className="flex flex-wrap items-center gap-3">
-        {DEMO_MODE && (wo.lines?.length ?? 0) > 0 && (
+        {(wo.lines?.length ?? 0) > 0 && (
           <Button tone="neutral" onClick={createEstimate} disabled={busy}>Ustvari predračun</Button>
         )}
         {wo.status === 'ready' && (
