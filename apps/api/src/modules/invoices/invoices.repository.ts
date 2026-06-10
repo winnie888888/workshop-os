@@ -86,6 +86,17 @@ export class InvoicesRepository {
     return res.rowCount > 0 ? toHeader(res.rows[0]) : null;
   }
 
+  async listByCustomer(tx: TxClient, customerId: string, limit = 100): Promise<InvoiceHeader[]> {
+    const res = await tx.query<any>(
+      `SELECT * FROM app.invoices
+        WHERE customer_id = $1
+        ORDER BY issue_date DESC NULLS LAST, id DESC
+        LIMIT $2`,
+      [customerId, limit],
+    );
+    return res.rows.map(toHeader);
+  }
+
   async listLines(tx: TxClient, invoiceId: string): Promise<any[]> {
     const res = await tx.query<any>(
       `SELECT * FROM app.invoice_lines WHERE invoice_id = $1 ORDER BY line_no`, [invoiceId]);

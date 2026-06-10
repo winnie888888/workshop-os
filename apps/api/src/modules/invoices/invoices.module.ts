@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Permission } from '@workshop/shared';
 import { InvoicesService } from './invoices.service';
 import { CreditNoteDto, IssueInvoiceDto, RecordPaymentDto } from './dto/invoice.dto';
@@ -27,6 +27,12 @@ export class InvoicesController {
   @RequirePermissions(Permission.InvoiceIssue)
   pay(@Body() dto: RecordPaymentDto) {
     return this.invoices.recordPayment(dto);
+  }
+
+  @Get()
+  @RequirePermissions(Permission.AnalyticsFinancialView)
+  list(@Query('customerId') customerId?: string) {
+    return this.invoices.listByCustomer(customerId);
   }
 
   @Get(':id')

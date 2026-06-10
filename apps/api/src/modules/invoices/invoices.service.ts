@@ -380,6 +380,12 @@ export class InvoicesService {
     });
   }
 
+  async listByCustomer(customerId?: string): Promise<InvoiceHeader[]> {
+    if (!customerId) return [];
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => this.repo.listByCustomer(tx, customerId));
+  }
+
   async get(invoiceId: string) {
     const ctx = getContext();
     const result = await this.pg.withTenant(ctx.tenantId, async (tx) => {

@@ -248,7 +248,7 @@ export const api = {
     // The list endpoint returns a paginated envelope {items, nextCursor}. The
     // previous client read it as a bare array (a latent bug); we unwrap items.
     list: async () => {
-      const res = await request<{ items: any[]; nextCursor: unknown }>(`/customers?limit=100`);
+      const res = await request<{ items: any[]; nextCursor: unknown }>(`/customers?limit=1000`);
       return res.items ?? [];
     },
     create: (dto: Record<string, unknown>) => request<any>(`/customers`, { method: 'POST', body: dto }),
