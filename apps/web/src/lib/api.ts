@@ -342,6 +342,9 @@ export const api = {
 
   invoices: {
     get: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
+    sync: (id: string) =>
+      request<Array<{ id: string; eventType: string; status: 'pending' | 'processing' | 'done' | 'dead'; attempts: number; lastError?: string; nextAttemptAt: string; updatedAt: string }>>(`/invoices/${id}/sync`),
+    retrySync: (id: string) => request<{ ok: boolean; requeued: number }>(`/invoices/${id}/sync/retry`, { method: 'POST' }),
     byCustomer: (customerId: string) =>
       request<Array<{ id: string; number: string | null; status: string; currency: string; totalGrossMinor: string; issueDate: string | null; dueDate: string | null }>>(
         `/invoices?customerId=${encodeURIComponent(customerId)}`),

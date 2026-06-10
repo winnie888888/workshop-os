@@ -35,6 +35,18 @@ export class InvoicesController {
     return this.invoices.listByCustomer(customerId);
   }
 
+  @Get(':id/sync')
+  @RequirePermissions(Permission.AnalyticsFinancialView)
+  syncStatus(@Param('id') id: string) {
+    return this.invoices.syncStatus(id);
+  }
+
+  @Post(':id/sync/retry')
+  @RequirePermissions(Permission.InvoiceIssue)
+  retrySync(@Param('id') id: string) {
+    return this.invoices.retrySync(id);
+  }
+
   @Get(':id')
   @RequirePermissions(Permission.AnalyticsFinancialView)
   get(@Param('id') id: string) {

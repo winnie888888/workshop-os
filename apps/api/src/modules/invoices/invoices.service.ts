@@ -414,6 +414,51 @@ export class InvoicesService {
     if (!result) throw new NotFoundException('Invoice not found');
     return result;
   }
+
+  /** Outbox sinhronizacijski vnosi za en račun (Minimax + e-Račun) — resnica, ne animacija. */
+  syncStatus(invoiceId: string) {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const r = await tx.query<any>(
+        `SELECT id, event_type, status, attempts, last_error, next_attempt_at, updated_at
+           FROM app.outbox
+          WHERE payload->>'invoiceId' = $1
+            AND (event_type LIKE 'minimax.%' OR event_type LIKE 'einvoice.%')
+          ORDER BY event_type`,
+        [invoiceId],
+      );
+      return r.rows.map((o: any) => ({
+        id: o.id,
+        eventType: o.event_type,
+        status: o.status,
+        attempts: o.attempts,
+        lastError: o.last_error ?? undefined,
+        nextAttemptAt: o.next_attempt_at,
+        updatedAt: o.updated_at,
+      }));
+    });
+  }
+
+  /** Mrtve sinhronizacije računa nazaj v vrsto; worker jih pobere v ~1 s. Avditirano. */
+  retrySync(invoiceId: string) {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const r = await tx.query(
+        `UPDATE app.outbox
+            SET status = 'pending', next_attempt_at = now(), last_error = NULL, updated_at = now()
+          WHERE payload->>'invoiceId' = $1
+            AND status = 'dead'
+            AND (event_type LIKE 'minimax.%' OR event_type LIKE 'einvoice.%')`,
+        [invoiceId],
+      );
+      await this.audit.append(tx, {
+        tenantId: ctx.tenantId, actorId: ctx.userId, action: 'invoice.sync_retry',
+        entityType: 'invoice', entityId: invoiceId, before: null,
+        after: { requeued: r.rowCount },
+      });
+      return { ok: true, requeued: r.rowCount };
+    });
+  }
 }
 
 function addDays(isoDate: string, days: number): string {

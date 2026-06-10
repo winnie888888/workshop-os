@@ -139,7 +139,7 @@ export default function InvoiceDetail() {
         </div>
       </Card>
 
-      {DEMO_MODE && inv.number && <MinimaxSyncPanel invoiceNumber={inv.number} />}
+      {inv.number && <MinimaxSyncPanel invoiceId={inv.id} invoiceNumber={inv.number} />}
     </div>
   );
 }
@@ -149,7 +149,78 @@ export default function InvoiceDetail() {
  * viewer can see the accounting integration work end to end. Nothing here issues
  * or alters an invoice — it visualises an existing event.
  */
-function MinimaxSyncPanel({ invoiceNumber }: { invoiceNumber: string }) {
+function MinimaxSyncPanel({ invoiceId, invoiceNumber }: { invoiceId: string; invoiceNumber: string }) {
+  if (!DEMO_MODE) return <MinimaxSyncLive invoiceId={invoiceId} />;
+  return <MinimaxSyncDemo invoiceNumber={invoiceNumber} />;
+}
+
+const SYNC_LABEL: Record<string, string> = {
+  'minimax.invoice.upsert': 'Minimax — izdani račun',
+  'minimax.partner.upsert': 'Minimax — partner',
+  'einvoice.issue': 'e-Račun (e-SLOG)',
+};
+const SYNC_STATUS: Record<string, { tone: 'go' | 'info' | 'stop'; label: string }> = {
+  pending: { tone: 'info', label: 'v vrsti' },
+  processing: { tone: 'info', label: 'pošiljam' },
+  done: { tone: 'go', label: 'sinhronizirano' },
+  dead: { tone: 'stop', label: 'neuspešno' },
+};
+
+/** Realni način: živi outbox vnosi za ta račun, retry za mrtve. */
+function MinimaxSyncLive({ invoiceId }: { invoiceId: string }) {
+  const { data, mutate } = useSWR(['inv-sync', invoiceId], () => api.invoices.sync(invoiceId), { refreshInterval: 5000 });
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+  const anyDead = data.some((e) => e.status === 'dead');
+  async function retry() {
+    setBusy(true);
+    try { await api.invoices.retrySync(invoiceId); await mutate(); }
+    finally { setBusy(false); }
+  }
+  return (
+    <Card className="p-5">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-base font-bold text-ink">Sinhronizacije (Minimax · e-Račun)</h2>
+        {anyDead && (
+          <button onClick={retry} disabled={busy}
+            className="rounded-tool border border-line px-3 py-1.5 text-xs font-bold text-steel transition hover:border-brandring hover:text-brand disabled:opacity-60">
+            {busy ? 'Pošiljam…' : 'Poskusi znova'}
+          </button>
+        )}
+      </div>
+      {data.length === 0 ? (
+        <p className="text-sm text-muted">Za ta račun ni sinhronizacij v čakalni vrsti.</p>
+      ) : (
+        <ul className="flex flex-col gap-2 text-sm">
+          {data.map((e) => {
+            const st = SYNC_STATUS[e.status] ?? { tone: 'info' as const, label: e.status };
+            const notConfigured = (e.lastError ?? '').includes('not configured');
+            return (
+              <li key={e.id} className="rounded-tool border border-line bg-surface px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-ink">{SYNC_LABEL[e.eventType] ?? e.eventType}</span>
+                  <span className="flex items-center gap-2">
+                    {e.attempts > 0 && e.status !== 'done' && <span className="text-xs text-muted2">poskus {e.attempts}</span>}
+                    <SoftChip tone={st.tone}>{st.label}</SoftChip>
+                  </span>
+                </div>
+                {e.status === 'dead' && (
+                  <p className="mt-1 text-xs text-stop">
+                    {notConfigured
+                      ? 'Poverilnice integracije niso povezane — Nastavitve → Integracije. Po povezavi kliknite »Poskusi znova«.'
+                      : e.lastError ?? 'Pošiljanje ni uspelo.'}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function MinimaxSyncDemo({ invoiceNumber }: { invoiceNumber: string }) {
   const [stage, setStage] = useState<'queued' | 'sending' | 'synced'>('queued');
   useEffect(() => {
     const t1 = setTimeout(() => setStage('sending'), 700);

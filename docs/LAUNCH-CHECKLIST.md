@@ -27,13 +27,13 @@
 - [x] Web: /signup, /verify (Suspense + enkratni žeton), lokalna prijava na vstopni strani (OIDC ostaja kot SSO), onboarding kartica »Prvi koraki« — 4 koraki IZVEDENI iz dejanskih podatkov (stranka → nalog → predračun → termin) + seed prek pravih REST klicev; VIES za STRANKO je v koraku 1, VIES za podatke delavnice → nastavitve tenanta (Sprint 3/4)
 - [x] Lastna prijava (email+geslo): lokalni HS256 žetoni skozi OBSTOJEČI TokenVerifier (`local|<userId>` ↔ external_subject); OIDC nedotaknjen
 
-### Sprint 3 — Feature-complete blok (luknje iz avdita)
+### Sprint 3 — Feature-complete blok (luknje iz avdita) ✓ KONČAN
 - [x] **Notifications backend**: migracija 0019 (per-prejemnik vrstice), `/notifications` list/read/read-all 1:1 z web kontraktom, globalni NotifyService (fan-out po vlogah prek withAdmin — memberships je admin-only); hooki: `invoice.issued` (×2, near-commit) + outbox dead-letter → sistemsko opozorilo ownerjem; zvonček ungated. WO-status hook → blok 2 (modul nima ene transition točke, ne vstavljam na slepo)
 - [x] **Presets backend**: tabela + CRUD 1:1 z demo obliko (lines jsonb, vehicleClasses/powertrains), Permission.PresetManage (owner/admin/warehouse), audit preset.*; 3 strani ungated
 - [x] **Items CRUD dopolnitev**: GET /inventory/items/:id + PATCH (COALESCE delni update, StockReceive permission); 3 items strani ungated (list klik-vrstica, new, detail/edit)
 - [x] **GDPR export** `/export/snapshot`: poln posnetek (15 entitet, SELECT * = resnica sheme; postavke/DDV kot jsonb agregati; roster prek withAdmin), nova `Permission.DataExport` (owner+admin), avditiran dostop `export.snapshot`; owner/data ungated + dobavitelji v tabeli
 - [x] **CSV uvozi v realnem načinu**: čarovnik ungatan; matching za dry-run iz API (stranke prek customers.list, artikli prek kataloga), zapis prek ISTIH REST poti kot ročni vnos (polna validacija+audit+RLS, sekvenčno z napredkom, napake po vrsticah v opombe); ISO-2 država + DDV prefiks fix; nepersistabilna polja pošteno javljena (stranke: email/tel; artikli: opis/EAN; zaloge → Prevzem); posodobitve strank preskočene do PATCH /customers; vozila/računi ostajajo predogled
-- [ ] MinimaxSyncPanel na real outbox status (po Sprint 1 workerju)
+- [x] MinimaxSyncPanel → ŽIV outbox status: GET /invoices/:id/sync (minimax.* + einvoice.* vnosi, poll 5 s) + POST :id/sync/retry (dead→pending, avditirano `invoice.sync_retry`); »not configured« iz last_error → pošten namig na poverilnice; demo animacija ostane samo v demu
 
 ### Sprint 4 — Faza B: entitlements & billing
 - [ ] PlanGuard + `@RequiresPlan` po modulih; soft paywall (read-only + 402 na mutacije; izvoz VEDNO odprt)
