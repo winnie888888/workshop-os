@@ -254,7 +254,7 @@ export class BankImportService {
          dto.total ?? dto.items.length, dto.credits ?? dto.items.length, ctx.userId],
       )).rows[0].id);
 
-    const results: Array<{ fingerprint: string; status: string; invoiceNumber?: string; appliedMinor?: string; unappliedMinor?: string; error?: string }> = [];
+    const results: Array<{ fingerprint: string; status: string; invoiceNumber?: string | null; appliedMinor?: string; unappliedMinor?: string; error?: string }> = [];
 
     for (const item of dto.items) {
       // 1) Rezerviraj prstni odtis ('pending') — idempotenčna ključavnica.
