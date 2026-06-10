@@ -46,7 +46,12 @@ export default function EditCustomer() {
     try {
       await api.customers.update(id, {
         name: form.name.trim(), type: form.type, country: form.country,
-        vatLiable: form.vatLiable, vatId: form.vatId.trim() || undefined,
+        vatLiable: form.vatLiable,
+        vatId: (() => {
+          const v = form.vatId.trim().toUpperCase();
+          if (!v) return undefined;
+          return /^[A-Z]{2}/.test(v) ? v : form.country + v; // predpona države, če manjka
+        })(),
         address: form.address.trim() || undefined, postCode: form.postCode.trim() || undefined,
         city: form.city.trim() || undefined, paymentTermsDays: parseInt(form.paymentTermsDays, 10) || 30,
         currency: form.currency, discountPct: form.discountPct.trim() || undefined,
@@ -69,7 +74,13 @@ export default function EditCustomer() {
         <div className="grid grid-cols-2 gap-4">
           <SelectField label="Tip" value={form.type} onChange={(v) => set('type', v)}
             options={[{ value: 'company', label: 'Podjetje' }, { value: 'individual', label: 'Fizična oseba' }]} />
-          <SelectField label="Država" value={form.country} onChange={(v) => set('country', v)} options={COUNTRY_OPTIONS} required />
+          <SelectField label="Država" value={form.country} onChange={(v) => {
+            set('country', v);
+            const cur = form.vatId.trim().toUpperCase();
+            if (cur === '') set('vatId', v);
+            else if (/^[A-Z]{2}/.test(cur)) set('vatId', v + cur.slice(2));
+            else set('vatId', v + cur);
+          }} options={COUNTRY_OPTIONS} required />
         </div>
         <CheckboxField label="Zavezanec za DDV" checked={form.vatLiable} onChange={(v) => set('vatLiable', v)}
           hint="Določa, ali čezmejni računi uporabijo obrnjeno davčno obveznost." />

@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { DEMO_MODE } from '@/lib/demo';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS, type WorkshopSettings } from '@/lib/workshop-settings';
 import { Button, Card, Spinner, ProblemBanner } from '@/components/ui';
-import { TextField, NumberField, SelectField, CheckboxField } from '@/components/form';
+import { TextField, NumberField, SelectField, CheckboxField, TextAreaField } from '@/components/form';
 
 /*
  * Nastavitve — konfiguracija delavnice (podjetje, privzete vrednosti, integracije,
@@ -108,7 +108,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  */
 function PaymentProfileCard() {
   const { data, mutate } = useSWR(DEMO_MODE ? null : 'tenant-profile', () => api.tenant.profile());
-  const [form, setForm] = useState<{ iban: string; bankName: string; address: string; postCode: string; city: string } | null>(null);
+  const [form, setForm] = useState<{ iban: string; bankName: string; address: string; postCode: string; city: string; phone: string; fax: string; email: string; website: string; bic: string; iban2: string; bic2: string; registrationNote: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: 'go' | 'stop'; msg: string } | null>(null);
 
@@ -117,6 +117,9 @@ function PaymentProfileCard() {
       setForm({
         iban: data.iban ?? '', bankName: data.bankName ?? '',
         address: data.address ?? '', postCode: data.postCode ?? '', city: data.city ?? '',
+        phone: data.phone ?? '', fax: data.fax ?? '', email: data.email ?? '', website: data.website ?? '',
+        bic: data.bic ?? '', iban2: data.iban2 ?? '', bic2: data.bic2 ?? '',
+        registrationNote: data.registrationNote ?? '',
       });
     }
   }, [data, form]);
@@ -177,9 +180,25 @@ function PaymentProfileCard() {
         <TextField label="Poštna številka" value={form.postCode} onChange={(v) => setF({ postCode: v })} placeholder="8340" />
         <TextField label="Kraj" value={form.city} onChange={(v) => setF({ city: v })} placeholder="Črnomelj" />
       </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="BIC (SWIFT) banke" value={form.bic} onChange={(v) => setF({ bic: v })} placeholder="LJBASI2X" mono />
+        <TextField label="Telefon" value={form.phone} onChange={(v) => setF({ phone: v })} placeholder="040 328 279" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="IBAN 2 (drugi TRR, neobvezno)" value={form.iban2} onChange={(v) => setF({ iban2: v })} placeholder="SI56 …" mono />
+        <TextField label="BIC 2" value={form.bic2} onChange={(v) => setF({ bic2: v })} placeholder="KBMASI2X" mono />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Faks (neobvezno)" value={form.fax} onChange={(v) => setF({ fax: v })} />
+        <TextField label="E-pošta (na računu)" value={form.email} onChange={(v) => setF({ email: v })} placeholder="info@delavnica.si" />
+      </div>
+      <TextField label="Spletna stran (neobvezno)" value={form.website} onChange={(v) => setF({ website: v })} placeholder="www.delavnica.si" />
+      <TextAreaField label="Registracijska noga računa" value={form.registrationNote} onChange={(v) => setF({ registrationNote: v })} rows={2}
+        placeholder="Družba je registrirana dne … pri Okrožnem sodišču v … pod št. … Osnovni kapital znaša … EUR. Matična številka: …" />
+      <p className="text-xs text-muted2">Vsi ti podatki se izpišejo v glavi oz. nogi vsakega računa — enako kot na obstoječih Minimax računih.</p>
       {note && <ProblemBanner tone={note.tone} message={note.msg} />}
       <div>
-        <Button tone="go" onClick={savePayment} disabled={busy}>{busy ? <Spinner /> : 'Shrani plačilne podatke'}</Button>
+        <Button tone="go" onClick={savePayment} disabled={busy}>{busy ? <Spinner /> : 'Shrani podatke podjetja'}</Button>
       </div>
     </Section>
   );

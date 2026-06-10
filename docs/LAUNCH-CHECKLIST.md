@@ -78,6 +78,15 @@
 
 **Preostali backlog:** dobavitelj na artiklu (zahteva migracijo — informacija o dobavitelju danes živi na nabavnih naročilih); per-tenant logo upload v Nastavitvah; statusna postavka na posameznem delu naloga.
 
+### Računi 1:1 z Minimaxom — urgentni feedback (10. 6. 2026 zvečer)
+- [x] **Tiskani račun = Minimax predloga**: glava z VSEMI podatki podjetja (naziv, naslov, Identifikacijska številka, Tel/Faks/E-pošta/splet + logo) in OBA TRR z BIC desno; blok RAČUN (Številka, Kraj, Referenca, Datum, Opravljeno, Zapade, Osnova za račun); tabela Vrsta blaga oz.storitev / Količina / Cena / DDV / Cena z DDV / Vrednost EUR; vsote SKUPAJ → DDV % od osnove → SKUPAJ EUR → Za plačilo EUR; PODPIS. Referenca = RF (ISO 11649 s kontrolo — bančno enakovredna SI00, uvoz izpiskov jo ujame 100 %)
+- [x] **UPN QR na tiskanem računu** (isti ZBS standard kot na zaslonu) — pogoj: IBAN v profilu + izdan račun + odprt saldo; ob QR sklic in navodilo
+- [x] **Pravna klavzula na VSAKEM računu** (3 odstavki: ne-vračanje vgrajenih delov; pregled ob prevzemu in reklamacije; pridržek lastninske pravice + zamudne obresti/izterjava) — droben tisk nad nogo
+- [x] **Registracijska noga družbe** (sodišče, št. vpisa, osnovni kapital, matična, IBAN/SWIFT) — prosto besedilo iz Nastavitev, izpis na dnu računa
+- [x] **Profil podjetja razširjen** (migracija 0023 + Nastavitve → »Podatki podjetja in plačil«): telefon, faks, e-pošta, splet, BIC, drugi IBAN + BIC2, registracijska noga — vpiše se ENKRAT, velja za vse dokumente
+- [x] **Država pri stranki → predpona ID za DDV**: izbira države v formi stranke samodejno nastavi/zamenja predpono (SI/DE/IT/AT/HR …); ob shranjevanju se manjkajoča predpona doda sama (nova + uredi forma)
+- [ ] Po istem vzoru posodobiti še tiskani PREDRAČUN (print/quote) na Minimax obliko
+
 ### Sprint 6 — Plačila P2: uvoz bančnih izpiskov ✓ KONČAN (10. 6. 2026)
 - [x] **camt.053 parser** (lasten, brez odvisnosti; selftest na realističnem izpisku ALL PASS): IBAN računa, obdobje, Ntry → znesek/valuta/datum/plačnik/IBAN/sklic (CdtrRefInf + fallback iz Ustrd z mejami besed); prstni odtis = AcctSvcrRef / EndToEndId / hash. POŠTENO: ozek ISO 20022 bralnik za zapiranje računov, ne polna implementacija standarda
 - [x] **Ujemanje po sklicu**: RF validiran po ISO 11649 (mod-97) → točno en odprt račun = samodejni predizbor; SI sklic po vsebovani številki; brez sklica = predlogi po točnem odprtem saldu (NIKOLI samodejno); odlivi in že knjiženi prilivi označeni
