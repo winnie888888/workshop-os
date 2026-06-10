@@ -585,4 +585,24 @@ export const api = {
     lowStock: () => request<any[]>(`/warehouse-reports/low-stock`),
     suggestedPos: () => request<any[]>(`/warehouse-reports/suggested-pos`),
   },
+
+  // Plačila P1: profil delavnice (IBAN + naslov) za UPN QR prejemnika.
+  // GET je odprt vsem članom; PATCH zahteva TenantManage (owner/admin).
+  tenant: {
+    profile: () =>
+      request<{ id: string; name: string; country: string; vatId: string | null; iban: string | null; bankName: string | null; address: string | null; postCode: string | null; city: string | null }>(`/tenant/profile`),
+    updateProfile: (dto: { iban?: string; bankName?: string; address?: string; postCode?: string; city?: string }) =>
+      request<any>(`/tenant/profile`, { method: 'PATCH', body: dto }),
+  },
+
+  // Faza B: stanje naročnine (trial odštevanje, mehki paywall) za pasico in
+  // zaslon Zaračunavanje. Mutacije ob zamrznjenem stanju vrnejo 402.
+  billing: {
+    status: () =>
+      request<{ plan: string; billingStatus: string; trialEndsAt: string | null; writable: boolean; reason: string | null; trialDaysLeft: number | null }>(`/billing/status`),
+    checkout: (plan: string) =>
+      request<{ url: string }>(`/billing/checkout`, { method: 'POST', body: { plan } }),
+    portal: () =>
+      request<{ url: string }>(`/billing/portal`, { method: 'POST' }),
+  },
 };

@@ -11,6 +11,9 @@ import { loadSettings } from '@/lib/workshop-settings';
 import Link from 'next/link';
 import { buildInvoiceUbl } from '@/lib/eslog';
 import { downloadText } from '@/lib/data-export';
+import PayQr from '@/components/pay-qr';
+import { rfReference } from '@/lib/qr/upn';
+import { validateEslogInvoice, formatEslogIssues } from '@/lib/eslog-validate';
 
 /*
  * Invoice detail — the issued, immutable document with its frozen VAT
@@ -28,6 +31,12 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: inv, isLoading } = useSWR(['invoice', id], () => api.invoices.get(id));
+  // Plačnik za UPN QR (polja 6–8) — neobvezno; banka ga ob skenu lahko prepiše.
+  const { data: payCust } = useSWR(
+    inv?.customerId ? ['inv-cust', inv.customerId] : null,
+    // id pride iz ključa (fetcher teče le, ko je ključ truthy) — tipsko čisto brez "!"
+    ([, custId]: [string, string]) => api.customers.get(custId).catch(() => null),
+  );
   const [company, setCompany] = useState<{ name: string; address: string; vatId: string; iban: string } | null>(null);
   useEffect(() => { loadSettings().then((s) => setCompany(s.company)).catch(() => { /* ignore */ }); }, []);
 
@@ -40,6 +49,10 @@ export default function InvoiceDetail() {
   async function exportEslog() {
     if (!inv) return;
     const customer = inv.customerId ? await api.customers.get(inv.customerId).catch(() => null) : null;
+    // Sprint 5: strukturna EN 16931 predletna kontrola — ujame manjkajoča
+    // obvezna polja in neusklajene vsote, preden datoteka zapusti aplikacijo.
+    const issues = validateEslogInvoice(inv, company, customer);
+    if (issues.length > 0 && !window.confirm(formatEslogIssues(issues))) return;
     const num = String(inv.number ?? 'racun').replace(/[^a-z0-9]+/gi, '-');
     downloadText(`eslog-${num}.xml`, buildInvoiceUbl(inv, company, customer), 'application/xml');
   }
@@ -138,6 +151,28 @@ export default function InvoiceDetail() {
           <span>Zapadlost {inv.dueDate ?? '—'}</span>
         </div>
       </Card>
+
+      {(() => {
+        // Plačilo s QR: samo za izdane, še ne (povsem) plačane račune.
+        const remaining = Number(inv.totalGrossMinor ?? 0) - Number(inv.paidMinor ?? 0);
+        const payable = inv.number && inv.kind !== 'credit_note' && remaining > 0
+          && !['paid', 'credited', 'void', 'draft'].includes(inv.status);
+        if (!payable) return null;
+        return (
+          <PayQr
+            heading="Plačilo računa"
+            amountMinor={remaining}
+            purpose={`Račun ${inv.number}`}
+            reference={rfReference(String(inv.number))}
+            deadline={inv.dueDate ?? null}
+            payer={payCust ? {
+              name: payCust.name,
+              street: payCust.address,
+              city: [payCust.postCode, payCust.city].filter(Boolean).join(' '),
+            } : null}
+          />
+        );
+      })()}
 
       {inv.number && <MinimaxSyncPanel invoiceId={inv.id} invoiceNumber={inv.number} />}
     </div>

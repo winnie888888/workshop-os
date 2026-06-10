@@ -7,6 +7,8 @@ import useSWR from 'swr';
 import { api } from '@/lib/api';
 import { formatMoneyMinor, estimateStatusLabel, estimateStatusTone, docTotalsMinor, displayPlate, vatBreakdownMinor, formatVatRate } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner, ProblemBanner, StatusChip } from '@/components/ui';
+import PayQr from '@/components/pay-qr';
+import { rfReference } from '@/lib/qr/upn';
 
 /*
  * Predračun — detail. Shows the lines and the document-chain status, with the
@@ -135,6 +137,22 @@ export default function QuoteDetailPage() {
         {status === 'rejected' && <span className="text-sm text-muted">Predračun je zavrnjen.</span>}
         {status === 'invoiced' && <span className="text-sm font-semibold text-go">Predračun je pretvorjen v račun.</span>}
       </div>
+
+      {/* Avans po predračunu — UPN QR s kodo namena ADVA (uradni vzorec primer B). */}
+      {(status === 'sent' || status === 'accepted') && est.number && Number(totals.grossMinor) > 0 && (
+        <PayQr
+          heading="Avansno plačilo predračuna"
+          amountMinor={Number(totals.grossMinor)}
+          purpose={`Avans po predračunu ${est.number}`}
+          purposeCode="ADVA"
+          reference={rfReference(String(est.number))}
+          payer={customer ? {
+            name: customer.name,
+            street: customer.address,
+            city: [customer.postCode, customer.city].filter(Boolean).join(' '),
+          } : null}
+        />
+      )}
     </div>
   );
 }

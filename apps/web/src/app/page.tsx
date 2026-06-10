@@ -253,6 +253,12 @@ function LocalLoginForm({ onLoggedIn }: { onLoggedIn: (s: Session) => void }) {
       <Button tone="info" size="lg" full onClick={submit} disabled={busy}>
         {busy ? <Spinner /> : 'Prijava'}
       </Button>
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted2">
+        <Link href="/predstavitev" className="hover:text-ink">Predstavitev</Link>
+        <Link href="/cenik" className="hover:text-ink">Cenik</Link>
+        <Link href="/pravno/pogoji" className="hover:text-ink">Pogoji</Link>
+        <Link href="/pravno/zasebnost" className="hover:text-ink">Zasebnost</Link>
+      </div>
     </div>
   );
 }

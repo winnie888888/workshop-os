@@ -35,18 +35,31 @@
 - [x] **CSV uvozi v realnem načinu**: čarovnik ungatan; matching za dry-run iz API (stranke prek customers.list, artikli prek kataloga), zapis prek ISTIH REST poti kot ročni vnos (polna validacija+audit+RLS, sekvenčno z napredkom, napake po vrsticah v opombe); ISO-2 država + DDV prefiks fix; nepersistabilna polja pošteno javljena (stranke: email/tel; artikli: opis/EAN; zaloge → Prevzem); posodobitve strank preskočene do PATCH /customers; vozila/računi ostajajo predogled
 - [x] MinimaxSyncPanel → ŽIV outbox status: GET /invoices/:id/sync (minimax.* + einvoice.* vnosi, poll 5 s) + POST :id/sync/retry (dead→pending, avditirano `invoice.sync_retry`); »not configured« iz last_error → pošten namig na poverilnice; demo animacija ostane samo v demu
 
-### Sprint 4 — Faza B: entitlements & billing
-- [ ] PlanGuard + `@RequiresPlan` po modulih; soft paywall (read-only + 402 na mutacije; izvoz VEDNO odprt)
-- [ ] Stripe Checkout/Portal/webhooki (test-mode = koda; live ključi = ops)
-- [ ] Platform-tenant fakturiranje: `invoice.paid` → `issueFromLines` (naš legalni SI račun, gapless, Minimax)
+### Plačila P1 — UPN QR ✓ KONČAN (med Sprint 3 in 4)
+- [x] **QR jedro, bit-točno po ZBS standardu**: vendoran Nayuki qrcodegen (MIT; edina knjižnica z ECI) + `lib/qr/upn.ts` — polja 1–20, kontrolna vsota, verzija 15 fiksno, ECC M (brez boosta), ECI 000004, ISO 8859-2; preverjeno proti 5 uradnim vsotam standarda (183/238/152/143/188) + RF check (`SBO2010`→`RF45SBO2010`); EPC069-12 QR za tuje banke/Revolut
+- [x] **Migracija 0020 + `/tenant/profile`**: tenants += iban/bank_name/address/post_code/city; GET odprt vsem članom (QR riše tudi svetovalec), PATCH = nova owner/admin pravica `TenantManage`, avditirano `tenant.updated`; withAdmin vzorec (tenants brez grantov za workshop_app)
+- [x] **Nastavitve → »Podatki za plačila (UPN QR)«**: strežniška kartica nad lokalno »Podjetje« sekcijo; 403 → pošteno sporočilo o vlogi; demo = vzorčni ZBS IBAN z oznako
+- [x] **Račun**: PayQr kartica (UPN/SEPA zavihka, kopiraj IBAN/sklic/znesek) za izdane neplačane račune — znesek = preostanek (gross − plačano), sklic RF iz številke računa, rok = zapadlost, plačnik iz stranke; skrito za osnutke/dobropise/plačane
+- [x] **Predračun**: avansni QR s kodo namena **ADVA** pri statusu poslan/sprejet (uradni vzorec primer B)
+- [ ] P1.1: »Pokaži QR« za mehanika ob predaji (zahteva InvoiceRead za mehanika — produktna odločitev) + QR na portalu strank; lokalna »Podjetje« sekcija nastavitev → migracija na tenant profil
+- [ ] Plačila P2 (Sprint 6): uvoz bančnih izpiskov camt.053 → samodejno zapiranje računov po RF sklicu; P3 (Sprint 7): Stripe Connect + modul davčne blagajne (glej docs/PLACILA-STRATEGIJA.md)
 
-### Sprint 5 — Javna lupina + distribucija
-- [ ] Landing + /pricing + pravne strani (Pogoji, Zasebnost, DPA) — root page.tsx je danes demo vstop
-- [ ] e-SLOG lokalna XSD/Schematron validacija ob izvozu (oddaja prek ponudnika = ops)
-- [ ] Capacitor skeleton: cap init iOS/Android, camera/push/biometric plugini, build config (store submission = ops)
+### Sprint 4 — Faza B: entitlements & billing
+- [x] **PlanGuard (blok 1)**: globalni APP_GUARD — mehki paywall PO METODI (GET/HEAD/OPTIONS vedno prosti → branje in GDPR izvoz nikoli zaklenjena; mutacije ob trial_expired/suspended/cancelled → 402 s slovenskim problem+json); founders=vedno aktivno (A-SPRINT); past_due piše naprej (Stripe retry okno); /billing poti izvzete; 60 s cache stanja. Per-paket omejitve (start vs flota featuri) pridejo z entitlements ob Stripe paketih (blok 2) — globalni guard po metodi je temelj.
+- [x] **Trial-expiry sweep**: 10-min interval v BillingSweepService — trialing+potekel → suspended, audit `tenant.trial_expired` (actor=sistem), obvestilo owner/admin prek zvončka; guard blokira tudi pred sweepom (computeState preverja trial_ends_at)
+- [x] **GET /billing/status + pasica**: trial odštevanje / past_due opozorilo / zamrznitev z razlago v advisor+owner layoutu (demo skrito)
+- [x] **Stripe Checkout/Portal/webhooki (blok 2)**: brez SDK (surovi fetch, vzorec Resend) — prazen STRIPE_SECRET_KEY ⇒ pošten 503; webhook varovan z verify-by-retrieve (event preberemo nazaj iz Stripe po id — brez raw-body posega); checkout/session.completed, subscription.updated/deleted, invoice.paid/payment_failed → plan/billing_status + audit `tenant.subscription_updated` + invalidate + zvonček; migracija 0021 (stripe_customer/subscription_id, unique parcialna indeksa); checkout zbira naslov + ID za DDV kupca (billing_address_collection, tax_id_collection) — podlaga za platformno fakturiranje
+- [x] **Zaslon Zaračunavanje (owner/billing)**: stanje + 3 paketi (cene v lib/billing-plans.ts so PRIKAZNI predlog — vir resnice je Stripe Price; uskladi ob potrditvi cenika) + checkout/portal gumba + success/cancel povratek; pasica zdaj vodi sem (»Izberi paket →«); founders pošteno »naročnina ni potrebna«; NAV vnos
+- [ ] Platform-tenant fakturiranje, KONČNI korak: handler, ki iz webhook audit zapisa (`invoice.paid` z zneski/obdobjem) prek `issueFromLines` izda NAŠ gapless SI račun → Minimax. Podatki kupca so po novem v Stripe (naslov + ID za DDV iz checkouta); manjka platform-tenant provisioning + handler (zavestno ločen ship — netestabilno brez Stripe ključev)
+
+### Sprint 5 — Javna lupina + distribucija ✓ KONČAN
+- [x] **Marketing**: /predstavitev (landing s hero, 6 funkcij, zaupanje, CTA) + /cenik (paketi iz skupne lib/billing-plans + FAQ) + skupna lupina (header/nav/footer). Root '/' namenoma OSTAJA vstop v aplikacijo (nič obstoječega ne zlomi, dodane diskretne povezave); ob go-live z domeno: 1-vrstični redirect '/'→'/predstavitev' v next.config (ops)
+- [x] **Pravne strani**: /pravno/pogoji, /pravno/zasebnost (GDPR vloge, podlage, pravice), /pravno/dpa (čl. 28: navodila, podobdelovalci, varnost, kršitve, izbris, revizije) — VSE označene »Osnutek — pravni pregled pred produkcijo«
+- [x] **e-SLOG predletna validacija**: strukturna EN 16931 kontrola ob izvozu (obvezni BT-ji, oblika ID za DDV/IBAN, BR-CO-10/15 računska konsistenca postavk in vsot) s potrditvenim oknom; POŠTENO: to ni polni XSD/Schematron — tisti teče pri registriranem ponudniku ob oddaji (ops, kot doslej)
+- [x] **Capacitor skeleton** (mobile/): capacitor.config.ts (remote-URL strategija — en deploy posodobi splet+app), package.json (camera/push/preferences/app), README s točnimi koraki za add ios/android, dev proti lokalnemu IP in ops seznamom (ikone, podpisi, FCM/APNs, store vnosi); biometrija = priporočen plugin ob implementaciji odklepa
 
 ### Priporočeno (ni blocker)
 - [ ] API smoke testi za money path (nalog → račun → plačilo → dobropis)
 - [ ] HR lokalizacija temelj (i18n okvir) — Fiskalizacija 2.0 odpira trg 2026
 
-**Code-complete = vsi checkboxi Sprint 1–5.** Ocena: 5 fokusiranih sprintov po ustaljenem ritmu (1 sprint ≈ 1–2 najini seji).
+**Code-complete = vsi checkboxi Sprint 1–5: DOSEŽENO (10. 6. 2026)** — edina odprta podpostavka je platform-fakturni handler (gl. Sprint 4), zavestno vezan na Stripe test ključe. Naprej: Plačila P2 (camt.053, Sprint 6) in P3 (Stripe Connect + blagajna, Sprint 7).

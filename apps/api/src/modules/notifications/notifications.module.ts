@@ -1,5 +1,5 @@
 import { Controller, Get, Injectable, Module, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { getContext } from '../../common/context/request-context';
+import { getContext } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 
 /**

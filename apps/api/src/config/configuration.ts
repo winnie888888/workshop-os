@@ -56,6 +56,17 @@ export class AppConfig {
   readonly resendApiKey = optional('RESEND_API_KEY', '');
   readonly emailFrom = optional('EMAIL_FROM', 'A-SPRINT GARAGE <obvestila@asprint-garage.si>');
 
+  // Stripe Billing (Faza B, blok 2). Prazen secret => /billing/checkout in
+  // webhook odgovorita 503 s poštenim pojasnilom; PlanGuard in trial tečeta
+  // naprej brez Stripe. Test ključi (sk_test_…) = polno delujoč test način.
+  // Price ID-ji (price_…) iz Stripe nadzorne plošče so VIR resnice za cene.
+  readonly stripeSecretKey = optional('STRIPE_SECRET_KEY', '');
+  readonly stripePriceStart = optional('STRIPE_PRICE_START', '');
+  readonly stripePriceDelavnica = optional('STRIPE_PRICE_DELAVNICA', '');
+  readonly stripePriceFlota = optional('STRIPE_PRICE_FLOTA', '');
+  // Osnova za success/cancel URL po checkoutu (SPA origin).
+  readonly webAppUrl = optional('WEB_APP_URL', 'http://localhost:3001');
+
   // Default labour rate (minor units) used to cost time entries at clock-out
   // until per-tenant/per-mechanic rate cards arrive in a later phase.
   readonly defaultLabourRateMinor = BigInt(optional('DEFAULT_LABOUR_RATE_MINOR', '6500'));

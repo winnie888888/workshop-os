@@ -1,6 +1,6 @@
 import { Controller, Get, Injectable, Module, UseGuards } from '@nestjs/common';
 import { Permission } from '@workshop/shared';
-import { getContext } from '../../common/context/request-context';
+import { getContext } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { PermissionsGuard, RequirePermissions } from '../../auth/permissions.guard';

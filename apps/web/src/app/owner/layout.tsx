@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSession } from '@/lib/session';
 import { loadSettings } from '@/lib/workshop-settings';
+import BillingBanner from '@/components/billing-banner';
 
 /*
  * Owner shell — redesigned to the A-SPRINT spec, matching the advisor & warehouse
@@ -27,7 +28,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
       <div className="flex min-w-0 flex-col">
         <TopBar onMenu={() => setNavOpen((o) => !o)} />
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6"><BillingBanner />{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
         </footer>
@@ -65,6 +66,7 @@ const NAV: NavItem[] = [
   { href: '/owner/reports', label: 'Poročila', icon: 'reports' },
   { href: '/owner/data', label: 'Podatki', icon: 'data' },
   { href: '/owner/imports', label: 'Uvoz', icon: 'import' },
+  { href: '/owner/billing', label: 'Zaračunavanje', icon: 'receivables' },
   { href: '/owner/settings', label: 'Nastavitve', icon: 'settings' },
 ];
 

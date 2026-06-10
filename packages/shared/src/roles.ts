@@ -82,6 +82,7 @@ const MATRIX: Record<Role, ReadonlySet<Permission>> = {
     Permission.EstimateManage,
     Permission.AppointmentManage,
     Permission.DataExport,
+    Permission.TenantManage,
   ]),
   [Role.Advisor]: new Set([
     Permission.WorkOrderCreate,

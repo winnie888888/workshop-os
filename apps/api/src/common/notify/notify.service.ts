@@ -22,7 +22,8 @@ export interface NotifyPayload {
   entityType?: string;
   entityId?: string;
   /** Akter dogodka — preskočen, da se ne obvešča sam o svojem dejanju. */
-  excludeUserId?: string;
+  /** Prejemnik, ki se izpusti (običajno akter). null == nikogar ne izključi. */
+  excludeUserId?: string | null;
 }
 
 @Injectable()

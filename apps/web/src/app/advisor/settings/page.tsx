@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { api } from '@/lib/api';
+import { DEMO_MODE } from '@/lib/demo';
 import { loadSettings, saveSettings, DEFAULT_SETTINGS, type WorkshopSettings } from '@/lib/workshop-settings';
 import { Button, Card, Spinner, ProblemBanner } from '@/components/ui';
 import { TextField, NumberField, SelectField, CheckboxField } from '@/components/form';
@@ -39,6 +42,8 @@ export default function SettingsPage() {
       </div>
 
       {saved && <ProblemBanner tone="go" message="Nastavitve shranjene." />}
+
+      <PaymentProfileCard />
 
       <Section title="Podjetje">
         <TextField label="Naziv" value={s.company.name} onChange={(v) => set('company', { name: v })} />
@@ -92,5 +97,90 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="text-base font-bold text-ink">{title}</h2>
       {children}
     </Card>
+  );
+}
+
+/*
+ * Podatki za plačila (UPN QR) — STREŽNIŠKI profil delavnice (/tenant/profile),
+ * viden vsem članom in uporabljen kot prejemnik na QR kodi računa/predračuna.
+ * Ločeno od lokalne sekcije »Podjetje« zgoraj, ki služi le demo izpisom na tej
+ * napravi. Shranjevanje zahteva vlogo lastnika ali administratorja (TenantManage).
+ */
+function PaymentProfileCard() {
+  const { data, mutate } = useSWR(DEMO_MODE ? null : 'tenant-profile', () => api.tenant.profile());
+  const [form, setForm] = useState<{ iban: string; bankName: string; address: string; postCode: string; city: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ tone: 'go' | 'stop'; msg: string } | null>(null);
+
+  useEffect(() => {
+    if (data && !form) {
+      setForm({
+        iban: data.iban ?? '', bankName: data.bankName ?? '',
+        address: data.address ?? '', postCode: data.postCode ?? '', city: data.city ?? '',
+      });
+    }
+  }, [data, form]);
+
+  if (DEMO_MODE) {
+    return (
+      <Section title="Podatki za plačila (UPN QR)">
+        <p className="text-sm text-muted">
+          QR koda za plačilo na računu in predračunu uporablja IBAN ter naslov delavnice.
+          V demo načinu je prikazan vzorčni IBAN iz ZBS standarda; v pravi rabi podatke
+          tu vpiše lastnik in veljajo za vse uporabnike.
+        </p>
+        <div className="num rounded-md bg-paper px-3 py-2 text-sm text-ink">SI56 0510 0801 0486 080 <span className="text-xs text-muted">(vzorec)</span></div>
+      </Section>
+    );
+  }
+
+  if (!form) {
+    return (
+      <Section title="Podatki za plačila (UPN QR)">
+        <div className="flex items-center gap-3 text-sm text-muted"><Spinner className="text-brand" /> Nalagam …</div>
+      </Section>
+    );
+  }
+
+  const setF = (patch: Partial<NonNullable<typeof form>>) => setForm((p) => (p ? { ...p, ...patch } : p));
+
+  async function savePayment() {
+    if (!form) return;
+    setBusy(true); setNote(null);
+    try {
+      await api.tenant.updateProfile(form);
+      await mutate();
+      setNote({ tone: 'go', msg: 'Plačilni podatki shranjeni — QR na računih jih uporablja takoj.' });
+    } catch (e: any) {
+      const denied = String(e?.message ?? '').includes('403');
+      setNote({
+        tone: 'stop',
+        msg: denied
+          ? 'Za urejanje plačilnih podatkov potrebujete vlogo lastnika ali administratorja.'
+          : (e?.message ?? 'Shranjevanje ni uspelo.'),
+      });
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Section title="Podatki za plačila (UPN QR)">
+      <p className="text-sm text-muted">
+        Ti podatki so prejemnik na QR kodi računa in predračuna (avans). Shranjeni so na
+        strežniku in veljajo za vse uporabnike delavnice.
+      </p>
+      <TextField label="IBAN (TRR delavnice)" value={form.iban} onChange={(v) => setF({ iban: v })} placeholder="SI56 0000 0000 0000 000" mono required />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Banka" value={form.bankName} onChange={(v) => setF({ bankName: v })} placeholder="npr. NLB d.d." />
+        <TextField label="Ulica in št." value={form.address} onChange={(v) => setF({ address: v })} placeholder="Industrijska cesta 12" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField label="Poštna številka" value={form.postCode} onChange={(v) => setF({ postCode: v })} placeholder="8340" />
+        <TextField label="Kraj" value={form.city} onChange={(v) => setF({ city: v })} placeholder="Črnomelj" />
+      </div>
+      {note && <ProblemBanner tone={note.tone} message={note.msg} />}
+      <div>
+        <Button tone="go" onClick={savePayment} disabled={busy}>{busy ? <Spinner /> : 'Shrani plačilne podatke'}</Button>
+      </div>
+    </Section>
   );
 }

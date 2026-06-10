@@ -9,6 +9,7 @@ import { getSession } from '@/lib/session';
 import { subscribe } from '@/lib/demo-store';
 import { loadSettings } from '@/lib/workshop-settings';
 import { Spinner } from '@/components/ui';
+import BillingBanner from '@/components/billing-banner';
 
 /*
  * The advisor shell, redesigned to the A-SPRINT spec: a dark navy navigation
@@ -34,7 +35,7 @@ export default function AdvisorLayout({ children }: { children: React.ReactNode 
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
       <div className="flex min-w-0 flex-col">
         <CommandBar onMenu={() => setNavOpen((o) => !o)} />
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6"><BillingBanner />{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
         </footer>
