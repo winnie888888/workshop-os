@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { api, type WorkOrderListItem } from '@/lib/api';
-import { DEMO_MODE } from '@/lib/demo';
 import { displayPlate, formatMoneyMinor, statusLabel, statusTone } from '@/lib/format';
 import { Card, SoftChip, Spinner } from '@/components/ui';
 
@@ -297,14 +296,14 @@ function overdue(aging: any): bigint {
 }
 
 /**
- * Recent activity from the central demo store. Demo-only (the real backend has
- * no activity feed yet); hidden in real mode and when empty, so it is never a
- * dead/empty card.
+ * Recent activity — in demo from the central demo store, on the real stack
+ * from GET /activity (a human-readable read of the audit chain). Hidden when
+ * empty, so it is never a dead card.
  */
 function ActivityCard() {
-  const { data } = useSWR(DEMO_MODE ? 'advisor-activity' : null, () => api.activity.list(8).catch(() => []), { refreshInterval: 15000 });
+  const { data } = useSWR('advisor-activity', () => api.activity.list(8).catch(() => []), { refreshInterval: 15000 });
   const items = (data ?? []) as Array<{ id: string; message: string; createdAt: string }>;
-  if (!DEMO_MODE || items.length === 0) return null;
+  if (items.length === 0) return null;
   return (
     <Card className="p-4">
       <h2 className="mb-3 text-base font-bold text-ink">Nedavna aktivnost</h2>

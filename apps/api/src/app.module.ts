@@ -19,6 +19,7 @@ import { WarehouseReportingModule } from './modules/warehouse-reporting/warehous
 import { WorkOrdersModule } from './modules/workorders/work-orders.module';
 import { EstimatesModule } from './modules/estimates/estimates.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { ActivityModule } from './modules/activity/activity.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -61,6 +62,7 @@ import { HealthController } from './common/health.controller';
     WorkOrdersModule,
     EstimatesModule,    // quotes: appointment → work order → estimate → invoice chain
     AppointmentsModule, // advisor calendar (wall-clock bookings)
+    ActivityModule,     // dashboard feed read from the audit chain
     AttachmentsModule,  // uploads (photos, voice notes, documents)
     SearchModule,       // global search
     SyncModule,
