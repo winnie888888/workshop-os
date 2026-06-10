@@ -16,6 +16,7 @@
 export type NotificationChannel = 'sms' | 'whatsapp' | 'email';
 
 export type NotificationKind =
+  | 'signup_verification' // self-serve account verification (Faza A)
   | 'magic_link'          // portal sign-in link
   | 'appointment_reminder'
   | 'vehicle_ready'

@@ -26,6 +26,7 @@ export class ResendEmailSender {
   /** Subjects are operational and localised here; bodies come from callers. */
   private subjectFor(kind: NotificationKind): string {
     const map: Record<string, string> = {
+      signup_verification: 'Potrdite svoj račun — A-SPRINT GARAGE',
       magic_link: 'Vaša prijava — A-SPRINT GARAGE',
       appointment_reminder: 'Opomnik: termin v delavnici',
       vehicle_ready: 'Vaše vozilo je pripravljeno',

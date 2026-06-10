@@ -21,6 +21,7 @@ import { EstimatesModule } from './modules/estimates/estimates.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { WorkerModule } from './worker/worker.module';
+import { SignupModule } from './modules/signup/signup.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -65,6 +66,7 @@ import { HealthController } from './common/health.controller';
     AppointmentsModule, // advisor calendar (wall-clock bookings)
     ActivityModule,     // dashboard feed read from the audit chain
     WorkerModule,       // outbox drain loop (Minimax, e-invoice, notifications)
+    SignupModule,       // /public: self-serve signup, verify, login (Faza A)
     AttachmentsModule,  // uploads (photos, voice notes, documents)
     SearchModule,       // global search
     SyncModule,
@@ -110,6 +112,9 @@ export class AppModule implements NestModule {
         'health',
         'health/(.*)',
         'auth/config',
+        // Self-serve vstop: pred avtentikacijo po definiciji (Faza A).
+        'public',
+        'public/(.*)',
         ...userScoped,
         'storage/local',
         'storage/local/(.*)',

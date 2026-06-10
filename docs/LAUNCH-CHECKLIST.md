@@ -21,11 +21,11 @@
 - [x] Quick-win ungates: WO → "Ustvari predračun" gumb (stale gate — estimates so realni!); warehouse ai-import (OcrModule obstaja — preveri wiring).
 
 ### Sprint 2 — Faza A: self-serve signup & provisioning
-- [ ] Migracija 0018: `app.user_credentials` (argon2id), `app.signup_tokens`, `tenants.plan/billing_status/trial_ends_at`
-- [ ] `/public/signup` modul: registracija, e-mail verifikacija (prek Sprint-1 mailerja), rate limit + Turnstile hook, enumeration zaščita
-- [ ] Provisioning transakcija: tenant + owner + defaults + audit `tenant.created`; opcijski demo seed (idempotenten, prek REST)
+- [x] Migracija 0018: `app.user_credentials`, `app.signup_tokens`, `tenants.plan/billing_status/trial_ends_at` (KDF: Node scrypt namesto argon2id — brez native odvisnosti; parametri v hashu, migracija na argon2id kadar koli čista)
+- [x] `/public/signup|verify|login` modul: registracija, e-mail verifikacija (prek Sprint-1 mailerja), rate limit + Turnstile (config-driven), enumeration zaščita, lockout
+- [x] Provisioning transakcija: tenant + owner + membership + credentials + audit `tenant.created` (prvi člen verige); demo seed → del web onboardinga (naslednji ship)
 - [ ] Web: /signup, /verify, onboarding checklist kartica (4 koraki), VIES lookup za tenant podatke
-- [ ] Lastna prijava (email+geslo) ob obstoječem dev-auth/OIDC
+- [x] Lastna prijava (email+geslo): lokalni HS256 žetoni skozi OBSTOJEČI TokenVerifier (`local|<userId>` ↔ external_subject); OIDC nedotaknjen
 
 ### Sprint 3 — Feature-complete blok (luknje iz avdita)
 - [ ] **Notifications backend** (`/notifications` list/markRead/markAllRead — web kontrakt obstaja, controllerja NI; zvonček v advisor layoutu je v real mode disabled): tabela + pisanje ob ključnih dogodkih + ungate layouta

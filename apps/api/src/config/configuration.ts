@@ -45,6 +45,12 @@ export class AppConfig {
   readonly outboxPollMs = parseInt(optional('OUTBOX_POLL_MS', '1000'), 10);
   readonly outboxMaxAttempts = parseInt(optional('OUTBOX_MAX_ATTEMPTS', '12'), 10);
 
+  // Self-serve auth (Faza A). Empty secret => /public endpoints answer 503 in
+  // production (honest) and use a fixed dev secret outside production.
+  readonly authLocalSecret = optional('AUTH_LOCAL_SECRET', '');
+  readonly turnstileSecret = optional('TURNSTILE_SECRET', '');
+  readonly trialDays = parseInt(optional('TRIAL_DAYS', '14'), 10);
+
   // Transactional e-mail (Resend). Empty key => email routes to the log stub,
   // so dev/demo environments work end-to-end without sending anything.
   readonly resendApiKey = optional('RESEND_API_KEY', '');
