@@ -49,7 +49,7 @@ const PERMISSION_META: Record<string, { label: string; group: string }> = {
 const GROUP_ORDER = ['Delovni nalogi', 'Računi in finance', 'Skladišče', 'Stranke in vozila', 'Kadri', 'Uprava', 'Drugo'];
 
 export default function UsersPermissions() {
-  const [tab, setTab] = useState<'perms' | 'keys'>('perms');
+  const [tab, setTab] = useState<'perms' | 'keys' | 'logins'>('perms');
   const { data: members, error, mutate } = useSWR('members', () => api.members.list());
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -88,6 +88,8 @@ export default function UsersPermissions() {
 
       {tab === 'keys' ? (
         <ApiKeysTab />
+      ) : tab === 'logins' ? (
+        <LoginsTab />
       ) : !members ? (
         <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>
       ) : members.length === 0 ? (
@@ -255,14 +257,18 @@ function PermissionMatrix({ member, onSaved }: {
   );
 }
 
-function Tabs({ tab, setTab }: { tab: 'perms' | 'keys'; setTab: (t: 'perms' | 'keys') => void }) {
+type TabKey = 'perms' | 'keys' | 'logins';
+function Tabs({ tab, setTab }: { tab: TabKey; setTab: (t: TabKey) => void }) {
   const base = 'rounded-full px-4 py-1.5 text-sm font-bold transition';
+  const btn = (k: TabKey, label: string) => (
+    <button onClick={() => setTab(k)}
+      className={`${base} ${tab === k ? 'bg-brand text-white' : 'text-steel hover:bg-brandweak'}`}>{label}</button>
+  );
   return (
     <div className="flex w-fit gap-1 rounded-full border border-line bg-surface p-1 shadow-card">
-      <button onClick={() => setTab('perms')}
-        className={`${base} ${tab === 'perms' ? 'bg-brand text-white' : 'text-steel hover:bg-brandweak'}`}>Pravice</button>
-      <button onClick={() => setTab('keys')}
-        className={`${base} ${tab === 'keys' ? 'bg-brand text-white' : 'text-steel hover:bg-brandweak'}`}>API ključi</button>
+      {btn('perms', 'Pravice')}
+      {btn('keys', 'API ključi')}
+      {btn('logins', 'Prijave')}
     </div>
   );
 }
@@ -398,5 +404,71 @@ function ApiKeysTab() {
         )}
       </Card>
     </div>
+  );
+}
+
+/* ------------------------------ Zgodovina prijav ------------------------------ */
+
+const METHOD_LABEL: Record<string, string> = {
+  local: 'Geslo', oidc_session: 'Nova seja', api_key: 'API ključ', logout: 'Odjava',
+};
+
+function LoginsTab() {
+  const { data: events, error } = useSWR('login-events', () => api.members.logins(150), { refreshInterval: 30000 });
+
+  if (error) {
+    const msg = error instanceof ApiError ? error.message : 'Zgodovine prijav ni bilo mogoče naložiti.';
+    return (
+      <div className="max-w-3xl">
+        <ProblemBanner message={msg} tone="hold" />
+        <p className="mt-3 text-sm text-muted">Na demo povezavi zgodovina prijav ni na voljo.</p>
+      </div>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
+        <h2 className="text-base font-bold text-ink">Zadnje prijave {events && <span className="num text-muted2">({events.length})</span>}</h2>
+        <span className="text-xs text-muted2">osvežuje se samodejno</span>
+      </div>
+      {!events ? (
+        <div className="p-6"><Spinner className="text-brand" /></div>
+      ) : events.length === 0 ? (
+        <p className="p-8 text-center text-sm text-muted">Še ni zabeleženih prijav — dogodki se zbirajo od te nadgradnje naprej.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[44rem] text-sm">
+            <thead className="bg-surface2 text-left text-xs uppercase tracking-wide text-muted2">
+              <tr>
+                <th className="px-4 py-2.5 font-bold">Čas</th>
+                <th className="px-4 py-2.5 font-bold">Kdo</th>
+                <th className="px-4 py-2.5 font-bold">Vrsta</th>
+                <th className="px-4 py-2.5 font-bold">Uspeh</th>
+                <th className="px-4 py-2.5 font-bold">IP</th>
+                <th className="px-4 py-2.5 font-bold">Naprava</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((e) => (
+                <tr key={e.id} className="border-t border-line">
+                  <td className="num whitespace-nowrap px-4 py-2.5 text-ink">{new Date(e.at).toLocaleString('sl-SI')}</td>
+                  <td className="max-w-[14rem] truncate px-4 py-2.5">
+                    <span className="block truncate font-semibold text-ink">{e.userName ?? (e.method === 'api_key' ? 'API ključ' : 'Neznan')}</span>
+                    <span className="block truncate text-xs text-muted">{e.userEmail ?? e.detail ?? ''}</span>
+                  </td>
+                  <td className="px-4 py-2.5"><SoftChip tone={e.method === 'logout' ? 'neutral' : 'info'}>{METHOD_LABEL[e.method] ?? e.method}</SoftChip></td>
+                  <td className="px-4 py-2.5">
+                    {e.success ? <SoftChip tone="go">uspešno</SoftChip> : <SoftChip tone="stop">zavrnjeno</SoftChip>}
+                  </td>
+                  <td className="num px-4 py-2.5 text-muted">{e.ip ?? '—'}</td>
+                  <td className="max-w-[16rem] truncate px-4 py-2.5 text-xs text-muted" title={e.userAgent ?? undefined}>{e.userAgent ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }

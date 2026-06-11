@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { IsOptional, IsString, Length } from 'class-validator';
 import { AuthService } from './auth.service';
 
@@ -45,8 +46,8 @@ export class AuthController {
   }
 
   @Post('session/heartbeat')
-  heartbeat(@Body() dto: HeartbeatDto) {
-    return this.auth.heartbeat(dto);
+  heartbeat(@Body() dto: HeartbeatDto, @Req() req: Request) {
+    return this.auth.heartbeat(dto, { ip: req.ip ?? null, userAgent: req.header('user-agent') ?? null });
   }
 
   @Get('sessions')
@@ -55,8 +56,8 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Body() dto: RevokeDto) {
-    return this.auth.revoke(dto.sessionId, dto.deviceId);
+  logout(@Body() dto: RevokeDto, @Req() req: Request) {
+    return this.auth.revoke(dto.sessionId, dto.deviceId, { ip: req.ip ?? null, userAgent: req.header('user-agent') ?? null });
   }
 }
 

@@ -331,6 +331,12 @@ export const api = {
       request<MemberPermissions & { catalog: string[] }>(`/members/${userId}/permissions`),
     putOverrides: (userId: string, overrides: Array<{ permission: string; allow: boolean }>) =>
       request<MemberPermissions>(`/members/${userId}/permissions`, { method: 'PUT', body: { overrides } }),
+    logins: (limit = 100) =>
+      request<Array<{
+        id: string; at: string; method: string; success: boolean;
+        ip: string | null; userAgent: string | null; detail: string | null;
+        userName: string | null; userEmail: string | null;
+      }>>(`/members/logins?limit=${limit}`),
   },
 
   inventory: {

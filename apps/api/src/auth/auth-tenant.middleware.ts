@@ -44,19 +44,42 @@ export class AuthTenantMiddleware implements NestMiddleware {
         );
         return r.rows[0] ?? null;
       });
-      if (!key || key.revoked_at) throw new UnauthorizedException('Invalid API key');
+      if (!key || key.revoked_at) {
+        // Neuspela raba ključa gre v zgodovino prijav (brez ključa samega).
+        await this.pg.withAdmin(async (tx) => {
+          await tx.query(
+            `INSERT INTO app.login_events (user_id, tenant_id, method, success, ip, user_agent, detail)
+             VALUES (NULL, $1, 'api_key', false, $2, $3, $4)`,
+            [key?.tenant_id ?? null, req.ip ?? null,
+             (req.header('user-agent') ?? '').slice(0, 300) || null,
+             key ? 'revoked_key' : 'unknown_key'],
+          );
+        }).catch(() => { /* zgodovina ne podre avtentikacije */ });
+        throw new UnauthorizedException('Invalid API key');
+      }
       const headerTenant = req.header('x-tenant-id');
       if (headerTenant && headerTenant !== key.tenant_id) {
         throw new ForbiddenException('API key does not belong to this tenant');
       }
       // last_used_at: dušeno na ~60 s, mimo odgovora (napaka ne sme podreti zahtevka).
+      // Ista dušilka šteje kot en prijavni dogodek v zgodovini (P3).
+      const reqIp = req.ip ?? null;
+      const reqUa = (req.header('user-agent') ?? '').slice(0, 300) || null;
       void this.pg.withAdmin(async (tx) => {
-        await tx.query(
+        const upd = await tx.query(
           `UPDATE app.api_keys
               SET last_used_at = now()
-            WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '60 seconds')`,
+            WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '60 seconds')
+            RETURNING prefix`,
           [key.id],
         );
+        if (upd.rows[0]) {
+          await tx.query(
+            `INSERT INTO app.login_events (user_id, tenant_id, method, success, ip, user_agent, detail)
+             VALUES (NULL, $1, 'api_key', true, $2, $3, $4)`,
+            [key.tenant_id, reqIp, reqUa, upd.rows[0].prefix],
+          );
+        }
       }).catch(() => { /* ignore */ });
 
       const keyCtx: RequestContext = {

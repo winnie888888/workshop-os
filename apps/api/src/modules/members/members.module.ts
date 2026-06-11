@@ -8,6 +8,7 @@ import {
   NotFoundException,
   Param,
   Put,
+  Query,
 } from '@nestjs/common';
 import {
   getContext,
@@ -182,6 +183,43 @@ export class MembersService {
     };
   }
 
+  /**
+   * Zgodovina prijav (P3) za TO delavnico: dogodki članov delavnice + dogodki
+   * njenih API ključev. Tabela je globalna (brez RLS, kot user_sessions),
+   * zato admin obseg s filtrom po članstvu — owner vidi svoje ljudi, ne tujih.
+   */
+  async logins(limit = 100) {
+    const ctx = getContext();
+    const lim = Math.min(Math.max(Number(limit) || 100, 1), 200);
+    const rows = await this.pg.withAdmin(async (tx) => {
+      const r = await tx.query<any>(
+        `SELECT e.id, e.at, e.method, e.success, e.ip, e.user_agent, e.detail,
+                e.email_attempted, u.name AS user_name, u.email AS user_email
+           FROM app.login_events e
+           LEFT JOIN app.users u ON u.id = e.user_id
+          WHERE e.tenant_id = $1
+             OR (e.user_id IS NOT NULL AND EXISTS (
+                   SELECT 1 FROM app.memberships m
+                    WHERE m.tenant_id = $1 AND m.user_id = e.user_id))
+          ORDER BY e.at DESC
+          LIMIT $2`,
+        [ctx.tenantId, lim],
+      );
+      return r.rows;
+    });
+    return rows.map((e: any) => ({
+      id: e.id,
+      at: e.at instanceof Date ? e.at.toISOString() : String(e.at),
+      method: e.method as string,
+      success: !!e.success,
+      ip: e.ip ?? null,
+      userAgent: e.user_agent ?? null,
+      detail: e.detail ?? null,
+      userName: e.user_name ?? null,
+      userEmail: e.user_email ?? e.email_attempted ?? null,
+    }));
+  }
+
   private shape(r: any): MemberRow & { base: Permission[]; effective: Permission[] } {
     const roles = (r.roles ?? []) as Role[];
     const overrides = (typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides ?? []) as PermissionOverride[];
@@ -206,6 +244,11 @@ export class MembersController {
   @Get()
   list() {
     return this.members.list();
+  }
+
+  @Get('logins')
+  logins(@Query('limit') limit?: string) {
+    return this.members.logins(limit ? Number(limit) : undefined);
   }
 
   @Get(':userId/permissions')

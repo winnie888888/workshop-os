@@ -90,19 +90,33 @@ export class AuthService {
    * so re-opening the app updates last_seen rather than piling up rows. Returns
    * the active sessions so the user can see and revoke their devices.
    */
-  async heartbeat(input: { deviceId?: string; userAgent?: string; ipHint?: string; expiresAt?: string }) {
+  async heartbeat(
+    input: { deviceId?: string; userAgent?: string; ipHint?: string; expiresAt?: string },
+    meta?: { ip?: string | null; userAgent?: string | null },
+  ) {
     const ctx = getContext();
     const userId = ctx.userId!;
     return this.pg.withAdmin(async (tx) => {
       if (input.deviceId) {
-        await tx.query(
+        // RETURNING (xmax = 0): true samo, ko je vrstica NOVA -> to je prijava
+        // (nova naprava/seja), osvežitev obstoječe pa ne ustvarja dogodkov.
+        const r = await tx.query<{ inserted: boolean }>(
           `INSERT INTO app.user_sessions (user_id, device_id, user_agent, ip_hint, expires_at)
            VALUES ($1, $2, $3, $4, $5)
            ON CONFLICT (user_id, device_id) WHERE revoked_at IS NULL AND device_id IS NOT NULL
            DO UPDATE SET last_seen_at = now(), user_agent = EXCLUDED.user_agent,
-                         ip_hint = EXCLUDED.ip_hint, expires_at = EXCLUDED.expires_at`,
+                         ip_hint = EXCLUDED.ip_hint, expires_at = EXCLUDED.expires_at
+           RETURNING (xmax = 0) AS inserted`,
           [userId, input.deviceId, input.userAgent ?? null, input.ipHint ?? null, input.expiresAt ?? null],
         );
+        if (r.rows[0]?.inserted) {
+          await this.recordLoginEvent(tx, {
+            userId, method: 'oidc_session', success: true,
+            ip: meta?.ip ?? input.ipHint ?? null,
+            userAgent: meta?.userAgent ?? input.userAgent ?? null,
+            detail: input.deviceId ? `device:${input.deviceId.slice(0, 24)}` : null,
+          });
+        }
       }
       return this.listSessions(tx, userId);
     });
@@ -115,7 +129,7 @@ export class AuthService {
   }
 
   /** Revoke one device session (logout-this-device) or the current one. */
-  async revoke(sessionId?: string, deviceId?: string) {
+  async revoke(sessionId?: string, deviceId?: string, meta?: { ip?: string | null; userAgent?: string | null }) {
     const ctx = getContext();
     const userId = ctx.userId!;
     await this.pg.withAdmin(async (tx) => {
@@ -128,8 +142,28 @@ export class AuthService {
             WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL`,
           [userId, deviceId]);
       }
+      await this.recordLoginEvent(tx, {
+        userId, method: 'logout', success: true,
+        ip: meta?.ip ?? null, userAgent: meta?.userAgent ?? null, detail: null,
+      });
     });
     return { ok: true };
+  }
+
+  /** En vnos v zgodovino prijav (P3). Toleranten — manjkajoča tabela pred 0027 ne podre prijave. */
+  private async recordLoginEvent(tx: any, e: {
+    userId?: string | null; tenantId?: string | null; emailAttempted?: string | null;
+    method: 'local' | 'oidc_session' | 'api_key' | 'logout'; success: boolean;
+    ip?: string | null; userAgent?: string | null; detail?: string | null;
+  }): Promise<void> {
+    try {
+      await tx.query(
+        `INSERT INTO app.login_events (user_id, tenant_id, email_attempted, method, success, ip, user_agent, detail)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [e.userId ?? null, e.tenantId ?? null, e.emailAttempted ?? null, e.method, e.success,
+         e.ip ?? null, (e.userAgent ?? '').slice(0, 300) || null, e.detail ?? null],
+      );
+    } catch { /* zgodovina ne sme nikoli podreti avtentikacije */ }
   }
 
   private async listSessions(tx: any, userId: string) {
