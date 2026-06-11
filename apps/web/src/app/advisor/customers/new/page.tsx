@@ -18,7 +18,7 @@ export default function CreateCustomer() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: '', type: 'company', country: 'SI', vatLiable: true, vatId: '',
-    address: '', postCode: '', city: '', paymentTermsDays: '30', currency: 'EUR', discountPct: '',
+    address: '', postCode: '', city: '', phone: '', paymentTermsDays: '30', currency: 'EUR', discountPct: '',
     registrationNo: '',
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
@@ -99,6 +99,7 @@ export default function CreateCustomer() {
         address: form.address.trim() || undefined,
         postCode: form.postCode.trim() || undefined,
         city: form.city.trim() || undefined,
+        phone: form.phone.trim() || undefined,
         registrationNo: form.registrationNo.trim() || undefined,
         paymentTermsDays: parseInt(form.paymentTermsDays, 10) || 30,
         currency: form.currency,
@@ -174,6 +175,9 @@ export default function CreateCustomer() {
         <div className="grid grid-cols-2 gap-4">
           <TextField label="Poštna št." value={form.postCode} onChange={(v) => set('postCode', v)} />
           <TextField label="Kraj" value={form.city} onChange={(v) => set('city', v)} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <TextField label="Telefon (GSM)" value={form.phone} onChange={(v) => set('phone', v)} mono placeholder="npr. 040 123 456" />
         </div>
 
         <div className="grid grid-cols-3 gap-4">

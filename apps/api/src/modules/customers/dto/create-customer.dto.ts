@@ -40,4 +40,8 @@ export class CreateCustomerDto {
 
   @IsOptional() @IsString()
   minimaxPartnerId?: string;
+
+  /** GSM/TEL (SMS obvestila, 0030). Normalizacija v E.164 ob pošiljanju. */
+  @IsOptional() @IsString() @Length(3, 40)
+  phone?: string;
 }

@@ -29,7 +29,7 @@ export default function EditCustomer() {
       setForm({
         name: customer.name ?? '', type: customer.type ?? 'company', country: customer.country ?? 'SI',
         vatLiable: !!customer.vatLiable, vatId: customer.vatId ?? '', address: customer.address ?? '',
-        postCode: customer.postCode ?? '', city: customer.city ?? '',
+        postCode: customer.postCode ?? '', city: customer.city ?? '', phone: customer.phone ?? '',
         paymentTermsDays: String(customer.paymentTermsDays ?? 30),
         currency: customer.currency ?? 'EUR', discountPct: customer.discountPct ?? '',
       });
@@ -53,7 +53,8 @@ export default function EditCustomer() {
           return /^[A-Z]{2}/.test(v) ? v : form.country + v; // predpona države, če manjka
         })(),
         address: form.address.trim() || undefined, postCode: form.postCode.trim() || undefined,
-        city: form.city.trim() || undefined, paymentTermsDays: parseInt(form.paymentTermsDays, 10) || 30,
+        city: form.city.trim() || undefined, phone: form.phone.trim() || undefined,
+        paymentTermsDays: parseInt(form.paymentTermsDays, 10) || 30,
         currency: form.currency, discountPct: form.discountPct.trim() || undefined,
       });
       router.push(`/advisor/customers/${id}`);
@@ -91,6 +92,9 @@ export default function EditCustomer() {
         <div className="grid grid-cols-2 gap-4">
           <TextField label="Poštna št." value={form.postCode} onChange={(v) => set('postCode', v)} />
           <TextField label="Kraj" value={form.city} onChange={(v) => set('city', v)} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <TextField label="Telefon (GSM)" value={form.phone} onChange={(v) => set('phone', v)} mono placeholder="npr. 040 123 456" />
         </div>
         <div className="grid grid-cols-3 gap-4">
           <NumberField label="Plačilni rok (dni)" value={form.paymentTermsDays} onChange={(v) => set('paymentTermsDays', v)} />

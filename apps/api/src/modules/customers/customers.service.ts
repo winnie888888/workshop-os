@@ -1,11 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  newId, getContext, assertCustomerInvariants, Receivables, Money, Vat, type Customer,
+  newId, getContext, assertCustomerInvariants, Receivables, Money, Vat,
 } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { OutboxService } from '../../common/outbox/outbox.service';
-import { CustomersRepository } from './customers.repository';
+import { CustomersRepository, type CustomerWithPhone } from './customers.repository';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { VAT_ID_VALIDATION_PORT, type VatIdValidationPort, type ViesCheckResult } from '../../integrations/vies/vat-id-validation.port';
 
@@ -48,7 +48,7 @@ export class CustomersService {
     @Inject(VAT_ID_VALIDATION_PORT) private readonly vies: VatIdValidationPort,
   ) {}
 
-  async create(dto: CreateCustomerDto): Promise<Customer> {
+  async create(dto: CreateCustomerDto): Promise<CustomerWithPhone> {
     const ctx = getContext();
     const currency = (dto.currency ?? 'EUR').toUpperCase();
     const paymentTermsDays = dto.paymentTermsDays ?? 30;
@@ -83,6 +83,7 @@ export class CustomersService {
         paymentTermsDays,
         discountPct: dto.discountPct ?? '0',
         minimaxPartnerId: dto.minimaxPartnerId ?? null,
+        phone: dto.phone?.trim() || null,
         createdBy: ctx.userId,
       });
 
@@ -108,14 +109,14 @@ export class CustomersService {
     });
   }
 
-  async findById(id: string): Promise<Customer> {
+  async findById(id: string): Promise<CustomerWithPhone> {
     const ctx = getContext();
     const customer = await this.pg.withTenant(ctx.tenantId, (tx) => this.repo.findById(tx, id));
     if (!customer) throw new NotFoundException('Customer not found');
     return customer;
   }
 
-  async list(limit: number, afterName?: string, afterId?: string, q?: string): Promise<Customer[]> {
+  async list(limit: number, afterName?: string, afterId?: string, q?: string): Promise<CustomerWithPhone[]> {
     const ctx = getContext();
     const capped = Math.min(Math.max(limit, 1), 100);
     return this.pg.withTenant(ctx.tenantId, (tx) => this.repo.list(tx, capped, afterName, afterId, q));
@@ -129,7 +130,7 @@ export class CustomersService {
    * partial — only the fields the advisor changed are sent — so we load the
    * current row first to validate the *merged* result, not the patch alone.
    */
-  async update(id: string, dto: import('./dto/update-customer.dto').UpdateCustomerDto): Promise<Customer> {
+  async update(id: string, dto: import('./dto/update-customer.dto').UpdateCustomerDto): Promise<CustomerWithPhone> {
     const ctx = getContext();
     return this.pg.withTenant(ctx.tenantId, async (tx) => {
       const before = await this.repo.findById(tx, id);
@@ -162,6 +163,7 @@ export class CustomersService {
         paymentTermsDays: dto.paymentTermsDays,
         discountPct: dto.discountPct,
         minimaxPartnerId: dto.minimaxPartnerId,
+        phone: dto.phone?.trim() || undefined,
         updatedBy: ctx.userId,
       });
       if (!after) throw new NotFoundException('Customer not found');

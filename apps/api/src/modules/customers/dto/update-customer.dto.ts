@@ -25,4 +25,8 @@ export class UpdateCustomerDto {
   @IsOptional() @IsInt() @Min(0) @Max(365) paymentTermsDays?: number;
   @IsOptional() @Matches(/^\d+(\.\d{1,2})?$/, { message: 'discountPct must be a decimal' }) discountPct?: string;
   @IsOptional() @IsString() minimaxPartnerId?: string;
+
+  /** GSM/TEL (SMS obvestila, 0030). Normalizacija v E.164 ob pošiljanju. */
+  @IsOptional() @IsString() @Length(3, 40)
+  phone?: string;
 }

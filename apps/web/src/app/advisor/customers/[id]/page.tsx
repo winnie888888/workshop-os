@@ -63,6 +63,9 @@ export default function CustomerHub() {
           <p className="text-sm text-muted">
             {customer.country}{customer.vatId ? ` · ID za DDV ${customer.vatId}` : ''}
             {customer.paymentTermsDays != null ? ` · plačilni rok ${customer.paymentTermsDays} dni` : ''}
+            {customer.phone && (
+              <> · <a href={`tel:${customer.phone}`} className="num font-semibold text-brand hover:underline">{customer.phone}</a></>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
