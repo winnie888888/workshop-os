@@ -16,8 +16,10 @@ export const metadata = {
     'Delovni nalogi, stranke, vozila, skladišče, fotografije, delovni čas in portal stranke — vse na enem mestu.',
 };
 
-const LOGIN_URL = '/login'; // TODO: preveri — točen URL prijave (iz MarketingShell)
-const DEMO_URL = '/demo';   // TODO: preveri — povezava, ki vklopi demo (iz MarketingShell)
+const LOGIN_URL = '/'; // potrjeno: root je vstop v aplikacijo (MarketingShell)
+// Demo živi na ravni deploya (lib/demo), ne kot ruta — zato kaže na demo okolje.
+// TODO: če lib/demo.ts pozna ?demo=1 ali podoben vklop, zamenjati s tem.
+const DEMO_URL = 'https://workshop-os-delta.vercel.app';
 const SIGNUP_URL = '/signup'; // potrjen — 14-dnevni preizkus (obstoječa ruta s stare strani)
 
 const CSS = `
@@ -448,7 +450,7 @@ export default function Predstavitev() {
             </div>
           </div>
           <div className="fbot">
-            <span>© 2026 A-SPRINT d.o.o. Vse pravice pridržane. · <a href="/pravno">Pogoji in zasebnost</a></span>
+            <span>© 2026 A-SPRINT d.o.o. Vse pravice pridržane. · <a href="/pravno/pogoji">Pogoji uporabe</a> · <a href="/pravno/zasebnost">Zasebnost</a></span>
             <span>Powered by A-SPRINT d.o.o.</span>
           </div>
         </div>

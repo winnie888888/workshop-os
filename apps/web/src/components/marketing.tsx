@@ -5,31 +5,42 @@ import Link from 'next/link';
  * /predstavitev, /cenik, /pravno/*. Namenoma server komponenta brez stanja.
  * Ob go-live z domeno root '/' preusmerimo na /predstavitev (1 vrstica v
  * next.config redirects) — do takrat root ostaja vstop v aplikacijo.
+ *
+ * Redesign: navy glava/noga po novi landing predlogi (mockup), da so
+ * /cenik in /pravno vizualno usklajeni z /predstavitev. Demo gumb kaže na
+ * demo okolje (demo način živi na ravni deploya, ne kot ruta).
  */
+
+const DEMO_URL = 'https://workshop-os-delta.vercel.app';
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-surface text-ink">
-      <header className="border-b border-line bg-white/70 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-4">
-          <Link href="/predstavitev" className="text-lg font-extrabold tracking-tight">
-            A-SPRINT <span className="text-brand">GARAGE</span>
+      <header className="sticky top-0 z-40 bg-[#0A1F3D] text-white shadow-[0_2px_14px_rgba(4,14,30,.35)]">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
+          <Link href="/predstavitev" className="flex items-center gap-2.5" aria-label="A-SPRINT Garage — predstavitev">
+            <span className="grid h-9 w-9 -skew-x-6 place-items-center rounded-[9px] bg-gradient-to-br from-[#2D7DFF] to-[#5AA2FF] text-xl font-black italic shadow-[0_4px_12px_rgba(45,125,255,.45)]">A</span>
+            <span className="leading-none">
+              <span className="block text-[15px] font-black italic tracking-tight">A-SPRINT</span>
+              <span className="block text-[8px] font-bold not-italic tracking-[.42em] text-[#9DB6D8]">GARAGE</span>
+            </span>
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold">
-            <Link href="/predstavitev" className="text-muted hover:text-ink">Predstavitev</Link>
-            <Link href="/cenik" className="text-muted hover:text-ink">Cenik</Link>
-            <Link href="/" className="rounded-lg bg-ink px-3 py-1.5 text-white hover:opacity-90">Prijava</Link>
+            <Link href="/predstavitev" className="text-[#D7E2F2] hover:text-white">Predstavitev</Link>
+            <Link href="/cenik" className="text-[#D7E2F2] hover:text-white">Cenik</Link>
+            <Link href="/" className="rounded-lg border border-white/45 px-3 py-1.5 text-white hover:bg-white/10">Prijava</Link>
+            <Link href={DEMO_URL} className="rounded-lg bg-[#1A6BEF] px-3 py-1.5 text-white hover:bg-[#1257C9]">Demo</Link>
           </nav>
         </div>
       </header>
       <main>{children}</main>
-      <footer className="mt-16 border-t border-line">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs text-muted2">
+      <footer className="mt-16 bg-[#0A1F3D] text-[#C9D7EA]">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs">
           <div>© {new Date().getFullYear()} A-SPRINT GARAGE · AI Workshop OS za tovorne delavnice</div>
           <div className="flex gap-4">
-            <Link href="/pravno/pogoji" className="hover:text-ink">Pogoji uporabe</Link>
-            <Link href="/pravno/zasebnost" className="hover:text-ink">Zasebnost</Link>
-            <Link href="/pravno/dpa" className="hover:text-ink">Pogodba o obdelavi (DPA)</Link>
+            <Link href="/pravno/pogoji" className="hover:text-white">Pogoji uporabe</Link>
+            <Link href="/pravno/zasebnost" className="hover:text-white">Zasebnost</Link>
+            <Link href="/pravno/dpa" className="hover:text-white">Pogodba o obdelavi (DPA)</Link>
           </div>
         </div>
       </footer>
