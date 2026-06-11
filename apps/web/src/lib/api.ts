@@ -180,6 +180,13 @@ export interface RevenueReport {
  * Endpoint methods — one per real route.
  * -------------------------------------------------------------------------- */
 
+export interface MemberPermissions {
+  userId: string; name: string; email: string;
+  roles: string[]; active: boolean;
+  overrides: Array<{ permission: string; allow: boolean }>;
+  base: string[]; effective: string[];
+}
+
 export interface TenantProfile {
   id: string; name: string; country: string; vatId: string | null;
   iban: string | null; bankName: string | null;
@@ -301,6 +308,15 @@ export const api = {
     // Phase 4B: edit a vehicle's descriptive fields.
     update: (id: string, dto: Record<string, unknown>) =>
       request<any>(`/assets/${id}`, { method: 'PATCH', body: dto }),
+  },
+
+  // Pravice uporabnikov (P1): člani delavnice + ročne izjeme pravic.
+  members: {
+    list: () => request<MemberPermissions[]>(`/members`),
+    get: (userId: string) =>
+      request<MemberPermissions & { catalog: string[] }>(`/members/${userId}/permissions`),
+    putOverrides: (userId: string, overrides: Array<{ permission: string; allow: boolean }>) =>
+      request<MemberPermissions>(`/members/${userId}/permissions`, { method: 'PUT', body: { overrides } }),
   },
 
   inventory: {

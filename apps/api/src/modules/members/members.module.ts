@@ -14,6 +14,7 @@ import {
   Permission,
   effectivePermissionsFor,
   isValidPermission,
+  permissionsFor,
   type PermissionOverride,
   type Role,
 } from '@workshop/shared';
@@ -52,7 +53,7 @@ export class MembersService {
   ) {}
 
   /** Vsi člani delavnice z vlogami in izjemami (za matriko v UI). */
-  async list(): Promise<Array<MemberRow & { effective: Permission[] }>> {
+  async list(): Promise<Array<MemberRow & { base: Permission[]; effective: Permission[] }>> {
     const ctx = getContext();
     const rows = await this.pg.withTenant(ctx.tenantId, async (tx) => {
       const r = await tx.query<any>(
@@ -176,11 +177,12 @@ export class MembersService {
       userId,
       roles: result.roles,
       overrides,
+      base: permissionsFor(result.roles),
       effective: effectivePermissionsFor(result.roles, overrides),
     };
   }
 
-  private shape(r: any): MemberRow & { effective: Permission[] } {
+  private shape(r: any): MemberRow & { base: Permission[]; effective: Permission[] } {
     const roles = (r.roles ?? []) as Role[];
     const overrides = (typeof r.overrides === 'string' ? JSON.parse(r.overrides) : r.overrides ?? []) as PermissionOverride[];
     return {
@@ -190,6 +192,7 @@ export class MembersService {
       roles,
       active: !!r.active,
       overrides,
+      base: permissionsFor(roles),
       effective: effectivePermissionsFor(roles, overrides),
     };
   }
