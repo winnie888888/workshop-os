@@ -153,3 +153,46 @@ export function permissionsFor(roles: Role[]): Permission[] {
 export function isValidRole(value: string): value is Role {
   return (Object.values(Role) as string[]).includes(value);
 }
+
+/* ----------------------- Per-user permission overrides ----------------------- *
+ * Pravice uporabnikov (P1): vloge ostanejo osnova (MATRIX zgoraj), posamezen
+ * član pa lahko dobi ročne izjeme. Pravilo: deny zmaga nad vsem; allow doda
+ * pravico mimo vlog. Funkciji sta čisti in pokriti s testom
+ * packages/shared/test/permission-overrides.test.ts.
+ */
+
+/** Ročna izjema pri pravicah enega člana. */
+export interface PermissionOverride {
+  permission: Permission;
+  allow: boolean;
+}
+
+/** Efektivne pravice: (pravice vlog ∪ allow) − deny. */
+export function effectivePermissionsFor(
+  roles: Role[],
+  overrides: readonly PermissionOverride[] = [],
+): Permission[] {
+  const out = new Set<Permission>(permissionsFor(roles));
+  for (const o of overrides) if (o.allow) out.add(o.permission);
+  for (const o of overrides) if (!o.allow) out.delete(o.permission);
+  return [...out];
+}
+
+/** Preverba ene pravice ob upoštevanju izjem (deny > allow > vloge). */
+export function hasEffectivePermission(
+  roles: Role[],
+  overrides: readonly PermissionOverride[],
+  permission: Permission,
+): boolean {
+  let allowed = false;
+  for (const o of overrides) {
+    if (o.permission !== permission) continue;
+    if (!o.allow) return false; // izrecen deny zmaga nad vsem
+    allowed = true;
+  }
+  return allowed || hasPermission(roles, permission);
+}
+
+export function isValidPermission(value: string): value is Permission {
+  return (Object.values(Permission) as string[]).includes(value);
+}
