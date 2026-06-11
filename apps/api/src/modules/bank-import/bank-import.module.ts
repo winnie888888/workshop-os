@@ -313,6 +313,42 @@ export class BankImportService {
     };
   }
 
+  /* --------------------- P2.1: razknjiženje plačila --------------------- */
+
+  /**
+   * Razknjiži knjižen priliv: storno plačila gre skozi InvoicesService
+   * (ena resnica o saldu/statusu), vnos pa se vrne na 'pending' brez
+   * payment_id/matched_invoice_id — ponovni uvoz istega izpiska ga zato
+   * spet ponudi v ujemanje in plačilo se lahko knjiži na PRAVI račun.
+   * Vrstni red je namerno storno-najprej: če med korakoma pade, ostane
+   * vnos 'applied' s payment_id, ponovni klic pa prek alreadyReversed
+   * postopek varno dokonča (idempotentno).
+   */
+  async reverseEntry(entryId: string, reason?: string | null) {
+    const ctx = getContext();
+    const entry = await this.pg.withTenant(ctx.tenantId, async (tx) =>
+      (await tx.query(`SELECT * FROM app.bank_import_entries WHERE id = $1`, [entryId])).rows[0]);
+    if (!entry) throw new NotFoundException('Vnos uvoza ne obstaja.');
+    if (entry.status !== 'applied' || !entry.payment_id)
+      throw new BadRequestException('Ta vnos ni knjižen — razknjižiti je mogoče samo knjižena plačila.');
+
+    const rev = await this.invoices.reversePayment(
+      entry.payment_id,
+      reason ?? `Razknjiženje uvoza izpiska (sklic ${entry.reference ?? '—'})`,
+    );
+
+    await this.pg.withTenant(ctx.tenantId, async (tx) => {
+      await tx.query(
+        `UPDATE app.bank_import_entries
+            SET status = 'pending', payment_id = NULL, matched_invoice_id = NULL
+          WHERE id = $1`,
+        [entryId],
+      );
+    });
+
+    return { ok: true, entryId, paymentId: entry.payment_id, alreadyReversed: rev.alreadyReversed, allocations: rev.allocations };
+  }
+
   /* ----------------------- P2.1: zgodovina uvozov ----------------------- */
 
   /** Seznam uvozov (glave) z agregatom knjiženih vnosov — revizijska sled. */
@@ -403,6 +439,13 @@ export class BankImportController {
   @RequirePermissions(Permission.InvoiceIssue)
   list() {
     return this.svc.listImports();
+  }
+
+  /** P2.1: razknjiženje knjiženega priliva (storno plačila + vnos nazaj v 'pending'). */
+  @Post('entries/:id/reverse')
+  @RequirePermissions(Permission.InvoiceIssue)
+  reverse(@Param('id') id: string, @Body() body: { reason?: string }) {
+    return this.svc.reverseEntry(id, typeof body?.reason === 'string' && body.reason.trim() ? body.reason.trim() : null);
   }
 
   /** P2.1: en uvoz z vsemi vnosi. */

@@ -418,6 +418,81 @@ export class InvoicesService {
     });
   }
 
+  /**
+   * Razknjiženje plačila (P2.1). Plačilo se NE briše — alokacije so
+   * append-only ledger in revizijska sled mora preživeti. Storno je oznaka
+   * (payments.reversed_at, migracija 0024); tu se ob njej na vsakem računu,
+   * ki ga je plačilo pokrivalo, paid_minor vrne in status izračuna na novo
+   * (issued/overdue pri saldu 0, sicer partly_paid). repo.applyPayment za to
+   * NI uporabljen, ker njegov CASE pri negativnem znesku vrne napačen status.
+   * Idempotentno: že razknjiženo plačilo vrne alreadyReversed brez sprememb,
+   * da klicatelj (bank-import) lahko varno dokonča prekinjen postopek.
+   */
+  async reversePayment(paymentId: string, reason?: string | null) {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const p = await tx.query<any>(`SELECT * FROM app.payments WHERE id = $1 FOR UPDATE`, [paymentId]);
+      if (!p.rows[0]) throw new NotFoundException('Plačilo ne obstaja.');
+      const pay = p.rows[0];
+      if (pay.reversed_at) {
+        return { paymentId, alreadyReversed: true, allocations: [] as Array<{ invoiceId: string; invoiceNumber: string | null; amountMinor: string; newStatus: string }> };
+      }
+
+      const allocs = await tx.query<any>(
+        `SELECT invoice_id, applied_minor FROM app.payment_allocations WHERE payment_id = $1`,
+        [paymentId],
+      );
+
+      const allocations: Array<{ invoiceId: string; invoiceNumber: string | null; amountMinor: string; newStatus: string }> = [];
+      for (const a of allocs.rows) {
+        const header = await this.repo.findHeaderForUpdate(tx, a.invoice_id);
+        if (!header) continue;
+        const applied = BigInt(a.applied_minor);
+        const newPaid = BigInt(header.paidMinor) - applied;
+        if (newPaid < 0n) {
+          throw new ConflictException(
+            `Računa ${header.number ?? a.invoice_id} ni mogoče razknjižiti: plačani znesek bi postal negativen.`,
+          );
+        }
+        // Statusov credited/void/draft storno ne dotika; paid/status smeta
+        // mimo immutability triggerja (zaklenjeni so zneski/številka/datumi).
+        const res = await tx.query<any>(
+          `UPDATE app.invoices
+              SET paid_minor = $2,
+                  status = CASE
+                             WHEN status IN ('credited','void','draft') THEN status
+                             WHEN $2::bigint <= 0 THEN
+                               CASE WHEN due_date IS NOT NULL AND due_date < CURRENT_DATE THEN 'overdue' ELSE 'issued' END
+                             ELSE 'partly_paid'
+                           END,
+                  version = version + 1,
+                  updated_at = now()
+            WHERE id = $1
+            RETURNING status`,
+          [a.invoice_id, newPaid.toString()],
+        );
+        allocations.push({
+          invoiceId: a.invoice_id, invoiceNumber: header.number,
+          amountMinor: applied.toString(), newStatus: res.rows[0]?.status ?? 'unknown',
+        });
+      }
+
+      await tx.query(
+        `UPDATE app.payments SET reversed_at = now(), reversed_by = $2, reversal_reason = $3 WHERE id = $1`,
+        [paymentId, ctx.userId, reason ?? null],
+      );
+
+      await this.audit.append(tx, {
+        tenantId: ctx.tenantId, actorId: ctx.userId, action: 'payment.reversed',
+        entityType: 'payment', entityId: paymentId,
+        before: { reversedAt: null },
+        after: { reason: reason ?? null, allocations },
+      });
+
+      return { paymentId, alreadyReversed: false, allocations };
+    });
+  }
+
   /** Record a customer payment and allocate it oldest-due-first across open invoices. */
   async recordPayment(dto: RecordPaymentDto) {
     const ctx = getContext();

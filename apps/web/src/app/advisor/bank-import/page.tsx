@@ -250,14 +250,32 @@ export default function BankImportPage() {
  */
 const ENTRY_STATUS: Record<string, { label: string; tone: 'go' | 'hold' | 'neutral' }> = {
   applied: { label: 'knjiženo', tone: 'go' },
-  pending: { label: 'v teku / prekinjeno', tone: 'hold' },
+  pending: { label: 'neknjiženo (v teku ali razknjiženo)', tone: 'hold' },
   skipped: { label: 'preskočeno', tone: 'neutral' },
 };
 
 function ImportHistory({ refreshKey }: { refreshKey: number }) {
-  const { data: imports, error } = useSWR(['bank-imports', refreshKey], () => api.bankImport.list());
+  const [bump, setBump] = useState(0); // osvežitev po razknjiženju
+  const [revBusy, setRevBusy] = useState<string | null>(null);
+  const [revError, setRevError] = useState<string | null>(null);
+  const { data: imports, error } = useSWR(['bank-imports', refreshKey, bump], () => api.bankImport.list());
   const [openId, setOpenId] = useState<string | null>(null);
-  const { data: detail } = useSWR(openId ? ['bank-import', openId] : null, () => api.bankImport.get(openId!));
+  const { data: detail } = useSWR(openId ? ['bank-import', openId, bump] : null, () => api.bankImport.get(openId!));
+
+  async function reverse(entryId: string) {
+    // Razlog je neobvezen; Prekliči (null) prekine. Storno gre skozi
+    // InvoicesService — saldo in status računa se vrneta, vnos pa nazaj v
+    // 'pending', da ga ponovni uvoz izpiska lahko knjiži na pravi račun.
+    const reason = window.prompt('Razknjižim plačilo? Saldo in status računa se vrneta. Razlog (neobvezno):', '');
+    if (reason === null) return;
+    setRevBusy(entryId); setRevError(null);
+    try {
+      await api.bankImport.reverse(entryId, reason.trim() || undefined);
+      setBump((b) => b + 1);
+    } catch (err) {
+      setRevError(err instanceof ApiError ? err.message : 'Razknjiženje ni uspelo.');
+    } finally { setRevBusy(null); }
+  }
 
   if (error) return <ProblemBanner tone="hold" message="Zgodovine uvozov ni bilo mogoče naložiti." />;
   if (!imports || imports.length === 0) return null;
@@ -267,6 +285,7 @@ function ImportHistory({ refreshKey }: { refreshKey: number }) {
       <div className="border-b border-line p-4">
         <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Zgodovina uvozov</h3>
       </div>
+      {revError && <div className="p-3"><ProblemBanner tone="stop" message={revError} /></div>}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-steel">
@@ -304,7 +323,7 @@ function ImportHistory({ refreshKey }: { refreshKey: number }) {
                         <thead>
                           <tr className="text-left text-xs uppercase tracking-wide text-steel">
                             <th className="p-2">Datum</th><th className="p-2">Plačnik</th><th className="p-2">Sklic</th>
-                            <th className="p-2 text-right">Znesek</th><th className="p-2">Status</th><th className="p-2">Račun</th>
+                            <th className="p-2 text-right">Znesek</th><th className="p-2">Status</th><th className="p-2">Račun</th><th className="p-2"></th>
                           </tr>
                         </thead>
                         <tbody>
@@ -323,6 +342,17 @@ function ImportHistory({ refreshKey }: { refreshKey: number }) {
                                       {en.invoiceNumber ?? 'račun'}
                                     </Link>
                                   ) : '—'}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {en.status === 'applied' && en.paymentId && (
+                                    <button
+                                      onClick={() => reverse(en.id)}
+                                      disabled={revBusy !== null}
+                                      className="min-h-tap rounded-tool border border-linestrong bg-surface px-3 text-sm font-semibold text-ink hover:bg-floor disabled:opacity-50"
+                                    >
+                                      {revBusy === en.id ? <Spinner /> : 'Razknjiži'}
+                                    </button>
+                                  )}
                                 </td>
                               </tr>
                             );

@@ -623,5 +623,8 @@ export const api = {
     // P2.1: zgodovina uvozov — glave s povzetkom in en uvoz z vsemi vnosi.
     list: () => request<any[]>(`/bank-import`),
     get: (id: string) => request<any>(`/bank-import/${id}`),
+    // P2.1: razknjiženje knjiženega priliva (storno plačila, vnos nazaj v 'pending').
+    reverse: (entryId: string, reason?: string) =>
+      request<any>(`/bank-import/entries/${entryId}/reverse`, { method: 'POST', body: { reason } }),
   },
 };
