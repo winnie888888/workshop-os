@@ -119,34 +119,62 @@ function CustomerPicker({ onPick }: { onPick: (c: { id: string; name: string }) 
   );
 }
 
+type Candidate = {
+  id: string; number: string | null; currency: string; totalGrossMinor: string;
+  readyAt: string | null; assetId: string | null; plate: string | null; plateCountry: string | null;
+  billableLines: number;
+};
+
 function Candidates({ customer, onChangeCustomer }: {
   customer: { id: string; name: string };
   onChangeCustomer: () => void;
 }) {
   const router = useRouter();
-  const { data: cands, error } = useSWR(
+  const { data: cands, error, mutate } = useSWR(
     ['cons-cands', customer.id],
     () => api.invoices.consolidatedCandidates(customer.id),
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [byVehicle, setByVehicle] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [results, setResults] = useState<Array<{ id: string; number: string | null; plate: string | null }> | null>(null);
 
   // Privzeto izbrani VSI kandidati (najpogostejši primer: zaračunaj vse).
   useEffect(() => {
     if (cands) setSelected(new Set(cands.map((c) => c.id)));
   }, [cands]);
 
+  /* Skupine po vozilu (ključ je assetId, ne niz tablice — trdno tudi ob
+     preregistraciji). Nalogi brez vozila so svoja skupina na koncu. */
+  const groups = useMemo(() => {
+    const list = (cands ?? []) as Candidate[];
+    const map = new Map<string, { key: string; plate: string | null; rows: Candidate[] }>();
+    for (const c of list) {
+      const key = c.assetId ?? 'none';
+      const g = map.get(key) ?? { key, plate: c.plate ?? null, rows: [] };
+      g.rows.push(c);
+      map.set(key, g);
+    }
+    return [...map.values()].sort((a, b) => {
+      if (a.key === 'none') return 1;
+      if (b.key === 'none') return -1;
+      return String(a.plate ?? '').localeCompare(String(b.plate ?? ''), 'sl');
+    });
+  }, [cands]);
+
   const summary = useMemo(() => {
-    if (!cands) return { count: 0, sum: 0n, currency: 'EUR' };
+    if (!cands) return { count: 0, sum: 0n, currency: 'EUR', vehicleGroups: 0 };
     let sum = 0n;
     let currency = 'EUR';
-    for (const c of cands) {
+    const touched = new Set<string>();
+    for (const c of cands as Candidate[]) {
       if (!selected.has(c.id)) continue;
       sum += BigInt(c.totalGrossMinor || '0');
       currency = c.currency;
+      touched.add(c.assetId ?? 'none');
     }
-    return { count: selected.size, sum, currency };
+    return { count: selected.size, sum, currency, vehicleGroups: touched.size };
   }, [cands, selected]);
 
   function toggle(id: string) {
@@ -157,7 +185,17 @@ function Candidates({ customer, onChangeCustomer }: {
     });
   }
 
-  async function issue() {
+  function toggleGroup(rows: Candidate[]) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = rows.every((r) => next.has(r.id));
+      for (const r of rows) { if (allOn) next.delete(r.id); else next.add(r.id); }
+      return next;
+    });
+  }
+
+  /** En račun za vse izbrane (per-customer). */
+  async function issueOne() {
     setBusy(true); setErr(null);
     try {
       const res = await api.invoices.issueConsolidated({
@@ -171,12 +209,74 @@ function Candidates({ customer, onChangeCustomer }: {
     }
   }
 
+  /**
+   * Po vozilu (fleet opcija iz spec): za vsako vozilo z izbranimi nalogi EN
+   * račun — zaporedni klici istega zalednega motorja, vsak zase atomaren.
+   * Ob napaki se ustavi in POŠTENO pove, kateri računi so že izdani.
+   */
+  async function issuePerVehicle() {
+    if (!cands) return;
+    setBusy(true); setErr(null);
+    const done: Array<{ id: string; number: string | null; plate: string | null }> = [];
+    for (const g of groups) {
+      const ids = g.rows.filter((r) => selected.has(r.id)).map((r) => r.id);
+      if (ids.length === 0) continue;
+      try {
+        const res = await api.invoices.issueConsolidated({ customerId: customer.id, workOrderIds: ids });
+        done.push({ id: res.id, number: res.number, plate: g.plate });
+      } catch (e) {
+        const msg = e instanceof ApiError ? e.message : 'Izdaja ni uspela.';
+        setErr(
+          `Napaka pri vozilu ${g.plate ? displayPlate(g.plate) : 'brez tablice'}: ${msg}` +
+          (done.length > 0 ? ` Že izdani računi (${done.length}): ${done.map((d) => d.number ?? d.id).join(', ')}.` : ''),
+        );
+        break;
+      }
+    }
+    setBusy(false);
+    if (done.length > 0) {
+      setResults(done);
+      void mutate(); // preostali kandidati se osvežijo
+    }
+  }
+
   if (error) {
     const msg = error instanceof ApiError ? error.message : 'Kandidatov ni bilo mogoče naložiti.';
     return (
       <div>
         <ProblemBanner message={msg} tone="hold" />
         <p className="mt-3 text-sm text-muted">Na demo povezavi zbirni račun ni na voljo — dela proti pravemu API-ju.</p>
+      </div>
+    );
+  }
+
+  /* Rezultat izdaje po vozilu: seznam izdanih dokumentov s povezavami. */
+  if (results) {
+    return (
+      <div className="flex flex-col gap-4">
+        {err && <ProblemBanner message={err} />}
+        <Card className="p-5">
+          <h2 className="text-lg font-bold text-ink">Izdani računi ({results.length})</h2>
+          <ul className="mt-3 divide-y divide-line">
+            {results.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="flex items-center gap-2">
+                  <span className="num font-bold text-ink">{r.number ?? r.id}</span>
+                  {r.plate && <SoftChip tone="info">{displayPlate(r.plate)}</SoftChip>}
+                </span>
+                <Link href={`/advisor/invoices/${r.id}`} className="text-sm font-semibold text-brand hover:underline">
+                  Odpri ›
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex justify-end gap-3">
+            <button onClick={() => setResults(null)} className="text-sm font-semibold text-muted hover:text-brand">
+              Nazaj na kandidate
+            </button>
+            <Link href="/advisor/invoices" className="text-sm font-bold text-brand hover:underline">Računi ›</Link>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -203,61 +303,119 @@ function Candidates({ customer, onChangeCustomer }: {
       ) : (
         <>
           <Card className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <h2 className="text-base font-bold text-ink">
                 Neizdani nalogi <span className="num text-muted2">({cands.length})</span>
               </h2>
-              <button
-                onClick={() => setSelected(selected.size === cands.length ? new Set() : new Set(cands.map((c) => c.id)))}
-                className="text-sm font-semibold text-brand hover:underline"
-              >
-                {selected.size === cands.length ? 'Odznači vse' : 'Izberi vse'}
-              </button>
+              <div className="flex items-center gap-4">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-steel">
+                  <input type="checkbox" checked={byVehicle} onChange={(e) => setByVehicle(e.target.checked)}
+                    className="h-4 w-4 accent-[#1A6BEF]" />
+                  Združi po vozilu
+                </label>
+                <button
+                  onClick={() => setSelected(selected.size === cands.length ? new Set() : new Set(cands.map((c) => c.id)))}
+                  className="text-sm font-semibold text-brand hover:underline"
+                >
+                  {selected.size === cands.length ? 'Odznači vse' : 'Izberi vse'}
+                </button>
+              </div>
             </div>
-            <ul className="divide-y divide-line">
-              {cands.map((c) => {
-                const on = selected.has(c.id);
-                return (
-                  <li key={c.id}>
-                    <label className={`flex min-h-tap cursor-pointer items-center gap-3 px-4 py-3 transition ${on ? 'bg-brandweak/50' : 'hover:bg-floor'}`}>
-                      <input type="checkbox" checked={on} onChange={() => toggle(c.id)} className="h-4 w-4 flex-none accent-[#1A6BEF]" />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="num text-sm font-bold text-ink">{c.number ?? 'brez št.'}</span>
-                          {c.plate && <SoftChip tone="info">{displayPlate(c.plate)}</SoftChip>}
+
+            {!byVehicle ? (
+              <ul className="divide-y divide-line">
+                {(cands as Candidate[]).map((c) => (
+                  <CandidateRow key={c.id} c={c} on={selected.has(c.id)} onToggle={() => toggle(c.id)} showPlate />
+                ))}
+              </ul>
+            ) : (
+              <div className="divide-y divide-linestrong">
+                {groups.map((g) => {
+                  const onCount = g.rows.filter((r) => selected.has(r.id)).length;
+                  const groupSum = g.rows.reduce(
+                    (acc, r) => acc + (selected.has(r.id) ? BigInt(r.totalGrossMinor || '0') : 0n), 0n);
+                  return (
+                    <div key={g.key}>
+                      <label className="flex min-h-tap cursor-pointer items-center gap-3 bg-surface2 px-4 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={onCount === g.rows.length}
+                          ref={(el) => { if (el) el.indeterminate = onCount > 0 && onCount < g.rows.length; }}
+                          onChange={() => toggleGroup(g.rows)}
+                          className="h-4 w-4 flex-none accent-[#1A6BEF]"
+                        />
+                        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                          {g.plate
+                            ? <SoftChip tone="info">{displayPlate(g.plate)}</SoftChip>
+                            : <SoftChip tone="neutral">brez vozila</SoftChip>}
+                          <span className="num text-xs text-muted">{onCount}/{g.rows.length} nalogov</span>
                         </span>
-                        <span className="num mt-0.5 block text-xs text-muted">
-                          {c.readyAt ? `pripravljen ${new Date(c.readyAt).toLocaleDateString('sl-SI')}` : 'pripravljen'}
-                          {` · ${c.billableLines} ${c.billableLines === 1 ? 'postavka' : c.billableLines === 2 ? 'postavki' : 'postavk'}`}
+                        <span className="num flex-none text-sm font-bold text-ink">
+                          {formatMoneyMinor(groupSum.toString(), g.rows[0]?.currency ?? 'EUR')}
                         </span>
-                      </span>
-                      <span className="num flex-none text-sm font-bold text-ink">
-                        {formatMoneyMinor(c.totalGrossMinor, c.currency)}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
+                      </label>
+                      <ul className="divide-y divide-line">
+                        {g.rows.map((c) => (
+                          <CandidateRow key={c.id} c={c} on={selected.has(c.id)} onToggle={() => toggle(c.id)} indent />
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           {err && <ProblemBanner message={err} />}
 
-          <Card className="sticky bottom-[4.5rem] flex items-center justify-between gap-3 p-4 shadow-lg lg:bottom-4">
+          <Card className="sticky bottom-[4.5rem] flex flex-wrap items-center justify-between gap-3 p-4 shadow-lg lg:bottom-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-muted2">
                 Izbranih: <span className="num">{summary.count}</span>
+                {byVehicle && <> · vozil: <span className="num">{summary.vehicleGroups}</span></>}
               </p>
               <p className="num text-lg font-extrabold text-ink">
                 {formatMoneyMinor(summary.sum.toString(), summary.currency)}
               </p>
             </div>
-            <Button tone="go" size="lg" onClick={issue} disabled={busy || summary.count === 0}>
-              {busy ? <Spinner /> : `Izdaj zbirni račun (${summary.count})`}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {byVehicle && (
+                <Button tone="info" size="lg" onClick={issuePerVehicle} disabled={busy || summary.count === 0}>
+                  {busy ? <Spinner /> : `Izdaj po vozilu (${summary.vehicleGroups})`}
+                </Button>
+              )}
+              <Button tone="go" size="lg" onClick={issueOne} disabled={busy || summary.count === 0}>
+                {busy ? <Spinner /> : `Izdaj en račun (${summary.count})`}
+              </Button>
+            </div>
           </Card>
         </>
       )}
     </div>
+  );
+}
+
+function CandidateRow({ c, on, onToggle, showPlate, indent }: {
+  c: Candidate; on: boolean; onToggle: () => void; showPlate?: boolean; indent?: boolean;
+}) {
+  return (
+    <li>
+      <label className={`flex min-h-tap cursor-pointer items-center gap-3 py-3 transition ${indent ? 'pl-10 pr-4' : 'px-4'} ${on ? 'bg-brandweak/50' : 'hover:bg-floor'}`}>
+        <input type="checkbox" checked={on} onChange={onToggle} className="h-4 w-4 flex-none accent-[#1A6BEF]" />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="num text-sm font-bold text-ink">{c.number ?? 'brez št.'}</span>
+            {showPlate && c.plate && <SoftChip tone="info">{displayPlate(c.plate)}</SoftChip>}
+          </span>
+          <span className="num mt-0.5 block text-xs text-muted">
+            {c.readyAt ? `pripravljen ${new Date(c.readyAt).toLocaleDateString('sl-SI')}` : 'pripravljen'}
+            {` · ${c.billableLines} ${c.billableLines === 1 ? 'postavka' : c.billableLines === 2 ? 'postavki' : 'postavk'}`}
+          </span>
+        </span>
+        <span className="num flex-none text-sm font-bold text-ink">
+          {formatMoneyMinor(c.totalGrossMinor, c.currency)}
+        </span>
+      </label>
+    </li>
   );
 }

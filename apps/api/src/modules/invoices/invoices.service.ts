@@ -311,7 +311,7 @@ export class InvoicesService {
     return this.pg.withTenant(ctx.tenantId, async (tx) => {
       const r = await tx.query<any>(
         `SELECT w.id, w.number, w.currency, w.total_gross_minor, w.ready_at,
-                a.plate, a.country_of_plate AS plate_country,
+                w.asset_id, a.plate, a.country_of_plate AS plate_country,
                 (SELECT count(*)::int FROM app.work_order_lines wl
                   WHERE wl.work_order_id = w.id AND wl.type <> 'discount' AND wl.net_minor <> 0) AS billable_lines
            FROM app.work_orders w
@@ -328,6 +328,7 @@ export class InvoicesService {
         currency: w.currency,
         totalGrossMinor: String(w.total_gross_minor),
         readyAt: w.ready_at ? (w.ready_at instanceof Date ? w.ready_at.toISOString() : String(w.ready_at)) : null,
+        assetId: w.asset_id ?? null,
         plate: w.plate ?? null,
         plateCountry: w.plate_country ?? null,
         billableLines: Number(w.billable_lines ?? 0),

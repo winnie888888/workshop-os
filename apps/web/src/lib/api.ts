@@ -410,7 +410,8 @@ export const api = {
     consolidatedCandidates: (customerId: string) =>
       request<Array<{
         id: string; number: string | null; currency: string; totalGrossMinor: string;
-        readyAt: string | null; plate: string | null; plateCountry: string | null; billableLines: number;
+        readyAt: string | null; assetId: string | null; plate: string | null; plateCountry: string | null;
+        billableLines: number;
       }>>(`/invoices/consolidated/candidates?customerId=${encodeURIComponent(customerId)}`),
     issueConsolidated: (dto: { customerId: string; workOrderIds: string[]; dueDays?: number; issueDate?: string }) =>
       request<{ id: string; number: string | null }>(`/invoices/consolidated`, { method: 'POST', body: dto }),
