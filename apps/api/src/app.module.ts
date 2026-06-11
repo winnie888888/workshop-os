@@ -29,6 +29,7 @@ import { TenantModule } from './modules/tenant/tenant.module';
 import { BillingModule, PlanGuard } from './modules/billing/billing.module';
 import { BankImportModule } from './modules/bank-import/bank-import.module';
 import { MembersModule } from './modules/members/members.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
@@ -79,6 +80,7 @@ import { HealthController } from './common/health.controller';
     ExportModule,       // /export/snapshot: GDPR/prenosljivost (Sprint 3)
     TenantModule,       // /tenant/profile: plačilni podatki delavnice (UPN QR, P1)
     MembersModule,      // /members: pravice po uporabniku (Pravice uporabnikov, P1)
+    ApiKeysModule,      // /api-keys: API ključi z vlogami (Pravice uporabnikov, P2)
     BillingModule,      // /billing/status + PlanGuard + trial sweep (Faza B, blok 1)
     BankImportModule,   // /bank-import/preview+apply — camt.053 izpiski (Plačila P2)
     AttachmentsModule,  // uploads (photos, voice notes, documents)

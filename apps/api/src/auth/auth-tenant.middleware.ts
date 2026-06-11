@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import type { Request, Response, NextFunction } from 'express';
 import { runWithContext, newId, type RequestContext } from '@workshop/shared';
+import { hashApiKey } from '../modules/api-keys/api-keys.module';
 import { PgService } from '../common/db/pg.service';
 import { TokenVerifier } from './token-verifier';
 import { AppConfig } from '../config/configuration';
@@ -29,6 +30,45 @@ export class AuthTenantMiddleware implements NestMiddleware {
   }
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
+    // ---- API ključi (P2): Bearer wos_… avtenticira NAMESTO OIDC poti. ----
+    // Tenant izhaja IZ ključa; morebitna X-Tenant-Id glava se mora ujemati.
+    // Ključ nosi vloge (brez owner/admin), zato naprej velja isti RBAC guard.
+    const rawAuth = req.header('authorization');
+    if (rawAuth?.startsWith('Bearer wos_')) {
+      const fullKey = rawAuth.slice(7);
+      const keyHash = hashApiKey(fullKey);
+      const key = await this.pg.withAdmin(async (tx) => {
+        const r = await tx.query<{ id: string; tenant_id: string; roles: string[]; revoked_at: Date | null }>(
+          `SELECT id, tenant_id, roles, revoked_at FROM app.api_keys WHERE key_hash = $1`,
+          [keyHash],
+        );
+        return r.rows[0] ?? null;
+      });
+      if (!key || key.revoked_at) throw new UnauthorizedException('Invalid API key');
+      const headerTenant = req.header('x-tenant-id');
+      if (headerTenant && headerTenant !== key.tenant_id) {
+        throw new ForbiddenException('API key does not belong to this tenant');
+      }
+      // last_used_at: dušeno na ~60 s, mimo odgovora (napaka ne sme podreti zahtevka).
+      void this.pg.withAdmin(async (tx) => {
+        await tx.query(
+          `UPDATE app.api_keys
+              SET last_used_at = now()
+            WHERE id = $1 AND (last_used_at IS NULL OR last_used_at < now() - interval '60 seconds')`,
+          [key.id],
+        );
+      }).catch(() => { /* ignore */ });
+
+      const keyCtx: RequestContext = {
+        tenantId: key.tenant_id,
+        userId: null,
+        roles: key.roles ?? [],
+        requestId: req.header('x-request-id') ?? newId(),
+      };
+      runWithContext(keyCtx, () => next());
+      return;
+    }
+
     let subject: string;
     if (this.config.devAuth) {
       subject = this.config.devAuthSubject;

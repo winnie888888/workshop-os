@@ -310,6 +310,20 @@ export const api = {
       request<any>(`/assets/${id}`, { method: 'PATCH', body: dto }),
   },
 
+  // Pravice uporabnikov (P2): API ključi (polni ključ je vrnjen SAMO ob create).
+  apiKeys: {
+    list: () => request<Array<{
+      id: string; name: string; prefix: string; roles: string[];
+      createdAt: string; createdByName: string | null;
+      lastUsedAt: string | null; revokedAt: string | null;
+    }>>(`/api-keys`),
+    create: (name: string, roles: string[]) =>
+      request<{ id: string; name: string; prefix: string; roles: string[]; key: string }>(
+        `/api-keys`, { method: 'POST', body: { name, roles } }),
+    revoke: (id: string) =>
+      request<{ ok: boolean; id: string }>(`/api-keys/${id}/revoke`, { method: 'POST' }),
+  },
+
   // Pravice uporabnikov (P1): člani delavnice + ročne izjeme pravic.
   members: {
     list: () => request<MemberPermissions[]>(`/members`),
