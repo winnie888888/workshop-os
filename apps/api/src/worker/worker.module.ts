@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { OUTBOX_HANDLERS } from '../common/events/outbox-handler.interface';
 import { OutboxWorkerService } from '../common/outbox/outbox.worker';
+import { RemindersSweepService } from './reminders.sweep';
 import { NotificationsModule, NotificationSendHandler } from '../integrations/notifications/notifications.module';
 import { MinimaxModule } from '../integrations/minimax/minimax.module';
 import { MinimaxPartnerUpsertHandler } from '../integrations/minimax/minimax.partner-upsert.handler';
@@ -28,6 +29,7 @@ import { EInvoiceIssueHandler } from '../integrations/einvoice/einvoice.handler'
       ],
     },
     OutboxWorkerService,
+    RemindersSweepService, // Opomniki: zapadli računi -> 'overdue' + payment_reminder SMS (urni sweep)
   ],
 })
 export class WorkerModule {}
