@@ -36,7 +36,7 @@ export default function WorkOrdersList() {
     };
     for (const f of FILTERS) {
       const hit = all.filter(f.match);
-      z[f.key] = { n: hit.length, sum: hit.reduce((acc, w) => acc + (w.totalGrossMinor ?? 0), 0) };
+      z[f.key] = { n: hit.length, sum: hit.reduce((acc, w) => acc + Number(w.totalGrossMinor ?? 0), 0) };
     }
     return z;
   }, [all]);
@@ -77,7 +77,7 @@ export default function WorkOrdersList() {
                 ${active ? 'border-brand ring-2 ring-brandweak' : 'border-line hover:border-brandring'}`}>
               <span className="block text-[0.7rem] font-bold uppercase tracking-wide text-muted2">{f.label}</span>
               <span className="num mt-1 block text-2xl font-extrabold leading-none text-ink">{st.n}</span>
-              <span className="num mt-1 block truncate text-xs font-semibold text-muted">{formatMoneyMinor(st.sum, currency)}</span>
+              <span className="num mt-1 block truncate text-xs font-semibold text-muted">{formatMoneyMinor(String(st.sum), currency)}</span>
             </button>
           );
         })}
