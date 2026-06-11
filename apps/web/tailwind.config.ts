@@ -9,35 +9,35 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brand — A-SPRINT (temporary blue; swap these to lock the identity)
-        brand: '#2563eb',
-        brand600: '#1d4ed8',
-        brand700: '#1e40af',
-        brandweak: '#eef4ff',
-        brandring: '#bfd3fb',
+        // Brand — A-SPRINT (zaklenjena identiteta po potrjenem mockupu, jun 2026)
+        brand: '#1A6BEF',
+        brand600: '#1257C9',
+        brand700: '#0F49AA',
+        brandweak: '#EAF1FD',
+        brandring: '#BBD3FB',
 
         // Sidebar (dark navy rail from the design spec)
-        sidebar: '#0f2236',
-        sidebar2: '#1c3653',
-        sidebartext: '#9fb0c3',
+        sidebar: '#0A1F3D',
+        sidebar2: '#0E2950',
+        sidebartext: '#9DB6D8',
 
         // Neutrals
-        ink: '#1b2733',        // primary text
-        steel: '#44515f',      // secondary text
-        muted: '#6b7886',
-        muted2: '#95a1ad',
-        floor: '#f4f6f9',      // app background
+        ink: '#0F1B2D',        // primary text
+        steel: '#4A5A75',      // secondary text
+        muted: '#5B6B82',
+        muted2: '#8A99AE',
+        floor: '#F2F5FA',      // app background
         panel: '#ffffff',
         surface: '#ffffff',
-        surface2: '#fafbfd',
-        line: '#e4e9f0',
-        linestrong: '#d3dae4',
+        surface2: '#F8FAFD',
+        line: '#E3E9F2',
+        linestrong: '#D2DCEA',
 
         // Status (used as soft pills via /10 tint, and as solid fills)
-        go: '#1c7a43',         // ok / ready / done
-        hold: '#9a6412',       // waiting / warn
-        stop: '#c3362b',       // alert / overdue
-        info: '#2563eb',       // = brand (links / primary)
+        go: '#178A47',         // ok / ready / done
+        hold: '#B45309',       // waiting / warn
+        stop: '#DC2626',       // alert / overdue
+        info: '#1A6BEF',       // = brand (links / primary)
         safety: '#e0a400',     // accent (used sparingly)
       },
       fontFamily: {

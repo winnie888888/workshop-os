@@ -11,10 +11,10 @@ import React from 'react';
 
 type Tone = 'go' | 'hold' | 'stop' | 'info' | 'neutral' | 'safety';
 
-// Filled button styles per tone. Default (neutral) is a tonal brand button —
-// clearly actionable and on-brand; use tone="info" for a strong primary.
+// Filled button styles per tone. Default (neutral) is the mockup's outlined
+// blue secondary; use tone="info" for the strong solid primary.
 const btnTone: Record<Tone, string> = {
-  neutral: 'bg-brandweak text-brand border border-brandring hover:bg-brandring/40',
+  neutral: 'bg-surface text-brand border border-brand hover:bg-brandweak',
   info: 'bg-brand text-white shadow-tool hover:bg-brand600',
   go: 'bg-go text-white hover:brightness-110',
   hold: 'bg-hold text-white hover:brightness-110',

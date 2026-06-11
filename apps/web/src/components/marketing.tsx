@@ -21,7 +21,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           <Link href="/predstavitev" className="flex shrink-0 items-center" aria-label="A-SPRINT Garage — predstavitev">
             <span className="flex items-center rounded-[8px] bg-white px-2 py-1 shadow-[0_3px_10px_rgba(0,0,0,.3)] sm:rounded-[10px] sm:px-2.5 sm:py-[5px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo-asprint.jpg" alt="A-SPRINT GARAGE" className="block h-6 w-auto sm:h-[30px]" />
+              <img src="/asprint-logo.png" alt="A-SPRINT GARAGE" className="block h-6 w-auto sm:h-[30px]" />
             </span>
           </Link>
           <nav className="flex items-center gap-3 text-sm font-semibold sm:gap-5">

@@ -215,7 +215,7 @@ const Logo = () => (
   <span className="logo">
     <span className="logo-pill">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo-asprint.jpg" alt="A-SPRINT GARAGE" />
+      <img src="/asprint-logo.png" alt="A-SPRINT GARAGE" />
     </span>
   </span>
 );
