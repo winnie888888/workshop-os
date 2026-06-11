@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Permission } from '@workshop/shared';
 import { InvoicesService } from './invoices.service';
-import { CreditNoteDto, IssueInvoiceDto, RecordPaymentDto } from './dto/invoice.dto';
+import { ConsolidatedInvoiceDto, CreditNoteDto, IssueInvoiceDto, RecordPaymentDto } from './dto/invoice.dto';
 import { PermissionsGuard, RequirePermissions } from '../../auth/permissions.guard';
 import { Module } from '@nestjs/common';
 import { InvoicesRepository } from './invoices.repository';
@@ -27,6 +27,19 @@ export class InvoicesController {
   @RequirePermissions(Permission.InvoiceIssue)
   pay(@Body() dto: RecordPaymentDto) {
     return this.invoices.recordPayment(dto);
+  }
+
+  // Zbirni račun — POMEMBNO: obe ruti pred ':id' potmi (vrstni red ujemanja).
+  @Get('consolidated/candidates')
+  @RequirePermissions(Permission.InvoiceIssue)
+  consolidatedCandidates(@Query('customerId') customerId: string) {
+    return this.invoices.consolidatedCandidates(customerId);
+  }
+
+  @Post('consolidated')
+  @RequirePermissions(Permission.InvoiceIssue)
+  consolidated(@Body() dto: ConsolidatedInvoiceDto) {
+    return this.invoices.issueConsolidated(dto);
   }
 
   @Get()

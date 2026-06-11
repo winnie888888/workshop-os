@@ -52,16 +52,19 @@ export class InvoicesRepository {
     id: string; tenantId: string; invoiceId: string; lineNo: number; type: string; description: string;
     quantity: string; unitPriceMinor: bigint; discountPct: string; vatRatePct: string; reverseCharge: boolean;
     netMinor: bigint; vatMinor: bigint; grossMinor: bigint;
+    /** Zbirni račun: izvorni delovni nalog te vrstice (0029); enojni tok pušča NULL. */
+    workOrderId?: string | null;
   }): Promise<void> {
     await tx.query(
       `INSERT INTO app.invoice_lines
          (id, tenant_id, invoice_id, line_no, type, description, quantity, unit_price_minor,
-          discount_pct, vat_rate_pct, reverse_charge, net_minor, vat_minor, gross_minor)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+          discount_pct, vat_rate_pct, reverse_charge, net_minor, vat_minor, gross_minor, work_order_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [
         l.id, l.tenantId, l.invoiceId, l.lineNo, l.type, l.description, l.quantity,
         l.unitPriceMinor.toString(), l.discountPct, l.vatRatePct, l.reverseCharge,
         l.netMinor.toString(), l.vatMinor.toString(), l.grossMinor.toString(),
+        l.workOrderId ?? null,
       ],
     );
   }

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class IssueInvoiceDto {
   @IsString() @Length(1, 36)
@@ -9,6 +9,24 @@ export class IssueInvoiceDto {
   dueDays?: number;
 
   /** Issue date (ISO yyyy-mm-dd); defaults to today. */
+  @IsOptional() @IsString()
+  issueDate?: string;
+}
+
+/**
+ * Zbirni račun (Consolidated Invoicing): EN račun za VEČ zaključenih nalogov
+ * iste stranke. Nalogi morajo biti v statusu 'ready' in še nezaračunani.
+ */
+export class ConsolidatedInvoiceDto {
+  @IsString() @Length(1, 36)
+  customerId!: string;
+
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @IsString({ each: true })
+  workOrderIds!: string[];
+
+  @IsOptional() @IsInt() @Min(0) @Max(365)
+  dueDays?: number;
+
   @IsOptional() @IsString()
   issueDate?: string;
 }

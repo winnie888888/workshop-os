@@ -127,7 +127,7 @@ export default function CustomerHub() {
       <WorkOrdersCard id={id} wos={wos} />
       <EstimatesCard id={id} />
       <AppointmentsCard id={id} />
-      <InvoicesCard invoices={invoices} />
+      <InvoicesCard invoices={invoices} customerId={id} />
     </div>
   );
 }
@@ -253,10 +253,14 @@ const INV_LABEL: Record<string, string> = { draft: 'Osnutek', issued: 'Izdan', p
 const INV_TONE: Record<string, 'go' | 'hold' | 'stop' | 'info' | 'neutral'> = { draft: 'neutral', issued: 'info', paid: 'go', overdue: 'stop', credited: 'hold' };
 
 /* Linked invoices for this customer (cross-link). */
-function InvoicesCard({ invoices }: { invoices: any[] | undefined }) {
+function InvoicesCard({ invoices, customerId }: { invoices: any[] | undefined; customerId: string }) {
   return (
     <Card className="overflow-hidden">
-      <div className="border-b border-line p-4"><h2 className="text-base font-bold text-ink">Računi</h2></div>
+      <div className="flex items-center justify-between border-b border-line p-4">
+        <h2 className="text-base font-bold text-ink">Računi</h2>
+        <Link href={`/advisor/invoices/consolidated?customerId=${customerId}`}
+          className="text-sm font-bold text-brand hover:underline">Zbirni račun ›</Link>
+      </div>
       {!invoices ? (
         <div className="flex justify-center p-6"><Spinner className="text-brand" /></div>
       ) : invoices.length === 0 ? (

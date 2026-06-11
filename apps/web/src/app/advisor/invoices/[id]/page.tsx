@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
@@ -104,19 +104,24 @@ export default function InvoiceDetail() {
         </div>
         {inv.vatNote && <p className="mb-3 rounded-tool bg-surface2 p-3 text-sm text-muted">{inv.vatNote}</p>}
 
+        {(inv.workOrders?.length ?? 0) > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-tool bg-surface2 p-3">
+            <span className="mr-1 text-xs font-bold uppercase tracking-wide text-muted2">
+              Zbirni račun · {inv.workOrders!.length} nalogov
+            </span>
+            {inv.workOrders!.map((w) => (
+              <Link key={w.id} href={`/advisor/work-orders/${w.id}`}>
+                <SoftChip tone="info">{w.number ?? '—'}{w.plate ? ` · ${w.plate}` : ''}</SoftChip>
+              </Link>
+            ))}
+          </div>
+        )}
+
         <table className="w-full text-sm">
           <thead className="text-left text-xs uppercase tracking-wide text-muted2">
             <tr><th className="py-2 font-bold">Opis</th><th className="py-2 text-right font-bold">Neto</th><th className="py-2 text-right font-bold">DDV %</th></tr>
           </thead>
-          <tbody>
-            {inv.lines.map((l: any, i: number) => (
-              <tr key={i} className="border-t border-line">
-                <td className="py-2 text-ink">{l.description}</td>
-                <td className="num py-2 text-right text-ink">{formatMoneyMinor(String(l.net_minor), inv.currency)}</td>
-                <td className="num py-2 text-right text-muted">{String(l.vat_rate_pct)}%</td>
-              </tr>
-            ))}
-          </tbody>
+          <InvoiceLinesBody lines={inv.lines as any[]} currency={inv.currency} workOrders={inv.workOrders ?? []} />
         </table>
 
         {vatRows.length > 0 && (
@@ -298,5 +303,80 @@ function Row({ label, value, big }: { label: string; value: string; big?: boolea
       <span className={big ? 'text-lg font-bold text-ink' : 'text-muted'}>{label}</span>
       <span className={`num ${big ? 'text-xl font-extrabold text-ink' : 'text-ink'}`}>{value}</span>
     </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Vrstice računa. Pri zbirnem računu (vrstice nosijo work_order_id) so
+ * grupirane po izvornem nalogu z naslovno vrstico (DN št. · tablica, klik na
+ * nalog) in vmesno NETO vsoto — spec: "totals per work order". Enojni računi
+ * in stari zapisi (brez work_order_id) se izrišejo kot doslej.
+ * -------------------------------------------------------------------------- */
+function InvoiceLinesBody({ lines, currency, workOrders }: {
+  lines: any[];
+  currency: string;
+  workOrders: Array<{ id: string; number: string | null; plate: string | null }>;
+}) {
+  const woById = new Map(workOrders.map((w) => [w.id, w]));
+  const grouped = workOrders.length > 0 && lines.some((l) => l.work_order_id);
+
+  if (!grouped) {
+    return (
+      <tbody>
+        {lines.map((l, i) => (
+          <tr key={i} className="border-t border-line">
+            <td className="py-2 text-ink">{l.description}</td>
+            <td className="num py-2 text-right text-ink">{formatMoneyMinor(String(l.net_minor), currency)}</td>
+            <td className="num py-2 text-right text-muted">{String(l.vat_rate_pct)}%</td>
+          </tr>
+        ))}
+      </tbody>
+    );
+  }
+
+  // Vrstice so urejene po line_no; zbirna izdaja jih piše nalog za nalogom,
+  // zato skupine sestavimo z enim prehodom (brez preurejanja dokumenta).
+  const groups: Array<{ woId: string | null; rows: any[] }> = [];
+  for (const l of lines) {
+    const woId = l.work_order_id ?? null;
+    const last = groups[groups.length - 1];
+    if (last && last.woId === woId) last.rows.push(l);
+    else groups.push({ woId, rows: [l] });
+  }
+
+  return (
+    <tbody>
+      {groups.map((g, gi) => {
+        const wo = g.woId ? woById.get(g.woId) : undefined;
+        const subtotal = g.rows.reduce((acc: bigint, l: any) => acc + BigInt(l.net_minor ?? 0), 0n);
+        return (
+          <Fragment key={gi}>
+            <tr className="border-t border-linestrong bg-surface2">
+              <td colSpan={3} className="py-1.5 text-xs font-bold uppercase tracking-wide text-steel">
+                {wo ? (
+                  <Link href={`/advisor/work-orders/${wo.id}`} className="hover:text-brand hover:underline">
+                    DN {wo.number ?? '—'}{wo.plate ? ` · ${wo.plate}` : ''}
+                  </Link>
+                ) : (
+                  'Ostale postavke'
+                )}
+              </td>
+            </tr>
+            {g.rows.map((l: any, i: number) => (
+              <tr key={i} className="border-t border-line">
+                <td className="py-2 text-ink">{l.description}</td>
+                <td className="num py-2 text-right text-ink">{formatMoneyMinor(String(l.net_minor), currency)}</td>
+                <td className="num py-2 text-right text-muted">{String(l.vat_rate_pct)}%</td>
+              </tr>
+            ))}
+            <tr>
+              <td className="py-1.5 text-right text-xs font-bold uppercase tracking-wide text-muted2">Skupaj nalog (neto)</td>
+              <td className="num py-1.5 text-right font-bold text-ink">{formatMoneyMinor(subtotal.toString(), currency)}</td>
+              <td />
+            </tr>
+          </Fragment>
+        );
+      })}
+    </tbody>
   );
 }

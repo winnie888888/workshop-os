@@ -139,6 +139,8 @@ export interface InvoiceDetail {
   serviceDate?: string | null; deliveryDate?: string | null;
   lines: Array<Record<string, unknown>>;
   vatBreakdown: Array<{ rate_pct: string; reverse_charge: boolean; net_minor: string; vat_minor: string }>;
+  /** Zbirni račun: povezani delovni nalogi (prazno pri enojnem toku). */
+  workOrders?: Array<{ id: string; number: string | null; plate: string | null }>;
 }
 
 export interface LabourInsight {
@@ -404,6 +406,14 @@ export const api = {
       customerId: string; amountMinor: number; method: 'bank' | 'cash' | 'card' | 'other';
       receivedAt: string; reference?: string;
     }) => request<any>(`/invoices/payments`, { method: 'POST', body: dto }),
+    // Zbirni račun: kandidati ('ready', nezaračunani) + izdaja enega računa za N nalogov.
+    consolidatedCandidates: (customerId: string) =>
+      request<Array<{
+        id: string; number: string | null; currency: string; totalGrossMinor: string;
+        readyAt: string | null; plate: string | null; plateCountry: string | null; billableLines: number;
+      }>>(`/invoices/consolidated/candidates?customerId=${encodeURIComponent(customerId)}`),
+    issueConsolidated: (dto: { customerId: string; workOrderIds: string[]; dueDays?: number; issueDate?: string }) =>
+      request<{ id: string; number: string | null }>(`/invoices/consolidated`, { method: 'POST', body: dto }),
   },
 
   reports: {

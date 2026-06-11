@@ -4,6 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { api, ApiError } from '@/lib/api';
 import { formatMoneyMinor, todayIso } from '@/lib/format';
+import Link from 'next/link';
 import { Button, Card, ProblemBanner, Spinner } from '@/components/ui';
 import { SelectField, TextField } from '@/components/form';
 
@@ -19,7 +20,13 @@ export default function InvoicesAndAr() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-3xl font-extrabold tracking-tight text-ink">Računi & terjatve</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Računi & terjatve</h1>
+        <Link href="/advisor/invoices/consolidated"
+          className="inline-flex min-h-tap items-center rounded-tool border border-brand bg-surface px-4 text-sm font-bold text-brand transition hover:bg-brandweak">
+          Zbirni račun
+        </Link>
+      </div>
 
       {isLoading && <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>}
 

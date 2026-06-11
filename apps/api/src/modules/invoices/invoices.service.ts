@@ -298,6 +298,227 @@ export class InvoicesService {
     });
   }
 
+
+  /**
+   * Zbirni račun — kandidati: ZAKLJUČENI ('ready') in še nezaračunani nalogi
+   * stranke. Nezaračunan pomeni: ni v vezni tabeli invoice_work_orders (zbirni
+   * tok) IN status še ni 'invoiced' (enojni tok). UNIQUE(work_order_id) v 0028
+   * isto varuje še na ravni baze.
+   */
+  async consolidatedCandidates(customerId: string) {
+    const ctx = getContext();
+    if (!customerId) throw new BadRequestException('customerId je obvezen');
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const r = await tx.query<any>(
+        `SELECT w.id, w.number, w.currency, w.total_gross_minor, w.ready_at,
+                a.plate, a.country_of_plate AS plate_country,
+                (SELECT count(*)::int FROM app.work_order_lines wl
+                  WHERE wl.work_order_id = w.id AND wl.type <> 'discount' AND wl.net_minor <> 0) AS billable_lines
+           FROM app.work_orders w
+           LEFT JOIN app.assets a ON a.id = w.asset_id
+          WHERE w.customer_id = $1
+            AND w.status = 'ready'
+            AND NOT EXISTS (SELECT 1 FROM app.invoice_work_orders iwo WHERE iwo.work_order_id = w.id)
+          ORDER BY w.number NULLS LAST, w.created_at`,
+        [customerId],
+      );
+      return r.rows.map((w: any) => ({
+        id: w.id,
+        number: w.number ?? null,
+        currency: w.currency,
+        totalGrossMinor: String(w.total_gross_minor),
+        readyAt: w.ready_at ? (w.ready_at instanceof Date ? w.ready_at.toISOString() : String(w.ready_at)) : null,
+        plate: w.plate ?? null,
+        plateCountry: w.plate_country ?? null,
+        billableLines: Number(w.billable_lines ?? 0),
+      }));
+    });
+  }
+
+  /**
+   * Zbirni račun (Consolidated Invoicing): EN račun za VEČ 'ready' nalogov iste
+   * stranke. NAMENOMA isti motor kot enojni tok — ista DDV odločitev po vrstici,
+   * isti composeInvoiceTotals, isti repo/števec/audit/outbox; nič ni izumljeno
+   * na novo. Razlike: glava ima work_order_id = NULL (vez nosi 0028 tabela,
+   * 1 račun : N nalogov), vsaka vrstica nosi izvorni work_order_id (0029) za
+   * vsote po nalogu, vsi nalogi pa se atomarno premaknejo v 'invoiced' v ISTI
+   * transakciji kot račun — račun brez označenih nalogov ne more obstajati.
+   */
+  async issueConsolidated(dto: {
+    customerId: string; workOrderIds: string[]; issueDate?: string; dueDays?: number;
+  }): Promise<InvoiceHeader> {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const ids = [...new Set(dto.workOrderIds ?? [])];
+      if (ids.length === 0) throw new BadRequestException('Izberi vsaj en delovni nalog.');
+      if (ids.length > 50) throw new BadRequestException('Največ 50 nalogov na en zbirni račun.');
+
+      // FOR UPDATE: zaklene naloge do konca transakcije (sočasna izdaja odpade).
+      const woRes = await tx.query<any>(
+        `SELECT * FROM app.work_orders WHERE id = ANY($1::uuid[]) FOR UPDATE`, [ids],
+      );
+      if (woRes.rowCount !== ids.length) {
+        throw new NotFoundException('Nekaterih izbranih nalogov ni mogoče najti.');
+      }
+      const orders = woRes.rows
+        .slice()
+        .sort((x: any, y: any) => String(x.number ?? '').localeCompare(String(y.number ?? '')) || String(x.created_at).localeCompare(String(y.created_at)));
+
+      const wrongCustomer = orders.filter((o: any) => o.customer_id !== dto.customerId);
+      if (wrongCustomer.length > 0) {
+        throw new BadRequestException(`Nalogi ne pripadajo izbrani stranki: ${wrongCustomer.map((o: any) => o.number ?? o.id).join(', ')}`);
+      }
+      const notReady = orders.filter((o: any) => o.status !== 'ready');
+      if (notReady.length > 0) {
+        throw new ConflictException(`Na zbirni račun gredo samo nalogi v statusu 'Pripravljeno': ${notReady.map((o: any) => `${o.number ?? o.id} (${o.status})`).join(', ')}`);
+      }
+      const currency = orders[0].currency;
+      if (orders.some((o: any) => o.currency !== currency)) {
+        throw new ConflictException('Vsi nalogi na zbirnem računu morajo imeti isto valuto.');
+      }
+      const already = await tx.query<any>(
+        `SELECT iwo.work_order_id, w.number
+           FROM app.invoice_work_orders iwo
+           JOIN app.work_orders w ON w.id = iwo.work_order_id
+          WHERE iwo.work_order_id = ANY($1::uuid[])`,
+        [ids],
+      );
+      if ((already.rowCount ?? 0) > 0) {
+        throw new ConflictException(`Že zaračunani nalogi: ${already.rows.map((r: any) => r.number ?? r.work_order_id).join(', ')}`);
+      }
+
+      const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [dto.customerId])).rows[0];
+      if (!customer) throw new NotFoundException('Customer not found');
+      const tenant = (await tx.query<any>(`SELECT country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+
+      const vatCtx: Vat.VatContext = {
+        supplierCountry: tenant.country,
+        customerCountry: customer.country,
+        customerIsBusiness: customer.type === 'company',
+        customerVatId: customer.vat_id,
+        customerVatIdValidated: customer.vat_id_validated === true,
+      };
+
+      const invoiceLineInputs: Invoicing.InvoiceLineInput[] = [];
+      const toInsert: Array<{
+        type: string; description: string; quantity: string; unitPriceMinor: bigint;
+        discountPct: string; vatRatePct: string; reverseCharge: boolean;
+        netMinor: bigint; vatMinor: bigint; grossMinor: bigint; workOrderId: string;
+      }> = [];
+
+      let anyHumanConfirm = false;
+      let treatment: string | null = null;
+      let anyReverseCharge = false;
+      let vatNote: string | null = null;
+
+      for (const order of orders) {
+        const lines = (await tx.query<any>(
+          `SELECT * FROM app.work_order_lines WHERE work_order_id = $1 ORDER BY line_no`, [order.id],
+        )).rows;
+        const billable = lines.filter((l: any) => l.type !== 'discount' && BigInt(l.net_minor) !== 0n);
+        if (billable.length === 0) {
+          throw new BadRequestException(`Nalog ${order.number ?? order.id} nima obračunljivih vrstic.`);
+        }
+        for (const l of billable) {
+          const decision = Vat.decideLineVat(vatCtx, {
+            kind: l.type === 'part' ? 'goods' : 'service',
+            domesticRatePct: String(l.vat_rate_pct),
+          });
+          anyHumanConfirm = anyHumanConfirm || decision.requiresHumanConfirmation;
+          anyReverseCharge = anyReverseCharge || decision.reverseCharge;
+          treatment = decision.treatment;
+          if (decision.note) vatNote = decision.note;
+
+          const net = Money.money(currency, BigInt(l.net_minor));
+          const vat = Money.percentage(net, decision.effectiveRatePct);
+          invoiceLineInputs.push({
+            description: l.description, netMinor: net.minor,
+            effectiveRatePct: decision.effectiveRatePct, reverseCharge: decision.reverseCharge,
+          });
+          toInsert.push({
+            type: l.type, description: l.description, quantity: String(l.quantity),
+            unitPriceMinor: BigInt(l.unit_price_minor), discountPct: String(l.discount_pct),
+            vatRatePct: decision.effectiveRatePct, reverseCharge: decision.reverseCharge,
+            netMinor: net.minor, vatMinor: vat.minor, grossMinor: net.minor + vat.minor,
+            workOrderId: order.id,
+          });
+        }
+      }
+
+      if (anyHumanConfirm) {
+        throw new ConflictException(
+          'VAT treatment needs confirmation (e.g. unvalidated EU VAT ID). Validate the customer VAT ID before issuing.',
+        );
+      }
+
+      const totals = Invoicing.composeInvoiceTotals(currency, invoiceLineInputs);
+      const number = await this.counter.next(tx, ctx.tenantId, Sequence.DocumentType.Invoice);
+      const issueDate = dto.issueDate ?? new Date().toISOString().slice(0, 10);
+      const dueDays = dto.dueDays ?? customer.payment_terms_days ?? this.config.defaultPaymentTermsDays;
+      const dueDate = addDays(issueDate, dueDays);
+
+      const invoiceId = newId();
+      const header = await this.repo.insertHeader(tx, {
+        id: invoiceId, tenantId: ctx.tenantId, kind: 'invoice', number,
+        workOrderId: null, customerId: customer.id, correctsInvoiceId: null,
+        currency, vatTreatment: treatment, reverseCharge: anyReverseCharge, vatNote,
+        netMinor: totals.netMinor, vatMinor: totals.vatMinor, grossMinor: totals.grossMinor,
+        issueDate, dueDate, createdBy: ctx.userId,
+      });
+
+      let lineNo = 1;
+      for (const li of toInsert) {
+        await this.repo.insertLine(tx, { id: newId(), tenantId: ctx.tenantId, invoiceId, lineNo: lineNo++, ...li });
+      }
+      for (const g of totals.vatBreakdown) {
+        await this.repo.insertVatGroup(tx, {
+          tenantId: ctx.tenantId, invoiceId, ratePct: g.ratePct, reverseCharge: g.reverseCharge,
+          netMinor: g.netMinor, vatMinor: g.vatMinor,
+        });
+      }
+
+      // Vez + status: v ISTI transakciji kot račun (atomarno, brez razpok).
+      for (const order of orders) {
+        await tx.query(
+          `INSERT INTO app.invoice_work_orders (invoice_id, work_order_id, tenant_id) VALUES ($1, $2, $3)`,
+          [invoiceId, order.id, ctx.tenantId],
+        );
+        await tx.query(
+          `UPDATE app.work_orders SET status='invoiced', invoiced_at=now(), version=version+1, updated_at=now() WHERE id=$1`,
+          [order.id],
+        );
+      }
+
+      await this.audit.append(tx, {
+        tenantId: ctx.tenantId, actorId: ctx.userId, action: 'invoice.issued',
+        entityType: 'invoice', entityId: invoiceId,
+        before: null,
+        after: {
+          number, treatment, reverseCharge: anyReverseCharge,
+          grossMinor: totals.grossMinor.toString(), currency,
+          source: 'consolidated', workOrderCount: orders.length,
+          workOrders: orders.map((o: any) => ({ id: o.id, number: o.number ?? null })),
+        },
+      });
+
+      await this.outbox.enqueue(tx, {
+        tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
+        payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
+      });
+      await this.outbox.enqueue(tx, {
+        tenantId: ctx.tenantId, eventType: 'einvoice.issue',
+        payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
+      });
+
+      await this.notify.toRoles(ctx.tenantId, ['owner', 'advisor'], {
+        kind: 'invoice', title: `Izdan zbirni račun ${number} (${orders.length} nalogov)`,
+        entityType: 'invoice', entityId: invoiceId, excludeUserId: ctx.userId,
+      });
+
+      return header;
+    });
+  }
+
   /** Issue a credit note that fully reverses an invoice (immutability-safe correction). */
   async createCreditNote(dto: CreditNoteDto): Promise<InvoiceHeader> {
     const ctx = getContext();
@@ -541,7 +762,18 @@ export class InvoicesService {
       if (!header) return null;
       const lines = await this.repo.listLines(tx, invoiceId);
       const vat = await this.repo.listVatBreakdown(tx, invoiceId);
-      return { ...header, lines, vatBreakdown: vat };
+      // Zbirni račun: povezani nalogi iz vezne tabele (prazno za enojni tok).
+      const wos = await tx.query<any>(
+        `SELECT w.id, w.number, a.plate
+           FROM app.invoice_work_orders iwo
+           JOIN app.work_orders w ON w.id = iwo.work_order_id
+           LEFT JOIN app.assets a ON a.id = w.asset_id
+          WHERE iwo.invoice_id = $1
+          ORDER BY w.number NULLS LAST`,
+        [invoiceId],
+      );
+      const workOrders = wos.rows.map((w: any) => ({ id: w.id, number: w.number ?? null, plate: w.plate ?? null }));
+      return { ...header, lines, vatBreakdown: vat, workOrders };
     });
     if (!result) throw new NotFoundException('Invoice not found');
     return result;
