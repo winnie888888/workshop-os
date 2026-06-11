@@ -620,5 +620,8 @@ export const api = {
   bankImport: {
     preview: (xml: string) => request<any>(`/bank-import/preview`, { method: 'POST', body: { xml } }),
     apply: (body: Record<string, unknown>) => request<any>(`/bank-import/apply`, { method: 'POST', body }),
+    // P2.1: zgodovina uvozov — glave s povzetkom in en uvoz z vsemi vnosi.
+    list: () => request<any[]>(`/bank-import`),
+    get: (id: string) => request<any>(`/bank-import/${id}`),
   },
 };

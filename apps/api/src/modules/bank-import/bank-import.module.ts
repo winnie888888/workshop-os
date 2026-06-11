@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { BadRequestException, Body, Controller, Injectable, Module, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Injectable, Module, NotFoundException, Param, Post } from '@nestjs/common';
 import { getContext, Permission } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { RequirePermissions } from '../../auth/permissions.guard';
@@ -312,6 +312,68 @@ export class BankImportService {
       results,
     };
   }
+
+  /* ----------------------- P2.1: zgodovina uvozov ----------------------- */
+
+  /** Seznam uvozov (glave) z agregatom knjiženih vnosov — revizijska sled. */
+  async listImports() {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const res = await tx.query(
+        `SELECT bi.id, bi.filename, bi.account_iban, bi.stmt_from, bi.stmt_to,
+                bi.entries_total, bi.entries_credit, bi.created_at,
+                COUNT(e.id) FILTER (WHERE e.status = 'applied')                    AS applied_count,
+                COALESCE(SUM(e.amount_minor) FILTER (WHERE e.status = 'applied'),0) AS applied_minor
+           FROM app.bank_imports bi
+           LEFT JOIN app.bank_import_entries e ON e.import_id = bi.id
+          GROUP BY bi.id
+          ORDER BY bi.created_at DESC
+          LIMIT 100`,
+      );
+      const day = (v: any): string | null => (v ? new Date(v).toISOString().slice(0, 10) : null);
+      return res.rows.map((r: any) => ({
+        id: r.id, filename: r.filename ?? null, accountIban: r.account_iban ?? null,
+        from: day(r.stmt_from), to: day(r.stmt_to),
+        entriesTotal: Number(r.entries_total), entriesCredit: Number(r.entries_credit),
+        appliedCount: Number(r.applied_count), appliedMinor: String(r.applied_minor),
+        createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      }));
+    });
+  }
+
+  /** En uvoz z vsemi vnosi (kaj je bilo knjiženo na kateri račun). */
+  async getImport(id: string) {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const head = await tx.query(`SELECT * FROM app.bank_imports WHERE id = $1`, [id]);
+      if (!head.rows[0]) throw new NotFoundException('Uvoz ne obstaja.');
+      const h = head.rows[0];
+      const ent = await tx.query(
+        `SELECT e.id, e.fingerprint, e.amount_minor, e.currency, e.booking_date,
+                e.payer_name, e.payer_iban, e.reference, e.details, e.status,
+                e.matched_invoice_id, e.payment_id, i.number AS invoice_number
+           FROM app.bank_import_entries e
+           LEFT JOIN app.invoices i ON i.id = e.matched_invoice_id
+          WHERE e.import_id = $1
+          ORDER BY e.booking_date NULLS LAST, e.created_at`,
+        [id],
+      );
+      const day = (v: any): string | null => (v ? new Date(v).toISOString().slice(0, 10) : null);
+      return {
+        id: h.id, filename: h.filename ?? null, accountIban: h.account_iban ?? null,
+        from: day(h.stmt_from), to: day(h.stmt_to),
+        entriesTotal: Number(h.entries_total), entriesCredit: Number(h.entries_credit),
+        createdAt: h.created_at instanceof Date ? h.created_at.toISOString() : String(h.created_at),
+        entries: ent.rows.map((e: any) => ({
+          id: e.id, fingerprint: e.fingerprint, amountMinor: String(e.amount_minor), currency: e.currency,
+          bookingDate: day(e.booking_date), payerName: e.payer_name ?? null, payerIban: e.payer_iban ?? null,
+          reference: e.reference ?? null, details: e.details ?? null, status: e.status,
+          invoiceId: e.matched_invoice_id ?? null, invoiceNumber: e.invoice_number ?? null,
+          paymentId: e.payment_id ?? null,
+        })),
+      };
+    });
+  }
 }
 
 /* -------------------------------- controller ------------------------------- */
@@ -334,6 +396,20 @@ export class BankImportController {
   @RequirePermissions(Permission.InvoiceIssue)
   apply(@Body() body: any) {
     return this.svc.apply(body ?? {});
+  }
+
+  /** P2.1: zgodovina uvozov (glave z agregati). */
+  @Get()
+  @RequirePermissions(Permission.InvoiceIssue)
+  list() {
+    return this.svc.listImports();
+  }
+
+  /** P2.1: en uvoz z vsemi vnosi. */
+  @Get(':id')
+  @RequirePermissions(Permission.InvoiceIssue)
+  get(@Param('id') id: string) {
+    return this.svc.getImport(id);
   }
 }
 

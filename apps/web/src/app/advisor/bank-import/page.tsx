@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { api, ApiError } from '@/lib/api';
 import { DEMO_MODE } from '@/lib/demo';
 import { formatMoneyMinor } from '@/lib/format';
@@ -235,6 +236,107 @@ export default function BankImportPage() {
           </p>
         </Card>
       )}
+
+      {!DEMO_MODE && <ImportHistory refreshKey={result ? result.applied + result.duplicates + result.errors : 0} />}
     </div>
+  );
+}
+
+/*
+ * P2.1 — zgodovina uvozov. Revizijska sled: kdaj je bila katera datoteka
+ * uvožena, koliko prilivov je imela in koliko/koliko € je bilo knjiženih.
+ * Klik na vrstico razpre vnose s povezavami na račune. refreshKey poskrbi,
+ * da se seznam osveži takoj po knjiženju (ne šele ob naslednjem obisku).
+ */
+const ENTRY_STATUS: Record<string, { label: string; tone: 'go' | 'hold' | 'neutral' }> = {
+  applied: { label: 'knjiženo', tone: 'go' },
+  pending: { label: 'v teku / prekinjeno', tone: 'hold' },
+  skipped: { label: 'preskočeno', tone: 'neutral' },
+};
+
+function ImportHistory({ refreshKey }: { refreshKey: number }) {
+  const { data: imports, error } = useSWR(['bank-imports', refreshKey], () => api.bankImport.list());
+  const [openId, setOpenId] = useState<string | null>(null);
+  const { data: detail } = useSWR(openId ? ['bank-import', openId] : null, () => api.bankImport.get(openId!));
+
+  if (error) return <ProblemBanner tone="hold" message="Zgodovine uvozov ni bilo mogoče naložiti." />;
+  if (!imports || imports.length === 0) return null;
+
+  return (
+    <Card className="p-0">
+      <div className="border-b border-line p-4">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-steel">Zgodovina uvozov</h3>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-steel">
+            <th className="p-3">Uvoženo</th>
+            <th className="p-3">Datoteka</th>
+            <th className="p-3">Obdobje</th>
+            <th className="p-3 text-right">Prilivov</th>
+            <th className="p-3 text-right">Knjiženo</th>
+            <th className="p-3 text-right">Znesek</th>
+          </tr>
+        </thead>
+        <tbody>
+          {imports.map((im: any) => (
+            <Fragment key={im.id}>
+              <tr
+                onClick={() => setOpenId((cur) => (cur === im.id ? null : im.id))}
+                className={`cursor-pointer border-b border-line last:border-0 hover:bg-floor ${openId === im.id ? 'bg-floor' : ''}`}
+              >
+                <td className="num p-3 whitespace-nowrap">{String(im.createdAt ?? '').slice(0, 10)}</td>
+                <td className="p-3 font-semibold">{im.filename ?? '—'}</td>
+                <td className="num p-3 whitespace-nowrap">{im.from ?? '…'} – {im.to ?? '…'}</td>
+                <td className="num p-3 text-right">{im.entriesCredit}</td>
+                <td className="num p-3 text-right font-bold">{im.appliedCount}</td>
+                <td className="num p-3 text-right font-bold">{formatMoneyMinor(im.appliedMinor, 'EUR')}</td>
+              </tr>
+              {openId === im.id && (
+                <tr key={`${im.id}-detail`} className="border-b border-line last:border-0">
+                  <td colSpan={6} className="bg-floor p-3">
+                    {!detail ? (
+                      <div className="p-2 text-center"><Spinner /></div>
+                    ) : detail.entries.length === 0 ? (
+                      <p className="text-sm text-muted">Ta uvoz nima zabeleženih vnosov (predogled brez knjiženja vnosov ne shrani).</p>
+                    ) : (
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs uppercase tracking-wide text-steel">
+                            <th className="p-2">Datum</th><th className="p-2">Plačnik</th><th className="p-2">Sklic</th>
+                            <th className="p-2 text-right">Znesek</th><th className="p-2">Status</th><th className="p-2">Račun</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {detail.entries.map((en: any) => {
+                            const st = ENTRY_STATUS[en.status] ?? { label: en.status, tone: 'neutral' as const };
+                            return (
+                              <tr key={en.id} className="border-t border-line">
+                                <td className="num p-2 whitespace-nowrap">{en.bookingDate ?? '—'}</td>
+                                <td className="p-2">{en.payerName ?? '—'}</td>
+                                <td className="num p-2">{en.reference ?? '—'}</td>
+                                <td className="num p-2 text-right font-bold">{formatMoneyMinor(en.amountMinor, en.currency || 'EUR')}</td>
+                                <td className="p-2"><SoftChip tone={st.tone}>{st.label}</SoftChip></td>
+                                <td className="p-2">
+                                  {en.invoiceId ? (
+                                    <Link href={`/advisor/invoices/${en.invoiceId}`} className="font-semibold text-brand hover:underline">
+                                      {en.invoiceNumber ?? 'račun'}
+                                    </Link>
+                                  ) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </Card>
   );
 }
