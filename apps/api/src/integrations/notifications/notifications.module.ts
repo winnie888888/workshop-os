@@ -4,6 +4,7 @@ import { NOTIFICATION_PORT } from './notification.port';
 import type { NotificationPort } from './notification.port';
 import { StubNotificationAdapter } from './stub-notification.adapter';
 import { ResendEmailSender } from './resend-email.adapter';
+import { InfobipSmsAdapter } from './infobip-sms.adapter';
 import { RoutingNotificationAdapter } from './routing-notification.adapter';
 import type { OutboxHandler, OutboxEvent } from '../../common/events/outbox-handler.interface';
 
@@ -40,6 +41,7 @@ export class NotificationSendHandler implements OutboxHandler {
   providers: [
     StubNotificationAdapter,
     ResendEmailSender,
+    InfobipSmsAdapter,
     RoutingNotificationAdapter,
     // Real channels route here; unconfigured channels honestly fall back to the
     // logging stub (see RoutingNotificationAdapter).

@@ -10,6 +10,7 @@ import { CounterService } from '../../common/numbering/counter.service';
 import { AppConfig } from '../../config/configuration';
 import { InvoicesRepository, type InvoiceHeader } from './invoices.repository';
 import { CreditNoteDto, IssueInvoiceDto, RecordPaymentDto } from './dto/invoice.dto';
+import { normalizeSiPhone } from '../../integrations/notifications/phone.util';
 
 /**
  * Invoicing is where the shop floor becomes money and a legal record. The
@@ -57,7 +58,7 @@ export class InvoicesService {
       if (billable.length === 0) throw new BadRequestException('Work order has no billable lines');
 
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [order.customer_id])).rows[0];
-      const tenant = (await tx.query<any>(`SELECT country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
       const currency = order.currency;
 
       // Decide VAT once for this customer (treatment depends on the parties).
@@ -165,6 +166,19 @@ export class InvoicesService {
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
       });
 
+      // SMS stranki "Račun je na voljo" (spec: invoice_available) — outbox v
+      // ISTI transakciji; telefon je neobvezen, brez njega dogodka ni.
+      if (customer.phone) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'notification.send',
+          payload: {
+            channel: 'sms', to: normalizeSiPhone(customer.phone), kind: 'invoice_available',
+            body: `Izdan je račun ${number} v znesku ${eurFromMinor(totals.grossMinor)}. — ${tenant.name}`,
+          },
+          idempotencyKey: `notify.invoice_available:${invoiceId}`,
+        });
+      }
+
       // Obvestilo v zvonček (near-commit: tik pred uspešnim zaključkom tx;
       // NotifyService teče po lastni admin poti in posla ne more podreti).
       await this.notify.toRoles(ctx.tenantId, ['owner', 'advisor'], {
@@ -199,7 +213,7 @@ export class InvoicesService {
       if (!dto.lines || dto.lines.length === 0) throw new BadRequestException('No invoice lines');
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [dto.customerId])).rows[0];
       if (!customer) throw new NotFoundException('Customer not found');
-      const tenant = (await tx.query<any>(`SELECT country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
       const currency = dto.currency ?? 'EUR';
 
       const vatCtx: Vat.VatContext = {
@@ -286,6 +300,19 @@ export class InvoicesService {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
       });
+
+      // SMS stranki "Račun je na voljo" (spec: invoice_available) — outbox v
+      // ISTI transakciji; telefon je neobvezen, brez njega dogodka ni.
+      if (customer.phone) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'notification.send',
+          payload: {
+            channel: 'sms', to: normalizeSiPhone(customer.phone), kind: 'invoice_available',
+            body: `Izdan je račun ${number} v znesku ${eurFromMinor(totals.grossMinor)}. — ${tenant.name}`,
+          },
+          idempotencyKey: `notify.invoice_available:${invoiceId}`,
+        });
+      }
 
       // Obvestilo v zvonček (near-commit: tik pred uspešnim zaključkom tx;
       // NotifyService teče po lastni admin poti in posla ne more podreti).
@@ -390,7 +417,7 @@ export class InvoicesService {
 
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [dto.customerId])).rows[0];
       if (!customer) throw new NotFoundException('Customer not found');
-      const tenant = (await tx.query<any>(`SELECT country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
 
       const vatCtx: Vat.VatContext = {
         supplierCountry: tenant.country,
@@ -510,6 +537,18 @@ export class InvoicesService {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
       });
+
+      // SMS stranki "Račun je na voljo" — ista pot kot enojni tok.
+      if (customer.phone) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'notification.send',
+          payload: {
+            channel: 'sms', to: normalizeSiPhone(customer.phone), kind: 'invoice_available',
+            body: `Izdan je zbirni račun ${number} (${orders.length} nalogov) v znesku ${eurFromMinor(totals.grossMinor)}. — ${tenant.name}`,
+          },
+          idempotencyKey: `notify.invoice_available:${invoiceId}`,
+        });
+      }
 
       await this.notify.toRoles(ctx.tenantId, ['owner', 'advisor'], {
         kind: 'invoice', title: `Izdan zbirni račun ${number} (${orders.length} nalogov)`,
@@ -824,6 +863,12 @@ export class InvoicesService {
       return { ok: true, requeued: r.rowCount };
     });
   }
+}
+
+/** Prikaz zneska v SMS: minor (bigint) -> "123,45 €" (sl decimalna vejica). */
+function eurFromMinor(minor: bigint): string {
+  const cents = Number(minor);
+  return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
 }
 
 function addDays(isoDate: string, days: number): string {

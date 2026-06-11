@@ -4,6 +4,8 @@ import {
 } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
+import { OutboxService } from '../../common/outbox/outbox.service';
+import { normalizeSiPhone } from '../../integrations/notifications/phone.util';
 import { CounterService } from '../../common/numbering/counter.service';
 import { ChangeFeedService } from '../../common/sync/change-feed.service';
 import { AppConfig } from '../../config/configuration';
@@ -23,6 +25,7 @@ export class WorkOrdersService {
     private readonly audit: AuditService,
     private readonly changes: ChangeFeedService,
     private readonly inventory: InventoryService,
+    private readonly outbox: OutboxService,
     private readonly config: AppConfig,
   ) {}
 
@@ -232,6 +235,32 @@ export class WorkOrdersService {
         tenantId: ctx.tenantId, entityType: 'work_order', entityId: workOrderId,
         op: 'upsert', version: updated.version, payload: updated,
       });
+
+      // SMS stranki ob prehodu v 'Pripravljeno' (spec: vehicle_ready) — outbox
+      // v ISTI transakciji: brez prehoda ni sporočila, brez sporočila ni
+      // prehoda. Telefon je neobvezen; brez njega dogodka ni. Idempotentno na
+      // nalog (ponovni 'ready' po zadržanju NE pošlje drugič).
+      if (to === 'ready') {
+        const info = (await tx.query<any>(
+          `SELECT c.phone, t.name AS tenant_name, a.plate
+             FROM app.work_orders w
+             JOIN app.customers c ON c.id = w.customer_id
+             JOIN app.tenants t ON t.id = w.tenant_id
+             LEFT JOIN app.assets a ON a.id = w.asset_id
+            WHERE w.id = $1`,
+          [workOrderId],
+        )).rows[0];
+        if (info?.phone) {
+          await this.outbox.enqueue(tx, {
+            tenantId: ctx.tenantId, eventType: 'notification.send',
+            payload: {
+              channel: 'sms', to: normalizeSiPhone(info.phone), kind: 'vehicle_ready',
+              body: `Vaše vozilo${info.plate ? ` ${info.plate}` : ''} je pripravljeno za prevzem. — ${info.tenant_name}`,
+            },
+            idempotencyKey: `notify.vehicle_ready:${workOrderId}`,
+          });
+        }
+      }
       return updated;
     });
   }

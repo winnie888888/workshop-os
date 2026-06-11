@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { NotificationMessage, NotificationPort, NotificationSendResult } from './notification.port';
 import { StubNotificationAdapter } from './stub-notification.adapter';
 import { ResendEmailSender } from './resend-email.adapter';
+import { InfobipSmsAdapter } from './infobip-sms.adapter';
 
 /**
  * Routing adapter behind NOTIFICATION_PORT. The channel is a field, not a
@@ -22,6 +23,7 @@ export class RoutingNotificationAdapter implements NotificationPort {
   constructor(
     private readonly stub: StubNotificationAdapter,
     private readonly resend: ResendEmailSender,
+    private readonly infobip: InfobipSmsAdapter,
   ) {}
 
   async send(message: NotificationMessage): Promise<NotificationSendResult> {
@@ -32,6 +34,15 @@ export class RoutingNotificationAdapter implements NotificationPort {
     if (message.channel === 'email') {
       this.log.warn('RESEND_API_KEY not set — email routed to log stub (dev mode).');
     }
+    if (message.channel === 'sms' && this.infobip.configured) {
+      const r = await this.infobip.send(message.to, message.kind, message.body, message.link);
+      return { providerMessageId: r.id, provider: 'infobip', accepted: r.accepted };
+    }
+    if (message.channel === 'sms') {
+      this.log.warn('INFOBIP_* not set — sms routed to log stub (dev mode).');
+    }
+    // whatsapp: isti port, adapter pride za isto routing točko (spec:
+    // migracija SMS -> WhatsApp brez dotika poslovne logike). Do takrat stub.
     return this.stub.send(message);
   }
 }
