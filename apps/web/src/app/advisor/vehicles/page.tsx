@@ -56,12 +56,12 @@ export default function VehiclesBrowser() {
               <tbody>
                 {(vehicles as any[]).map((v) => (
                   <tr key={v.id} className="border-t border-line transition hover:bg-floor">
-                    <td className="num px-4 py-3 font-bold text-ink">{v.plate ? displayPlate(v.plate) : '—'}</td>
+                    <td className="num px-4 py-3 font-bold"><Link href={`/advisor/vehicles/${v.id}`} className="text-brand hover:underline">{v.plate ? displayPlate(v.plate) : '—'}</Link></td>
                     <td className="px-4 py-3 text-ink">{[v.make, v.model].filter(Boolean).join(' ') || '—'}</td>
                     <td className="num hidden px-4 py-3 text-xs text-muted sm:table-cell">{v.vin ?? '—'}</td>
                     <td className="px-4 py-3"><SoftChip tone="neutral">{v.type ?? '—'}</SoftChip></td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/advisor/vehicles/${v.id}/edit`} className="text-sm font-semibold text-muted2 hover:text-brand">uredi</Link>
+                      <Link href={`/advisor/vehicles/${v.id}`} className="mr-3 text-sm font-semibold text-brand hover:underline">odpri</Link><Link href={`/advisor/vehicles/${v.id}/edit`} className="text-sm font-semibold text-muted2 hover:text-brand">uredi</Link>
                     </td>
                   </tr>
                 ))}

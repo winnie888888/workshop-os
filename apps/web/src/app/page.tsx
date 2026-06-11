@@ -224,7 +224,7 @@ function SignedInHome({ session, tenantName, onSwitch, onLogout }: {
     if (hit.type === 'work_order') router.push(`/advisor/work-orders/${hit.id}`);
     else if (hit.type === 'customer') router.push(`/advisor/customers/${hit.id}`);
     else if (hit.type === 'invoice') router.push(`/advisor/invoices/${hit.id}`);
-    else if (hit.type === 'vehicle') router.push(`/advisor/vehicles`);
+    else if (hit.type === 'vehicle') router.push(`/advisor/vehicles/${hit.id}`);
   }
 
   return (
