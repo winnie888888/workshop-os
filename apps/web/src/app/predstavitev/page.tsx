@@ -16,8 +16,9 @@ export const metadata = {
     'Delovni nalogi, stranke, vozila, skladišče, fotografije, delovni čas in portal stranke — vse na enem mestu.',
 };
 
-const LOGIN_URL = '/login'; // TODO: preveri — točen URL prijave
-const DEMO_URL = '/demo';   // TODO: preveri — povezava, ki vklopi demo
+const LOGIN_URL = '/login'; // TODO: preveri — točen URL prijave (iz MarketingShell)
+const DEMO_URL = '/demo';   // TODO: preveri — povezava, ki vklopi demo (iz MarketingShell)
+const SIGNUP_URL = '/signup'; // potrjen — 14-dnevni preizkus (obstoječa ruta s stare strani)
 
 const CSS = `
 .lp{--navy:#0A1F3D;--navy2:#0E2950;--blue:#1A6BEF;--blue-dark:#1257C9;--blue-soft:#EAF1FD;
@@ -233,12 +234,12 @@ export default function Predstavitev() {
             <p className="lead rise d1">Delovni nalogi, stranke, vozila, material, skladišče, fotografije, delovni čas in portal stranke — vse na enem mestu.</p>
             <div className="cta rise d2">
               <div>
-                <a className="btn btn-solid" href={DEMO_URL}><Play /> PREIZKUSI DEMO</a>
-                <span className="micro">Brez prijave · Takoj dostopno</span>
+                <a className="btn btn-solid" href={SIGNUP_URL}><Play /> PREIZKUSI 14 DNI BREZPLAČNO</a>
+                <span className="micro">Brez kartice · podatki ostanejo vaši</span>
               </div>
               <div>
-                <a className="btn btn-outline" href={LOGIN_URL}><Lock /> PRIJAVA V SISTEM</a>
-                <span className="micro">Vstop za obstoječe uporabnike</span>
+                <a className="btn btn-outline" href={DEMO_URL}>PREIZKUSI DEMO</a>
+                <span className="micro">Brez prijave · Takoj dostopno</span>
               </div>
             </div>
             <ul className="checks rise d3" aria-label="Ključne zmožnosti">
@@ -393,19 +394,40 @@ export default function Predstavitev() {
         </div>
       </section>
 
+      {/* ====== zaupanje ====== */}
+      <section>
+        <div className="wrap">
+          <h2 className="sec-h">Vaši podatki so vaši. Pika.</h2>
+          <div className="cards3">
+            <div className="role">
+              <h3>Ločenost najemnikov</h3>
+              <p>Vsaka delavnica je strogo izolirana na ravni baze (RLS), vsak dostop revidiran.</p>
+            </div>
+            <div className="role">
+              <h3>Izvoz kadar koli</h3>
+              <p>Celoten posnetek podatkov (GDPR) na en klik — tudi če naročnino prekinete.</p>
+            </div>
+            <div className="role">
+              <h3>Zasnovano za EU</h3>
+              <p>Gostovanje in AI obdelava sta načrtovana znotraj EU; pogodba o obdelavi (DPA) na voljo.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ====== CTA ====== */}
       <div className="band">
         <div className="wrap">
           <div>
             <h2>Pripravljeni na digitalno delavnico?</h2>
-            <p>Prihranite čas, zmanjšajte napake in povečajte zadovoljstvo strank.</p>
+            <p>Registracija traja dve minuti. Prvi delovni nalog lahko odprete še danes.</p>
           </div>
           <div className="bb">
             <a className="btn btn-ghost" href="#kontakt">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3.5" y="5" width="17" height="16" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
               ZAHTEVAJ PREDSTAVITEV
             </a>
-            <a className="btn btn-white" href={DEMO_URL}><Play /> PREIZKUSI DEMO</a>
+            <a className="btn btn-white" href={SIGNUP_URL}>ZAČNI BREZPLAČNI PREIZKUS →</a>
           </div>
         </div>
       </div>
