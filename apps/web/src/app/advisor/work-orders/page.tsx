@@ -29,10 +29,16 @@ export default function WorkOrdersList() {
   const [q, setQ] = useState('');
 
   const all = data ?? [];
-  const counts = useMemo(() => {
-    const c: Record<FilterKey, number> = { all: 0, in_progress: 0, waiting: 0, ready: 0, done: 0 };
-    for (const f of FILTERS) c[f.key] = all.filter(f.match).length;
-    return c;
+  const currency = all[0]?.currency ?? 'EUR';
+  const stats = useMemo(() => {
+    const z: Record<FilterKey, { n: number; sum: number }> = {
+      all: { n: 0, sum: 0 }, in_progress: { n: 0, sum: 0 }, waiting: { n: 0, sum: 0 }, ready: { n: 0, sum: 0 }, done: { n: 0, sum: 0 },
+    };
+    for (const f of FILTERS) {
+      const hit = all.filter(f.match);
+      z[f.key] = { n: hit.length, sum: hit.reduce((acc, w) => acc + (w.totalGrossMinor ?? 0), 0) };
+    }
+    return z;
   }, [all]);
 
   const rows = useMemo(() => {
@@ -60,22 +66,25 @@ export default function WorkOrdersList() {
         </Link>
       </div>
 
-      {/* Filters + search */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <button key={f.key} onClick={() => setFilter(f.key)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition
-                  ${active ? 'border-brand bg-brand text-white' : 'border-line bg-surface text-steel hover:border-brandring hover:bg-brandweak'}`}>
-                {f.label}
-                <span className={`num grid h-4 min-w-4 place-items-center rounded-full px-1 text-[0.65rem] font-bold
-                  ${active ? 'bg-white/25 text-white' : 'bg-floor text-muted2'}`}>{counts[f.key]}</span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Statistične ploščice = filtri (mockup: število + vsota zneskov) */}
+      <div className="stagger grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          const st = stats[f.key];
+          return (
+            <button key={f.key} onClick={() => setFilter(active ? 'all' : f.key)}
+              className={`rounded-card border bg-surface p-3 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-lift
+                ${active ? 'border-brand ring-2 ring-brandweak' : 'border-line hover:border-brandring'}`}>
+              <span className="block text-[0.7rem] font-bold uppercase tracking-wide text-muted2">{f.label}</span>
+              <span className="num mt-1 block text-2xl font-extrabold leading-none text-ink">{st.n}</span>
+              <span className="num mt-1 block truncate text-xs font-semibold text-muted">{formatMoneyMinor(st.sum, currency)}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Iskanje */}
+      <div className="flex">
         <div className="relative ml-auto w-full sm:w-64">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted2">
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -102,7 +111,7 @@ export default function WorkOrdersList() {
             </thead>
             <tbody>
               {rows.map((w) => (
-                <tr key={w.id} className="border-t border-line transition hover:bg-floor">
+                <tr key={w.id} className={`border-t border-line transition ${!w.number ? 'bg-safety/10 hover:bg-safety/15' : 'hover:bg-floor'}`}>
                   <td className="px-4 py-3">
                     <Link href={`/advisor/work-orders/${w.id}`} className="num font-semibold text-brand hover:underline">{w.number ?? 'osnutek'}</Link>
                   </td>
