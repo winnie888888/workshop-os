@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSession } from '@/lib/session';
 import { loadSettings } from '@/lib/workshop-settings';
+import { MobileTabBar } from '@/components/mobile-tabbar';
 
 /*
  * Warehouse shell — redesigned to the A-SPRINT spec, matching the advisor shell:
@@ -25,12 +26,17 @@ export default function WarehouseLayout({ children }: { children: React.ReactNod
     <div className="grid min-h-screen grid-cols-1 bg-floor lg:grid-cols-[15.5rem_1fr]">
       <Rail open={navOpen} onClose={() => setNavOpen(false)} />
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-col pb-[4.25rem] lg:pb-0">
         <TopBar onMenu={() => setNavOpen((o) => !o)} />
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
         </footer>
+        <MobileTabBar items={[
+          { label: 'Domov', icon: 'home', href: '/' },
+          { label: 'Skladišče', icon: 'box', href: '/warehouse' },
+          { label: 'Meni', icon: 'menu', onClick: () => setNavOpen(true) },
+        ]} />
       </div>
     </div>
   );
