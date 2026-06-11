@@ -9,13 +9,14 @@ import {
   Param,
   Put,
 } from '@nestjs/common';
-import { getContext, Permission } from '@workshop/shared';
 import {
+  getContext,
+  Permission,
   effectivePermissionsFor,
   isValidPermission,
   type PermissionOverride,
   type Role,
-} from '@workshop/shared/roles';
+} from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
 import { RequirePermissions, invalidatePermissionOverrides } from '../../auth/permissions.guard';

@@ -7,8 +7,13 @@ import {
   createParamDecorator,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { getContext, type Permission, type Role } from '@workshop/shared';
-import { hasEffectivePermission, type PermissionOverride } from '@workshop/shared/roles';
+import {
+  getContext,
+  hasEffectivePermission,
+  type Permission,
+  type PermissionOverride,
+  type Role,
+} from '@workshop/shared';
 import { PgService } from '../common/db/pg.service';
 
 export const PERMISSIONS_KEY = 'required_permissions';
@@ -54,7 +59,8 @@ export class PermissionsGuard implements CanActivate {
 
     const ctx = getContext(); // throws if no tenant context bound
     const roles = ctx.roles as Role[];
-    const overrides = await this.loadOverrides(ctx.tenantId, ctx.userId);
+    // Brez vezanega uporabnika (sistemske poti) izjem ni — veljajo samo vloge.
+    const overrides = ctx.userId ? await this.loadOverrides(ctx.tenantId, ctx.userId) : [];
     const ok = required.every((p) => hasEffectivePermission(roles, overrides, p));
     if (!ok) throw new ForbiddenException('Insufficient permissions');
     return true;
