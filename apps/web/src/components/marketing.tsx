@@ -18,18 +18,18 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-surface text-ink">
       <header className="sticky top-0 z-40 bg-[#0A1F3D] text-white shadow-[0_2px_14px_rgba(4,14,30,.35)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
-          <Link href="/predstavitev" className="flex items-center gap-2.5" aria-label="A-SPRINT Garage — predstavitev">
-            <span className="grid h-9 w-9 -skew-x-6 place-items-center rounded-[9px] bg-gradient-to-br from-[#2D7DFF] to-[#5AA2FF] text-xl font-black italic shadow-[0_4px_12px_rgba(45,125,255,.45)]">A</span>
+          <Link href="/predstavitev" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label="A-SPRINT Garage — predstavitev">
+            <span className="grid h-8 w-8 -skew-x-6 place-items-center rounded-[8px] bg-gradient-to-br from-[#2D7DFF] to-[#5AA2FF] text-lg font-black italic shadow-[0_4px_12px_rgba(45,125,255,.45)] sm:h-9 sm:w-9 sm:rounded-[9px] sm:text-xl">A</span>
             <span className="leading-none">
-              <span className="block text-[15px] font-black italic tracking-tight">A-SPRINT</span>
-              <span className="block text-[8px] font-bold not-italic tracking-[.42em] text-[#9DB6D8]">GARAGE</span>
+              <span className="block whitespace-nowrap text-[13.5px] font-black italic tracking-tight sm:text-[15px]">A-SPRINT</span>
+              <span className="block whitespace-nowrap text-[7px] font-bold not-italic tracking-[.3em] text-[#9DB6D8] sm:text-[8px] sm:tracking-[.42em]">GARAGE</span>
             </span>
           </Link>
-          <nav className="flex items-center gap-5 text-sm font-semibold">
-            <Link href="/predstavitev" className="text-[#D7E2F2] hover:text-white">Predstavitev</Link>
+          <nav className="flex items-center gap-3 text-sm font-semibold sm:gap-5">
+            <Link href="/predstavitev" className="hidden text-[#D7E2F2] hover:text-white sm:block">Predstavitev</Link>
             <Link href="/cenik" className="text-[#D7E2F2] hover:text-white">Cenik</Link>
-            <Link href="/" className="rounded-lg border border-white/45 px-3 py-1.5 text-white hover:bg-white/10">Prijava</Link>
-            <Link href={DEMO_URL} className="rounded-lg bg-[#1A6BEF] px-3 py-1.5 text-white hover:bg-[#1257C9]">Demo</Link>
+            <Link href="/" className="whitespace-nowrap rounded-lg border border-white/45 px-2.5 py-1.5 text-[12px] text-white hover:bg-white/10 sm:px-3 sm:text-sm">Prijava</Link>
+            <Link href={DEMO_URL} className="whitespace-nowrap rounded-lg bg-[#1A6BEF] px-2.5 py-1.5 text-[12px] text-white hover:bg-[#1257C9] sm:px-3 sm:text-sm">Demo</Link>
           </nav>
         </div>
       </header>

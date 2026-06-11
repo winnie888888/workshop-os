@@ -29,7 +29,7 @@ const CSS = `
 .lp,.lp *{box-sizing:border-box;margin:0;padding:0}
 .lp a{text-decoration:none;color:inherit}
 .lp .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-.lp .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;letter-spacing:.02em;
+.lp .btn{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:14px;letter-spacing:.02em;white-space:nowrap;
   border-radius:10px;padding:13px 22px;border:1.5px solid transparent;cursor:pointer;transition:.15s}
 .lp .btn:focus-visible{outline:3px solid #9CC0FF;outline-offset:2px}
 .lp .btn-solid{background:var(--blue);color:#fff}
@@ -54,8 +54,8 @@ const CSS = `
   display:grid;place-items:center;font-weight:900;font-style:italic;font-size:22px;color:#fff;
   transform:skewX(-6deg);box-shadow:0 4px 12px rgba(45,125,255,.45)}
 .lp .logo-text{line-height:1.05}
-.lp .logo-text b{display:block;font-size:17px;font-weight:900;font-style:italic;letter-spacing:.02em}
-.lp .logo-text i{display:block;font-size:9px;letter-spacing:.42em;color:#9DB6D8;font-weight:700;font-style:normal}
+.lp .logo-text b{display:block;font-size:17px;font-weight:900;font-style:italic;letter-spacing:.02em;white-space:nowrap}
+.lp .logo-text i{display:block;font-size:9px;letter-spacing:.42em;color:#9DB6D8;font-weight:700;font-style:normal;white-space:nowrap}
 
 .lp .hero{background:linear-gradient(180deg,#E9F1FC 0%,#F7FAFE 70%,#fff 100%);overflow:hidden}
 .lp .hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center;padding-top:64px;padding-bottom:72px}
@@ -182,6 +182,13 @@ const CSS = `
   .lp .hero h1{font-size:34px}
   .lp .phone{right:-6px;width:124px}
   .lp .frow{grid-template-columns:1fr}
+  .lp .nav{gap:10px;height:60px}
+  .lp .acts{margin-left:auto;gap:7px}
+  .lp .acts .btn{padding:8px 10px;font-size:11px;letter-spacing:0}
+  .lp .logo{gap:7px}
+  .lp .logo-mark{width:31px;height:31px;font-size:18px;border-radius:8px}
+  .lp .logo-text b{font-size:13.5px}
+  .lp .logo-text i{font-size:7px;letter-spacing:.3em}
 }
 `;
 
