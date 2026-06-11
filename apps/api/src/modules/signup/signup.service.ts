@@ -48,6 +48,33 @@ export class SignupService {
     @Inject(NOTIFICATION_PORT) private readonly notify: NotificationPort,
   ) {}
 
+  /**
+   * Zgodovina prijav (P3b): en vnos na izid lokalne prijave. Toleranten —
+   * napaka pri pisanju zgodovine NIKOLI ne spremeni izida avtentikacije in
+   * odgovor klientu ostane bit za bitom enak (enumeration zaščita velja).
+   */
+  private async recordLoginEvent(tx: any, e: {
+    userId?: string | null; emailAttempted?: string | null;
+    success: boolean; ip?: string | null; userAgent?: string | null; detail?: string | null;
+  }): Promise<void> {
+    try {
+      await tx.query(
+        `INSERT INTO app.login_events (user_id, tenant_id, email_attempted, method, success, ip, user_agent, detail)
+         VALUES ($1, NULL, $2, 'local', $3, $4, $5, $6)`,
+        [e.userId ?? null, e.emailAttempted ?? null, e.success,
+         e.ip ?? null, (e.userAgent ?? '').slice(0, 300) || null, e.detail ?? null],
+      );
+    } catch { /* zgodovina ne sme nikoli podreti avtentikacije */ }
+  }
+
+  /** Samostojen zapis dogodka izven obstoječe transakcije (kratke poti, ki vržejo). */
+  private logLoginOutcome(e: {
+    userId?: string | null; emailAttempted?: string | null;
+    success: boolean; ip?: string | null; userAgent?: string | null; detail?: string | null;
+  }): void {
+    void this.pg.withAdmin((tx) => this.recordLoginEvent(tx, e)).catch(() => { /* ignore */ });
+  }
+
   /** In-memory drsno okno (1 h). Vrne false, ko je limit presežen. */
   private allow(key: string, max: number): boolean {
     const now = Date.now();
@@ -187,7 +214,7 @@ export class SignupService {
     return { ok: true, accessToken, tenantId: result.tenantId, user: { id: result.userId, email: result.email, name: result.name } };
   }
 
-  async login(input: { email: string; password: string }, ip: string): Promise<{
+  async login(input: { email: string; password: string }, ip: string, userAgent?: string | null): Promise<{
     ok: true; accessToken: string;
     user: { id: string; email: string; name: string };
     memberships: Array<{ tenantId: string; tenantName: string; roles: string[] }>;
@@ -209,8 +236,15 @@ export class SignupService {
       )).rows[0]);
 
     const generic = new UnauthorizedException('Napačen e-mail ali geslo.');
-    if (!row || row.status !== 'active') throw generic;
+    if (!row || row.status !== 'active') {
+      this.logLoginOutcome({
+        userId: row?.id ?? null, emailAttempted: email, success: false,
+        ip, userAgent, detail: row ? 'inactive_user' : 'unknown_email',
+      });
+      throw generic;
+    }
     if (row.locked_until && new Date(row.locked_until).getTime() > Date.now()) {
+      this.logLoginOutcome({ userId: row.id, emailAttempted: email, success: false, ip, userAgent, detail: 'locked' });
       throw new UnauthorizedException(`Račun je začasno zaklenjen (${LOCK_MINUTES} min) zaradi preveč poskusov.`);
     }
 
@@ -225,10 +259,14 @@ export class SignupService {
             WHERE user_id = $1`,
           [row.id, LOCK_AFTER_ATTEMPTS, LOCK_MINUTES],
         );
+        await this.recordLoginEvent(tx, {
+          userId: row.id, emailAttempted: email, success: false, ip, userAgent, detail: 'wrong_password',
+        });
       });
       throw generic;
     }
     if (!row.email_verified_at) {
+      this.logLoginOutcome({ userId: row.id, emailAttempted: email, success: false, ip, userAgent, detail: 'email_not_verified' });
       throw new UnauthorizedException('E-mail še ni potrjen. Preverite svoj nabiralnik.');
     }
 
@@ -244,6 +282,7 @@ export class SignupService {
           ORDER BY t.name`,
         [row.id],
       );
+      await this.recordLoginEvent(tx, { userId: row.id, emailAttempted: email, success: true, ip, userAgent, detail: null });
       return m.rows.map((r: any) => ({ tenantId: r.tenant_id, tenantName: r.tenant_name, roles: r.roles ?? [] }));
     });
 

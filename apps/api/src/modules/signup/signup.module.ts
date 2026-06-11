@@ -1,4 +1,4 @@
-import { Body, Controller, Ip, Module, Post } from '@nestjs/common';
+import { Body, Controller, Headers, Ip, Module, Post } from '@nestjs/common';
 import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { NotificationsModule } from '../../integrations/notifications/notifications.module';
 import { SignupService } from './signup.service';
@@ -42,8 +42,8 @@ export class SignupController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto, @Ip() ip: string) {
-    return this.signup.login(dto, ip || 'unknown');
+  login(@Body() dto: LoginDto, @Ip() ip: string, @Headers('user-agent') userAgent?: string) {
+    return this.signup.login(dto, ip || 'unknown', userAgent ?? null);
   }
 }
 

@@ -201,6 +201,13 @@ export class MembersService {
              OR (e.user_id IS NOT NULL AND EXISTS (
                    SELECT 1 FROM app.memberships m
                     WHERE m.tenant_id = $1 AND m.user_id = e.user_id))
+             -- P3b: neuspeli poskusi na e-naslove NAŠIH članov (npr. neznan
+             -- e-naslov s tipkarsko napako, brute-force) — user_id je NULL,
+             -- vez je e-naslov. Tuji nasumični poskusi ostanejo nevidni.
+             OR (e.user_id IS NULL AND e.email_attempted IS NOT NULL AND EXISTS (
+                   SELECT 1 FROM app.memberships m
+                   JOIN app.users u ON u.id = m.user_id
+                    WHERE m.tenant_id = $1 AND lower(u.email) = lower(e.email_attempted)))
           ORDER BY e.at DESC
           LIMIT $2`,
         [ctx.tenantId, lim],

@@ -413,6 +413,12 @@ const METHOD_LABEL: Record<string, string> = {
   local: 'Geslo', oidc_session: 'Nova seja', api_key: 'API ključ', logout: 'Odjava',
 };
 
+const DETAIL_LABEL: Record<string, string> = {
+  wrong_password: 'napačno geslo', unknown_email: 'neznan e-naslov', locked: 'račun zaklenjen',
+  email_not_verified: 'nepotrjen e-mail', inactive_user: 'neaktiven uporabnik',
+  unknown_key: 'neznan ključ', revoked_key: 'preklican ključ',
+};
+
 function LoginsTab() {
   const { data: events, error } = useSWR('login-events', () => api.members.logins(150), { refreshInterval: 30000 });
 
@@ -460,6 +466,9 @@ function LoginsTab() {
                   <td className="px-4 py-2.5"><SoftChip tone={e.method === 'logout' ? 'neutral' : 'info'}>{METHOD_LABEL[e.method] ?? e.method}</SoftChip></td>
                   <td className="px-4 py-2.5">
                     {e.success ? <SoftChip tone="go">uspešno</SoftChip> : <SoftChip tone="stop">zavrnjeno</SoftChip>}
+                    {!e.success && e.detail && (
+                      <span className="mt-0.5 block text-[0.65rem] text-muted2">{DETAIL_LABEL[e.detail] ?? e.detail}</span>
+                    )}
                   </td>
                   <td className="num px-4 py-2.5 text-muted">{e.ip ?? '—'}</td>
                   <td className="max-w-[16rem] truncate px-4 py-2.5 text-xs text-muted" title={e.userAgent ?? undefined}>{e.userAgent ?? '—'}</td>
