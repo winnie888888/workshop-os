@@ -50,12 +50,18 @@ const CSS = `
 .lp .acts{display:flex;gap:10px;margin-left:18px}
 .lp .acts .btn{padding:10px 16px;font-size:13px}
 .lp .logo{display:flex;align-items:center;gap:10px}
-.lp .logo-mark{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,#2D7DFF,#5AA2FF);
-  display:grid;place-items:center;font-weight:900;font-style:italic;font-size:22px;color:#fff;
-  transform:skewX(-6deg);box-shadow:0 4px 12px rgba(45,125,255,.45)}
-.lp .logo-text{line-height:1.05}
-.lp .logo-text b{display:block;font-size:17px;font-weight:900;font-style:italic;letter-spacing:.02em;white-space:nowrap}
-.lp .logo-text i{display:block;font-size:9px;letter-spacing:.42em;color:#9DB6D8;font-weight:700;font-style:normal;white-space:nowrap}
+.lp .logo-pill{background:#fff;border-radius:10px;padding:5px 10px;display:flex;align-items:center;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.lp .logo-pill img{height:30px;display:block;width:auto}
+.lp .hb{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:10px 8px;margin-left:-6px}
+.lp .hb span{display:block;width:21px;height:2.4px;background:#fff;border-radius:2px;transition:.2s}
+.lp .nav-toggle{display:none}
+.lp .lpmenu{display:none;background:var(--navy2);border-top:1px solid rgba(255,255,255,.12)}
+.lp .lpmenu a{display:block;padding:14px 24px;font-size:13px;font-weight:700;letter-spacing:.06em;color:#D7E2F2;border-bottom:1px solid rgba(255,255,255,.07)}
+.lp .lpmenu a:last-child{border-bottom:0}
+.lp .nav-toggle:checked ~ .lpmenu{display:block}
+.lp .nav-toggle:checked ~ .nav .hb span:nth-child(1){transform:translateY(6.4px) rotate(45deg)}
+.lp .nav-toggle:checked ~ .nav .hb span:nth-child(2){opacity:0}
+.lp .nav-toggle:checked ~ .nav .hb span:nth-child(3){transform:translateY(-6.4px) rotate(-45deg)}
 
 .lp .hero{background:linear-gradient(180deg,#E9F1FC 0%,#F7FAFE 70%,#fff 100%);overflow:hidden}
 .lp .hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center;padding-top:64px;padding-bottom:72px}
@@ -174,6 +180,7 @@ const CSS = `
   .lp .why .wrap{grid-template-columns:1fr}
   .lp .frow{grid-template-columns:1fr 1fr}
   .lp .nav nav{display:none}
+  .lp .hb{display:flex}
 }
 @media (max-width:640px){
   .lp .cards3{grid-template-columns:1fr}
@@ -186,9 +193,8 @@ const CSS = `
   .lp .acts{margin-left:auto;gap:7px}
   .lp .acts .btn{padding:8px 10px;font-size:11px;letter-spacing:0}
   .lp .logo{gap:7px}
-  .lp .logo-mark{width:31px;height:31px;font-size:18px;border-radius:8px}
-  .lp .logo-text b{font-size:13.5px}
-  .lp .logo-text i{font-size:7px;letter-spacing:.3em}
+  .lp .logo-pill{padding:4px 8px;border-radius:8px}
+  .lp .logo-pill img{height:24px}
 }
 `;
 
@@ -205,10 +211,12 @@ const Cam = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="7" width="18" height="13" rx="2.5" /><circle cx="12" cy="13.5" r="3.4" /></svg>
 );
 
-const Logo = ({ light = false }: { light?: boolean }) => (
+const Logo = () => (
   <span className="logo">
-    <span className="logo-mark">A</span>
-    <span className="logo-text"><b style={light ? { color: '#fff' } : undefined}>A-SPRINT</b><i>G A R A G E</i></span>
+    <span className="logo-pill">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/logo-asprint.jpg" alt="A-SPRINT GARAGE" />
+    </span>
   </span>
 );
 
@@ -219,8 +227,10 @@ export default function Predstavitev() {
 
       {/* ====== glava ====== */}
       <div className="hd">
+        <input type="checkbox" id="lp-nav" className="nav-toggle" aria-hidden="true" />
         <div className="wrap nav">
-          <a href="/predstavitev" aria-label="A-SPRINT Garage — domov"><Logo light /></a>
+          <label className="hb" htmlFor="lp-nav" aria-label="Odpri meni"><span /><span /><span /></label>
+          <a href="/predstavitev" aria-label="A-SPRINT Garage — domov"><Logo /></a>
           <nav aria-label="Glavna navigacija">
             <a href="#funkcionalnosti">FUNKCIONALNOSTI</a>
             <a href="#prednosti">PREDNOSTI</a>
@@ -232,6 +242,15 @@ export default function Predstavitev() {
             <a className="btn btn-solid" href={DEMO_URL}>DEMO</a>
           </div>
         </div>
+        <div className="lpmenu">
+          <a href="#funkcionalnosti">FUNKCIONALNOSTI</a>
+          <a href="#prednosti">PREDNOSTI</a>
+          <a href="/cenik">CENIK</a>
+          <a href="#kontakt">KONTAKT</a>
+        </div>
+        <script dangerouslySetInnerHTML={{ __html:
+          "document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('.lpmenu a');if(a){var t=document.getElementById('lp-nav');if(t)t.checked=false;}});"
+        }} />
       </div>
 
       {/* ====== hero ====== */}
@@ -445,7 +464,7 @@ export default function Predstavitev() {
       <footer className="ft" id="kontakt">
         <div className="wrap">
           <div className="frow">
-            <a href="/predstavitev" aria-label="A-SPRINT Garage"><Logo light /></a>
+            <a href="/predstavitev" aria-label="A-SPRINT Garage"><Logo /></a>
             <small><span className="b">A-SPRINT d.o.o.</span><br />Železničarska cesta 28, 8340 Črnomelj, Slovenija</small>
             <small><a href="mailto:info@a-sprint.si">info@a-sprint.si</a><br /><a href="tel:+38640328279">+386 40 328 279</a></small>
             <div>

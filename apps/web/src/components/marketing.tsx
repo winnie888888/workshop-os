@@ -18,11 +18,10 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-surface text-ink">
       <header className="sticky top-0 z-40 bg-[#0A1F3D] text-white shadow-[0_2px_14px_rgba(4,14,30,.35)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-5 py-3.5">
-          <Link href="/predstavitev" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label="A-SPRINT Garage — predstavitev">
-            <span className="grid h-8 w-8 -skew-x-6 place-items-center rounded-[8px] bg-gradient-to-br from-[#2D7DFF] to-[#5AA2FF] text-lg font-black italic shadow-[0_4px_12px_rgba(45,125,255,.45)] sm:h-9 sm:w-9 sm:rounded-[9px] sm:text-xl">A</span>
-            <span className="leading-none">
-              <span className="block whitespace-nowrap text-[13.5px] font-black italic tracking-tight sm:text-[15px]">A-SPRINT</span>
-              <span className="block whitespace-nowrap text-[7px] font-bold not-italic tracking-[.3em] text-[#9DB6D8] sm:text-[8px] sm:tracking-[.42em]">GARAGE</span>
+          <Link href="/predstavitev" className="flex shrink-0 items-center" aria-label="A-SPRINT Garage — predstavitev">
+            <span className="flex items-center rounded-[8px] bg-white px-2 py-1 shadow-[0_3px_10px_rgba(0,0,0,.3)] sm:rounded-[10px] sm:px-2.5 sm:py-[5px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-asprint.jpg" alt="A-SPRINT GARAGE" className="block h-6 w-auto sm:h-[30px]" />
             </span>
           </Link>
           <nav className="flex items-center gap-3 text-sm font-semibold sm:gap-5">
