@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
-import { formatMoneyMinor, todayIso } from '@/lib/format';
+import { useMemo } from 'react';
+import { formatMoneyMinor, statusLabel, statusTone, todayIso } from '@/lib/format';
 import { Card, Spinner } from '@/components/ui';
 
 /*
@@ -29,6 +30,23 @@ export default function OwnerDashboard() {
   const { data: ai } = useSWR('owner-ai', () => api.manager.dashboard(30).catch(() => null));
   const { data: recent } = useSWR('owner-recent', () => api.workOrders.list({ statuses: ['ready', 'invoiced'], limit: 8 }).catch(() => []));
 
+  // Mesečni prihodki za graf: 6 oken, vzporedni klici istega poročila.
+  const { data: revSeries } = useSWR('owner-rev-6m', async () => {
+    const wins = monthWindows(6);
+    const rs = await Promise.all(wins.map((w) => api.reports.revenue(w.from, w.to).catch(() => null)));
+    return wins.map((w, i) => ({ label: w.label, minor: Number(rs[i]?.grossMinor ?? 0) }));
+  });
+  // Mešanica nalogov po statusih za donut.
+  const { data: woMix } = useSWR('owner-wo-mix', () => api.workOrders.list({ limit: 200 }).catch(() => []));
+
+  const revTrend = useMemo(() => {
+    if (!revSeries || revSeries.length < 2) return null;
+    const prev = revSeries[revSeries.length - 2].minor;
+    const cur = revSeries[revSeries.length - 1].minor;
+    if (prev <= 0) return null;
+    return ((cur - prev) / prev) * 100;
+  }, [revSeries]);
+
   const revGross = revenue ? (revenue.gross ?? formatMoneyMinor(revenue.grossMinor)) : null;
   const recvTotal = aging ? (aging.formatted?.total || formatMoneyMinor(aging.buckets.total)) : null;
   const overdueMinor = aging ? overdue(aging) : 0n;
@@ -46,12 +64,23 @@ export default function OwnerDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Kpi label="Prihodki" value={revGross} tone="go"
+        <Kpi label="Prihodki" value={revGross} tone="go" trendPct={revTrend}
           sub={revenue ? `${revenue.documents} ${revenue.documents === 1 ? 'dokument' : 'dokumentov'}` : undefined} />
         <Kpi label="Izdani DDV" value={vatTotal} tone="info" sub="izstopni DDV" />
         <Kpi label="Odprte terjatve" value={recvTotal} tone="brandpurple"
           sub={overdueMinor > 0n ? `zapadlo ${formatMoneyMinor(overdueMinor.toString())}` : 'ni zapadlih'}
           alert={overdueMinor > 0n} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-5">
+          <h2 className="mb-1 text-base font-bold text-ink">Prihodki — zadnjih 6 mesecev</h2>
+          {!revSeries ? <Spinner className="text-brand" /> : <RevenueChart points={revSeries} />}
+        </Card>
+        <Card className="p-5">
+          <h2 className="mb-1 text-base font-bold text-ink">Delovni nalogi po statusu</h2>
+          {!woMix ? <Spinner className="text-brand" /> : <StatusDonut orders={woMix} />}
+        </Card>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -150,14 +179,22 @@ export default function OwnerDashboard() {
 }
 
 const KPI_TONE: Record<string, string> = { go: 'text-go', info: 'text-brand', brandpurple: 'text-[#7c3aed]' };
-function Kpi({ label, value, tone, sub, alert }: {
-  label: string; value: string | null; tone: 'go' | 'info' | 'brandpurple'; sub?: string; alert?: boolean;
+function Kpi({ label, value, tone, sub, alert, trendPct }: {
+  label: string; value: string | null; tone: 'go' | 'info' | 'brandpurple'; sub?: string; alert?: boolean; trendPct?: number | null;
 }) {
+  const up = (trendPct ?? 0) >= 0;
   return (
     <Card className={`p-5 ${alert ? 'ring-1 ring-stop/30' : ''}`}>
       <p className="text-sm font-semibold text-muted">{label}</p>
       {value === null ? <Spinner className="mt-2 text-brand" /> : (
-        <p className={`num mt-1 text-3xl font-extrabold tracking-tight ${KPI_TONE[tone]}`}>{value}</p>
+        <p className={`num mt-1 flex items-baseline gap-2 text-3xl font-extrabold tracking-tight ${KPI_TONE[tone]}`}>
+          {value}
+          {trendPct !== undefined && trendPct !== null && (
+            <span className={`num text-sm font-bold ${up ? 'text-go' : 'text-stop'}`}>
+              {up ? '▲' : '▼'} {Math.abs(trendPct).toFixed(0)}%
+            </span>
+          )}
+        </p>
       )}
       {sub && <p className={`mt-1 text-xs font-semibold ${alert ? 'text-stop' : 'text-muted2'}`}>{sub}</p>}
     </Card>
@@ -194,4 +231,118 @@ function overdue(aging: any): bigint {
   let sum = 0n;
   for (const k of ['d1_30', 'd31_60', 'd61_90', 'd90_plus']) { try { sum += BigInt(b[k] ?? '0'); } catch { /* ignore */ } }
   return sum;
+}
+
+/** Zadnjih n koledarskih mesecev (UTC), tekoči do danes. */
+function monthWindows(n: number): { from: string; to: string; label: string }[] {
+  const out: { from: string; to: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const endOfMonth = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0));
+    const end = endOfMonth < now ? endOfMonth : now;
+    out.push({
+      from: start.toISOString().slice(0, 10),
+      to: end.toISOString().slice(0, 10),
+      label: start.toLocaleDateString('sl-SI', { month: 'short' }),
+    });
+  }
+  return out;
+}
+
+/** Kompakten € prikaz za osi/oznake grafa (minor enote -> "1,2 k€"). */
+function compactEur(minor: number): string {
+  const eur = minor / 100;
+  if (Math.abs(eur) >= 1000) return `${(eur / 1000).toLocaleString('sl-SI', { maximumFractionDigits: 1 })} k€`;
+  return `${eur.toLocaleString('sl-SI', { maximumFractionDigits: 0 })} €`;
+}
+
+/** Ročni SVG ploščinski graf — brez chart odvisnosti (bundle ostane droben). */
+function RevenueChart({ points }: { points: { label: string; minor: number }[] }) {
+  const W = 560, H = 190, PAD_L = 14, PAD_R = 14, PAD_T = 26, PAD_B = 30;
+  const geo = useMemo(() => {
+    const max = Math.max(1, ...points.map((p) => p.minor));
+    const iw = W - PAD_L - PAD_R, ih = H - PAD_T - PAD_B;
+    const step = points.length > 1 ? iw / (points.length - 1) : 0;
+    const xy = points.map((p, i) => ({
+      x: PAD_L + i * step,
+      y: PAD_T + ih - (p.minor / max) * ih,
+      ...p,
+    }));
+    const line = xy.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const area = `${line} L${(PAD_L + iw).toFixed(1)},${(PAD_T + ih).toFixed(1)} L${PAD_L},${(PAD_T + ih).toFixed(1)} Z`;
+    return { xy, line, area, baseline: PAD_T + ih };
+  }, [points]);
+  const allZero = points.every((p) => p.minor === 0);
+  if (allZero) return <p className="py-8 text-center text-sm text-muted">V zadnjih 6 mesecih še ni izdanih dokumentov.</p>;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Prihodki po mesecih">
+      {/* barve so hex zrcalo design tokenov (SVG ne bere Tailwind razredov) */}
+      <defs>
+        <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1A6BEF" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#1A6BEF" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <line x1={PAD_L} x2={W - PAD_R} y1={geo.baseline} y2={geo.baseline} stroke="#E3E9F2" strokeWidth="1" />
+      <path d={geo.area} fill="url(#revFill)" />
+      <path d={geo.line} fill="none" stroke="#1A6BEF" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {geo.xy.map((p) => (
+        <g key={p.label + p.x}>
+          <circle cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke="#1A6BEF" strokeWidth="2" />
+          <text x={p.x} y={p.y - 9} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#0F1B2D" className="num">{compactEur(p.minor)}</text>
+          <text x={p.x} y={H - 10} textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#8A99AE">{p.label}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** Hex zrcalo statusnih tonov za SVG (v sinhronizaciji s tailwind tokeni). */
+const TONE_HEX: Record<string, string> = {
+  go: '#178A47', hold: '#B45309', stop: '#DC2626', info: '#1A6BEF', safety: '#e0a400', neutral: '#8A99AE',
+};
+
+/** Ročni SVG kolobar nalogov po statusih + legenda. */
+function StatusDonut({ orders }: { orders: { status: string }[] }) {
+  const seg = useMemo(() => {
+    const by = new Map<string, number>();
+    for (const o of orders) by.set(o.status, (by.get(o.status) ?? 0) + 1);
+    const total = orders.length;
+    const items = [...by.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([status, n]) => ({ status, n, label: statusLabel(status), hex: TONE_HEX[statusTone(status)] ?? TONE_HEX.neutral }));
+    return { total, items };
+  }, [orders]);
+  if (seg.total === 0) return <p className="py-8 text-center text-sm text-muted">Ni delovnih nalogov.</p>;
+  const R = 54, C = 2 * Math.PI * R;
+  let acc = 0;
+  return (
+    <div className="flex flex-wrap items-center gap-5">
+      <svg viewBox="0 0 150 150" className="h-40 w-40 flex-none" role="img" aria-label="Nalogi po statusu">
+        <circle cx="75" cy="75" r={R} fill="none" stroke="#F2F5FA" strokeWidth="22" />
+        {seg.items.map((it) => {
+          const frac = it.n / seg.total;
+          const dash = frac * C;
+          const off = -acc * C;
+          acc += frac;
+          return (
+            <circle key={it.status} cx="75" cy="75" r={R} fill="none" stroke={it.hex} strokeWidth="22"
+              strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={off} transform="rotate(-90 75 75)" />
+          );
+        })}
+        <text x="75" y="72" textAnchor="middle" fontSize="26" fontWeight="800" fill="#0F1B2D" className="num">{seg.total}</text>
+        <text x="75" y="90" textAnchor="middle" fontSize="10.5" fontWeight="600" fill="#8A99AE">nalogov</text>
+      </svg>
+      <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
+        {seg.items.map((it) => (
+          <li key={it.status} className="flex items-center gap-2 text-sm">
+            <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: it.hex }} />
+            <span className="min-w-0 flex-1 truncate text-steel">{it.label}</span>
+            <span className="num font-bold text-ink">{it.n}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
