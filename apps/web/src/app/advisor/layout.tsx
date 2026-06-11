@@ -33,12 +33,13 @@ export default function AdvisorLayout({ children }: { children: React.ReactNode 
     <div className="grid min-h-screen grid-cols-1 bg-floor lg:grid-cols-[15.5rem_1fr]">
       <Rail open={navOpen} onClose={() => setNavOpen(false)} />
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-col pb-[4.25rem] lg:pb-0">
         <CommandBar onMenu={() => setNavOpen((o) => !o)} />
         <main className="min-w-0 flex-1 p-4 sm:p-6"><BillingBanner />{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
           A-SPRINT OS · Vse pravice pridržane © {new Date().getFullYear()}
         </footer>
+        <MobileTabBar onMenu={() => setNavOpen(true)} />
       </div>
     </div>
   );
@@ -315,7 +316,7 @@ function NotificationBell() {
 
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} onBlur={() => setTimeout(() => setOpen(false), 160)}
+      <button id="advisor-bell" onClick={() => setOpen((o) => !o)} onBlur={() => setTimeout(() => setOpen(false), 160)}
         className="relative grid h-10 w-10 place-items-center rounded-full text-muted transition hover:bg-floor hover:text-ink" title="Obvestila">
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
         {unread > 0 && (
@@ -345,5 +346,49 @@ function NotificationBell() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Spodnja mobilna navigacija (mockup: Domov / Iskanje / + / Obvestila / Meni).
+ * Vidna samo pod lg — na namizju ostane stranska letev. "Iskanje" fokusira
+ * obstoječo ukazno vrstico (#advisor-command), "Obvestila" odpre obstoječi
+ * zvonec (#advisor-bell), "+" vodi na delovne naloge, kjer živi "Nov nalog".
+ */
+function MobileTabBar({ onMenu }: { onMenu: () => void }) {
+  function focusSearch() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    (document.getElementById('advisor-command') as HTMLInputElement | null)?.focus();
+  }
+  function openBell() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    (document.getElementById('advisor-bell') as HTMLButtonElement | null)?.click();
+  }
+  const item = 'flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[0.65rem] font-semibold text-muted transition hover:text-ink';
+  return (
+    <nav aria-label="Mobilna navigacija"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-line bg-surface pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_rgba(15,27,45,.07)] lg:hidden">
+      <Link href="/" className={item}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        Domov
+      </Link>
+      <button type="button" onClick={focusSearch} className={item}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        Iskanje
+      </button>
+      <Link href="/advisor/work-orders" aria-label="Nov delovni nalog" className="relative -mt-4 flex w-16 flex-none items-start justify-center">
+        <span className="grid h-12 w-12 place-items-center rounded-full bg-brand text-white shadow-lift transition active:translate-y-px">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+      </Link>
+      <button type="button" onClick={openBell} className={item}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        Obvestila
+      </button>
+      <button type="button" onClick={onMenu} className={item}>
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        Meni
+      </button>
+    </nav>
   );
 }
