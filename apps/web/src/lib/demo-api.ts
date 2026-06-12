@@ -421,7 +421,13 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     let net = 0; let vat = 0; const lines: any[] = [];
     for (const w of wos) for (const l of w.lines ?? []) {
       net += Number(l.netMinor); vat += Number(l.vatMinor);
-      lines.push({ ...clone(l), id: `cl${lines.length + 1}`, lineNo: lines.length + 1, workOrderId: w.id });
+      // Detail računa bere snake_case (kot realni SELECT iz invoice_lines).
+      lines.push({
+        id: `cl${lines.length + 1}`, lineNo: lines.length + 1, description: l.description,
+        quantity: l.quantity, unit_price_minor: l.unitPriceMinor, vat_rate_pct: l.vatRatePct,
+        net_minor: l.netMinor, vat_minor: l.vatMinor, gross_minor: l.grossMinor,
+        work_order_id: w.id,
+      });
     }
     const id = `inv-c${Date.now().toString(36)}`;
     const today = new Date(); const due = new Date(Date.now() + 30 * 86400000);

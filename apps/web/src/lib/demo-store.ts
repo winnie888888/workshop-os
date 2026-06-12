@@ -158,8 +158,13 @@ function newId(prefix: string): string {
    neprepričljivo. Datumi so relativni na danes — jutrišnji ob 8.00 je hkrati
    zgodba za SMS opomnik (appointment_reminder) na pravem stacku. */
 function seedAppointments(): Appointment[] {
+  // Wall-clock zapis brez časovnega pasu ('YYYY-MM-DDTHH:MM:00') — enako kot
+  // realni appointments.start_at (timestamp brez tz); UI reže uro surovo in
+  // mora pokazati 9.00, ne UTC odmika.
   const at = (days: number, h: number, m = 0): string => {
-    const x = new Date(); x.setDate(x.getDate() + days); x.setHours(h, m, 0, 0); return x.toISOString();
+    const x = new Date(); x.setDate(x.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}T${pad(h)}:${pad(m)}:00`;
   };
   const made = new Date().toISOString();
   return [
