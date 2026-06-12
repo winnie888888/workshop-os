@@ -134,6 +134,18 @@ function Candidates({ customer, onChangeCustomer }: {
     ['cons-cands', customer.id],
     () => api.invoices.consolidatedCandidates(customer.id),
   );
+  /* Obramba pred ne-seznamom: realni API vrača polje, demo ali delen odgovor
+     pa lahko karkoli drugega. Vse spodaj uporablja izključno candList — ob
+     neznani obliki pokažemo prazno stanje namesto sesutja cele aplikacije
+     (QA C1: »TypeError: e is not iterable«). `cands` ostane samo še signal
+     nalaganja (undefined = še nalagam). */
+  const candList: Candidate[] = useMemo(() => {
+    if (Array.isArray(cands)) return cands as Candidate[];
+    const inner = cands as { workOrders?: unknown; items?: unknown } | undefined;
+    if (inner && Array.isArray(inner.workOrders)) return inner.workOrders as Candidate[];
+    if (inner && Array.isArray(inner.items)) return inner.items as Candidate[];
+    return [];
+  }, [cands]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [byVehicle, setByVehicle] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -142,13 +154,13 @@ function Candidates({ customer, onChangeCustomer }: {
 
   // Privzeto izbrani VSI kandidati (najpogostejši primer: zaračunaj vse).
   useEffect(() => {
-    if (cands) setSelected(new Set(cands.map((c) => c.id)));
-  }, [cands]);
+    setSelected(new Set(candList.map((c) => c.id)));
+  }, [candList]);
 
   /* Skupine po vozilu (ključ je assetId, ne niz tablice — trdno tudi ob
      preregistraciji). Nalogi brez vozila so svoja skupina na koncu. */
   const groups = useMemo(() => {
-    const list = (cands ?? []) as Candidate[];
+    const list = candList;
     const map = new Map<string, { key: string; plate: string | null; rows: Candidate[] }>();
     for (const c of list) {
       const key = c.assetId ?? 'none';
@@ -161,21 +173,21 @@ function Candidates({ customer, onChangeCustomer }: {
       if (b.key === 'none') return -1;
       return String(a.plate ?? '').localeCompare(String(b.plate ?? ''), 'sl');
     });
-  }, [cands]);
+  }, [candList]);
 
   const summary = useMemo(() => {
-    if (!cands) return { count: 0, sum: 0n, currency: 'EUR', vehicleGroups: 0 };
+    if (candList.length === 0) return { count: 0, sum: 0n, currency: 'EUR', vehicleGroups: 0 };
     let sum = 0n;
     let currency = 'EUR';
     const touched = new Set<string>();
-    for (const c of cands as Candidate[]) {
+    for (const c of candList) {
       if (!selected.has(c.id)) continue;
       sum += BigInt(c.totalGrossMinor || '0');
       currency = c.currency;
       touched.add(c.assetId ?? 'none');
     }
     return { count: selected.size, sum, currency, vehicleGroups: touched.size };
-  }, [cands, selected]);
+  }, [candList, selected]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -215,7 +227,7 @@ function Candidates({ customer, onChangeCustomer }: {
    * Ob napaki se ustavi in POŠTENO pove, kateri računi so že izdani.
    */
   async function issuePerVehicle() {
-    if (!cands) return;
+    if (candList.length === 0) return;
     setBusy(true); setErr(null);
     const done: Array<{ id: string; number: string | null; plate: string | null }> = [];
     for (const g of groups) {
@@ -293,7 +305,7 @@ function Candidates({ customer, onChangeCustomer }: {
 
       {!cands ? (
         <div className="flex justify-center py-12"><Spinner className="text-brand" /></div>
-      ) : cands.length === 0 ? (
+      ) : candList.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="font-semibold text-ink">Ni neizdanih pripravljenih nalogov.</p>
           <p className="mt-1 text-sm text-muted">
@@ -305,7 +317,7 @@ function Candidates({ customer, onChangeCustomer }: {
           <Card className="overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
               <h2 className="text-base font-bold text-ink">
-                Neizdani nalogi <span className="num text-muted2">({cands.length})</span>
+                Neizdani nalogi <span className="num text-muted2">({candList.length})</span>
               </h2>
               <div className="flex items-center gap-4">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-steel">
@@ -314,17 +326,17 @@ function Candidates({ customer, onChangeCustomer }: {
                   Združi po vozilu
                 </label>
                 <button
-                  onClick={() => setSelected(selected.size === cands.length ? new Set() : new Set(cands.map((c) => c.id)))}
+                  onClick={() => setSelected(selected.size === candList.length ? new Set() : new Set(candList.map((c) => c.id)))}
                   className="text-sm font-semibold text-brand hover:underline"
                 >
-                  {selected.size === cands.length ? 'Odznači vse' : 'Izberi vse'}
+                  {selected.size === candList.length ? 'Odznači vse' : 'Izberi vse'}
                 </button>
               </div>
             </div>
 
             {!byVehicle ? (
               <ul className="divide-y divide-line">
-                {(cands as Candidate[]).map((c) => (
+                {candList.map((c) => (
                   <CandidateRow key={c.id} c={c} on={selected.has(c.id)} onToggle={() => toggle(c.id)} showPlate />
                 ))}
               </ul>

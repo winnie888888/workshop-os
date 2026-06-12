@@ -122,7 +122,7 @@ export default function CreateCustomer() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
-      <button onClick={() => router.push('/advisor/customers')} className="self-start text-sm font-semibold text-steel">‹ Customers</button>
+      <button onClick={() => router.push('/advisor/customers')} className="self-start text-sm font-semibold text-steel">‹ Stranke</button>
       <h1 className="font-display text-2xl font-extrabold tracking-tight">Nova stranka</h1>
       {error && <ProblemBanner message={error} />}
 

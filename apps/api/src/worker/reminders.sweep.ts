@@ -7,7 +7,7 @@ import { normalizeSiPhone } from '../integrations/notifications/phone.util';
  * Opomniki — urni sweep (SMS spec: payment_reminder; appointment_reminder
  * pride v istem ogrodju, ko bo shema terminov potrjena).
  *
- * Dve opravili v ENI admin transakciji na tick:
+ * Tri opravila v ENI admin transakciji na tick:
  *
  *   1. STATUS: računi 'issued'/'sent' z zapadlim due_date in odprtim saldom
  *      preklopijo v 'overdue'. To je IZPELJANO stanje (derivat datuma in
@@ -20,6 +20,11 @@ import { normalizeSiPhone } from '../integrations/notifications/phone.util';
  *      vstavi notification.send (payment_reminder). Idempotenčni ključ
  *      vsebuje ISO teden -> največ EN SMS na račun na teden, tudi če sweep
  *      teče vsako uro ali na več instancah (ON CONFLICT DO NOTHING).
+ *
+ *   3. TERMIN: za jutrišnje načrtovane termine (appointments.status =
+ *      'scheduled', start_at je wall-clock delavnice) stranke s telefonom
+ *      gre appointment_reminder z uro in tablico. Idempotenčni ključ
+ *      termin+datum -> natanko en SMS na termin, ne glede na ure sweepov.
  *
  * Varnost ob sočasnosti: obe operaciji sta idempotentni, zato instance ne
  * potrebujejo zaklepanja. REMINDERS_SWEEP_MS=0 sweep izklopi (testi/skripte);
@@ -115,6 +120,40 @@ export class RemindersSweepService implements OnModuleInit, OnModuleDestroy {
           enqueued++;
         }
         if (enqueued > 0) this.log.log(`payment_reminder: ${enqueued} opomnik(ov) v vrsti (teden ${week})`);
+
+        // (3) SMS opomniki za JUTRIŠNJE termine (appointment_reminder).
+        const appts = await tx.query<any>(
+          `SELECT a.id, a.tenant_id, a.title,
+                  to_char(a.start_at, 'HH24:MI') AS at_time,
+                  to_char(a.start_at, 'YYYY-MM-DD') AS at_date,
+                  c.phone, t.name AS tenant_name,
+                  COALESCE(s.plate, '') AS plate
+             FROM app.appointments a
+             JOIN app.customers c ON c.id = a.customer_id
+             JOIN app.tenants t ON t.id = a.tenant_id
+             LEFT JOIN app.assets s ON s.id = a.asset_id
+            WHERE a.status = 'scheduled'
+              AND a.start_at::date = CURRENT_DATE + 1
+              AND c.phone IS NOT NULL AND c.phone <> ''`,
+        );
+        let apptSms = 0;
+        for (const r of appts.rows) {
+          const forPlate = r.plate ? ` za vozilo ${r.plate}` : '';
+          const what = r.title ? ` (${r.title})` : '';
+          await this.outbox.enqueue(tx, {
+            tenantId: r.tenant_id,
+            eventType: 'notification.send',
+            payload: {
+              channel: 'sms',
+              to: normalizeSiPhone(r.phone),
+              kind: 'appointment_reminder',
+              body: `Opomnik: jutri ob ${r.at_time} imate termin${forPlate}${what}. — ${r.tenant_name}`,
+            },
+            idempotencyKey: `notify.appointment_reminder:${r.id}:${r.at_date}`,
+          });
+          apptSms++;
+        }
+        if (apptSms > 0) this.log.log(`appointment_reminder: ${apptSms} opomnik(ov) za jutri v vrsti`);
       });
     } catch (err: any) {
       this.log.error(`tick failed: ${err?.message ?? err}`);
