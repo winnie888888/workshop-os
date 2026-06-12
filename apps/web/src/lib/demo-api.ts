@@ -391,8 +391,52 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     const customerId = params.get('customerId');
     const list = Object.values(demoInvoices)
       .filter((inv: any) => !customerId || inv.customerId === customerId)
-      .map((inv: any) => ({ id: inv.id, number: inv.number, status: inv.status, currency: inv.currency, totalGrossMinor: inv.totalGrossMinor, issueDate: inv.issueDate ?? null, dueDate: inv.dueDate ?? null }));
+      .map((inv: any) => ({ id: inv.id, number: inv.number, status: inv.status, currency: inv.currency, totalGrossMinor: inv.totalGrossMinor, issueDate: inv.issueDate ?? null, dueDate: inv.dueDate ?? null, customerId: inv.customerId }));
     return ok(list as any);
+  }
+  // --- Zbirni račun (demo): kandidati so 'ready' nalogi stranke; izdaja
+  // združi vrstice v nov račun (registriran v demoInvoices, vrstice nosijo
+  // workOrderId, glava workOrders[]), naloge označi 'invoiced'. Cel tok —
+  // izbira, vmesni seštevki, preusmeritev na detail — deluje brez backenda. ---
+  if (path === '/invoices/consolidated/candidates' && method === 'GET') {
+    const customerId = params.get('customerId');
+    const allVeh = Object.values(demoVehicles).flat() as any[];
+    const list = Object.values(demoWorkOrders)
+      .filter((w: any) => w.customerId === customerId && w.status === 'ready')
+      .map((w: any) => {
+        const veh = allVeh.find((v) => v.id === w.assetId);
+        return {
+          id: w.id, number: w.number, currency: w.currency, totalGrossMinor: w.totalGrossMinor,
+          readyAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+          assetId: w.assetId ?? null, plate: veh?.plate ?? null, plateCountry: veh?.plateCountry ?? null,
+          billableLines: (w.lines ?? []).filter((l: any) => !l.issued).length,
+        };
+      });
+    return ok(list as any);
+  }
+  if (path === '/invoices/consolidated' && method === 'POST') {
+    const ids: string[] = Array.isArray(body?.workOrderIds) ? body.workOrderIds : [];
+    const wos = ids.map((id) => demoWorkOrders[id]).filter(Boolean);
+    if (!wos.length) return ok({ id: 'inv-1', number: '2026-500' } as any);
+    let net = 0; let vat = 0; const lines: any[] = [];
+    for (const w of wos) for (const l of w.lines ?? []) {
+      net += Number(l.netMinor); vat += Number(l.vatMinor);
+      lines.push({ ...clone(l), id: `cl${lines.length + 1}`, lineNo: lines.length + 1, workOrderId: w.id });
+    }
+    const id = `inv-c${Date.now().toString(36)}`;
+    const today = new Date(); const due = new Date(Date.now() + 30 * 86400000);
+    demoInvoices[id] = {
+      id, kind: 'invoice', number: `2026-${600 + Object.keys(demoInvoices).length}`, status: 'issued',
+      customerId: body?.customerId ?? wos[0].customerId, currency: 'EUR',
+      vatTreatment: 'domestic', reverseCharge: false, vatNote: null,
+      totalNetMinor: String(net), totalVatMinor: String(vat), totalGrossMinor: String(net + vat), paidMinor: '0',
+      issueDate: today.toISOString().slice(0, 10), dueDate: due.toISOString().slice(0, 10),
+      serviceDate: today.toISOString().slice(0, 10),
+      lines, vatBreakdown: [{ rate_pct: '22', reverse_charge: false, net_minor: String(net), vat_minor: String(vat) }],
+      workOrders: wos.map((w: any) => ({ id: w.id, number: w.number })),
+    };
+    for (const w of wos) w.status = 'invoiced';
+    return ok({ id, number: demoInvoices[id].number } as any);
   }
   if (seg[0] === 'invoices' && seg[1] && method === 'GET') return ok((demoInvoices[seg[1]] ?? demoInvoices['inv-1']) as any);
 
@@ -423,9 +467,26 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     } as any);
   }
 
-  if (path === '/reports/ar-aging') return ok({ asOf: new Date().toISOString().slice(0, 10), buckets: { current: '46750', d1_30: '0', d31_60: '0', d61_90: '0', d90_plus: '0', total: '46750' }, formatted: {} } as any);
-  if (path === '/reports/revenue') return ok({ from: '2026-01-01', to: '2026-06-01', documents: 1, netMinor: '46750', vatMinor: '0', grossMinor: '46750', net: '€467.50', gross: '€467.50' } as any);
-  if (path === '/reports/vat') return ok({ from: '2026-01-01', to: '2026-06-01', totalNetMinor: '46750', totalVatMinor: '10285', groups: [{ ratePct: '22', reverseCharge: false, net: '€467.50', vat: '€102.85' }, { ratePct: '0', reverseCharge: true, net: '€0.00', vat: '€0.00' }] } as any);
+  if (path === '/reports/ar-aging') return ok({ asOf: new Date().toISOString().slice(0, 10), buckets: { current: '46750', d1_30: '0', d31_60: '0', d61_90: '240000', d90_plus: '0', total: '286750' }, formatted: {} } as any);
+  if (path === '/reports/revenue') {
+    // Mesečno odvisni prihodki: 6-mesečni graf dobi realno varianco, tekoči
+    // mesec pa se natanko ujema z demoInvoices (2026-500 RC 467,50 brez DDV +
+    // 2026-77 domači 120,00 + 26,40 DDV) in z DDV poročilom spodaj.
+    const from = params.get('from') ?? '';
+    const byMonth: Record<string, { documents: number; netMinor: number; vatMinor: number }> = {
+      '2026-01': { documents: 4, netMinor: 312000, vatMinor: 48180 },
+      '2026-02': { documents: 3, netMinor: 414000, vatMinor: 30800 },
+      '2026-03': { documents: 5, netMinor: 268500, vatMinor: 59070 },
+      '2026-04': { documents: 4, netMinor: 351200, vatMinor: 66260 },
+      '2026-05': { documents: 3, netMinor: 229800, vatMinor: 41360 },
+      '2026-06': { documents: 2, netMinor: 58750, vatMinor: 2640 },
+    };
+    const r = byMonth[from.slice(0, 7)] ?? byMonth['2026-06'];
+    const gross = r.netMinor + r.vatMinor;
+    const f = (x: number) => `€${(x / 100).toFixed(2)}`;
+    return ok({ from, to: params.get('to') ?? '', documents: r.documents, netMinor: String(r.netMinor), vatMinor: String(r.vatMinor), grossMinor: String(gross), net: f(r.netMinor), gross: f(gross) } as any);
+  }
+  if (path === '/reports/vat') return ok({ from: '2026-06-01', to: '2026-06-30', totalNetMinor: '58750', totalVatMinor: '2640', groups: [{ ratePct: '22', reverseCharge: false, net: '€120.00', vat: '€26.40' }, { ratePct: '0', reverseCharge: true, net: '€467.50', vat: '€0.00' }] } as any);
 
   // --- search ---
   if (path === '/search') {
@@ -450,7 +511,7 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   }
 
   // --- warehouse reads (return empty so those screens render gracefully) ---
-  if (path === '/warehouse-reports/valuation') return ok({ items: [], totalValueMinor: String(demoStore.items.valuationMinor()) } as any);
+  if (path === '/warehouse-reports/valuation') return ok({ items: demoStore.items.list().map((i: any) => ({ itemId: i.id })), totalValueMinor: String(demoStore.items.valuationMinor()) } as any);
   if (path === '/warehouse-reports/low-stock') {
     return ok(demoStore.items.lowStock().map((i) => ({ itemId: i.id, locationId: LOCATION_MAIN, name: i.name, sku: i.sku, onHand: i.onHand, reserved: i.reserved, available: Math.max(0, i.onHand - i.reserved), reorderPoint: i.reorderPoint, reorderQty: Math.max(i.reorderPoint, 1), preferredSupplierId: i.preferredSupplierId ?? null })) as any);
   }
@@ -635,46 +696,46 @@ export async function demoRequest<T>(call: Call): Promise<T> {
   // for A-SPRINT so the owner sees a believable advisory dashboard on a phone.
   // The same kinds of findings the dry run produces, already prioritised. ---
   if (seg[0] === 'manager') {
-    const period = seg[1] === 'daily' ? 'Today' : seg[1] === 'weekly' ? 'This week' : 'Last 30 days';
+    const period = seg[1] === 'daily' ? 'Danes' : seg[1] === 'weekly' ? 'Ta teden' : 'Zadnjih 30 dni';
     const insights = [
-      { key: 'ar_overdue:inv-late', category: 'receivables', severity: 'alert',
-        title: 'Transport Horvat: €2400.00 overdue 62d',
-        detail: 'Invoice 2026-44 for Transport Horvat has €2400.00 outstanding, 62 days past its due date of 2026-03-31.',
-        metric: { outstandingMinor: 240000, daysOverdue: 62 }, entityType: 'invoice', entityId: 'inv-late',
-        recommendation: 'Escalate collection; consider pausing further credit for this customer.' },
+      { key: 'ar_overdue:inv-44', category: 'receivables', severity: 'alert',
+        title: 'Transport Horvat: €2.400,00 zapadlo več kot 60 dni',
+        detail: 'Račun 2026-44 za Transport Horvat ima €2.400,00 odprtega salda, rok plačila 31. 3. 2026 je prekoračen za več kot 60 dni.',
+        metric: { outstandingMinor: 240000, daysOverdue: 62 }, entityType: 'invoice', entityId: 'inv-44',
+        recommendation: 'Stopnjuj izterjavo; razmisli o zamrznitvi nadaljnjega kredita tej stranki.' },
       { key: 'labour_loss:wo-loss', category: 'profitability', severity: 'alert',
-        title: 'Labour billed below cost on 2026-1007',
-        detail: 'Job 2026-1007 (Transport Horvat) billed €180.00 of labour against €240.00 of labour cost — a loss of €60.00.',
+        title: 'Delo zaračunano pod ceno na 2026-1007',
+        detail: 'Nalog 2026-1007 (Transport Horvat): zaračunanega dela za €180,00 ob interni ceni €240,00 — izguba €60,00.',
         metric: { marginMinor: -6000 }, entityType: 'work_order', entityId: 'wo-loss',
-        recommendation: 'Review the labour pricing or time booked on this job.' },
+        recommendation: 'Preveri urno postavko ali vpisane ure na tem nalogu.' },
       { key: 'reorder:item-padkit', category: 'inventory', severity: 'warn',
-        title: 'Reorder BPK-MAN-R',
-        detail: 'Brake pad kit MAN rear (BPK-MAN-R) is at 1 on hand, at or below its reorder point of 4.',
+        title: 'Naroči BPK-MAN-R',
+        detail: 'Komplet zavornih oblog MAN zadaj (BPK-MAN-R) je na 1 kosu — na ali pod točko ponovnega naročila (4).',
         metric: { onHand: 1, reorderPoint: 4 }, entityType: 'inventory_item', entityId: 'item-padkit',
-        recommendation: 'Raise a purchase order for this item (requires your approval).' },
+        recommendation: 'Pripravi naročilnico za to postavko (zahteva tvojo potrditev).' },
       { key: 'underbilled:wo-under', category: 'profitability', severity: 'warn',
-        title: 'Possible underbilling on 2026-1008',
-        detail: 'Job 2026-1008 (Prevozi Kralj) clocked 5h of labour but billed only 2h — 3h appears uncharged.',
+        title: 'Možno premalo zaračunano na 2026-1008',
+        detail: 'Nalog 2026-1008 (Prevozi Kralj): vpisanih 5 h dela, zaračunani le 2 h — 3 h sta videti nezaračunani.',
         metric: { gapHours: 3 }, entityType: 'work_order', entityId: 'wo-under',
-        recommendation: 'Confirm whether the uncharged time should be added to the invoice.' },
+        recommendation: 'Preveri, ali je nezaračunani čas treba dodati na račun.' },
       { key: 'low_util:m1', category: 'productivity', severity: 'warn',
-        title: 'Low job utilisation for Marko Kovač',
-        detail: 'Marko Kovač was present 8h but clocked only 3h onto jobs — 37.5% utilisation.',
+        title: 'Nizka izkoriščenost: Marko Kovač',
+        detail: 'Marko Kovač je bil prisoten 8 h, na naloge pa je vpisal le 3 h — 37,5 % izkoriščenost.',
         metric: { utilisation: 0.375 }, entityType: 'mechanic', entityId: 'm1',
-        recommendation: 'Look at scheduling, parts waiting time, or unbooked work — not necessarily effort.' },
+        recommendation: 'Poglej razporejanje, čakanje na dele ali nevpisano delo — ne nujno trud.' },
       { key: 'slow_moving:item-slow', category: 'inventory', severity: 'info',
-        title: 'Slow-moving stock: OLD-GASKET',
-        detail: 'Obsolete gasket (OLD-GASKET) has 12 on hand unmoved for 240 days, tying up about €180.00.',
+        title: 'Ležeča zaloga: OLD-GASKET',
+        detail: 'Zastarelo tesnilo (OLD-GASKET) — 12 kosov brez premika 240 dni, vezanih približno €180,00.',
         metric: { tiedUpMinor: 18000 }, entityType: 'inventory_item', entityId: 'item-slow',
-        recommendation: 'Consider returning, discounting, or de-stocking this item.' },
+        recommendation: 'Razmisli o vračilu, znižanju ali odpisu te postavke.' },
     ];
     return ok({
       periodLabel: period, generatedAt: new Date().toISOString(),
       summary: {
         total: insights.length, byCategory: { receivables: 1, profitability: 2, inventory: 2, productivity: 1 },
         bySeverity: { alert: 2, warn: 3, info: 1 }, top: insights.slice(0, 5),
-        headline: `${period}: 6 items flagged (2 alerts, 3 warnings). Top concern: Transport Horvat: €2400.00 overdue 62d.`,
-        narrative: 'Two issues need attention: a €2,400 invoice to Transport Horvat is over 60 days overdue, and job 2026-1007 was billed below its labour cost. Stock is running low on rear brake pad kits, and a few jobs and a technician show room to tighten billing and scheduling.',
+        headline: `${period}: 6 ugotovitev (2 opozorili, 3 svarila). Najpomembnejše: Transport Horvat — €2.400,00 zapadlo več kot 60 dni.`,
+        narrative: 'Pozornost zahtevata dve zadevi: račun €2.400 za Transport Horvat je zapadel več kot 60 dni, nalog 2026-1007 pa je bil zaračunan pod ceno dela. Zaloga zadnjih zavornih kompletov je nizka, nekaj nalogov in en mehanik pa kažejo prostor za doslednejše zaračunavanje in razporejanje.',
       },
       insights, advisoryOnly: true,
     } as any);

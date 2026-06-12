@@ -144,7 +144,7 @@ interface DB {
 // Persistence (single key, SSR-safe, versioned) + reactive subscribe()
 // ----------------------------------------------------------------------------
 const KEY = 'wos.demo.v1';
-const VERSION = 4;
+const VERSION = 5; // 5: seed terminov (koledar v demo ni več prazen)
 const listeners = new Set<() => void>();
 let version = 0;
 let cache: DB | null = null;
@@ -154,12 +154,32 @@ function newId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 
+/* Demo termini (W1): koledar in hub stranke brez njih delujeta prazno in
+   neprepričljivo. Datumi so relativni na danes — jutrišnji ob 8.00 je hkrati
+   zgodba za SMS opomnik (appointment_reminder) na pravem stacku. */
+function seedAppointments(): Appointment[] {
+  const at = (days: number, h: number, m = 0): string => {
+    const x = new Date(); x.setDate(x.getDate() + days); x.setHours(h, m, 0, 0); return x.toISOString();
+  };
+  const made = new Date().toISOString();
+  return [
+    { id: 'apt-seed-1', customerId: 'cust-horvat', vehicleId: 'veh-man2', workOrderId: 'wo-1002',
+      title: 'Servis 120.000 km', start: at(0, 9, 0), durationMin: 180, status: 'scheduled', createdAt: made },
+    { id: 'apt-seed-2', customerId: 'cust-alpe', vehicleId: 'veh-volvo',
+      title: 'Prevzem vozila po servisu', start: at(0, 13, 30), durationMin: 30, status: 'scheduled', createdAt: made },
+    { id: 'apt-seed-3', customerId: 'cust-kralj', vehicleId: 'veh-man1',
+      title: 'Mali servis in pregled zavor', start: at(1, 8, 0), durationMin: 120, status: 'scheduled', createdAt: made },
+    { id: 'apt-seed-4', customerId: 'cust-horvat', vehicleId: 'veh-trail',
+      title: 'Pregled priklopnika — zavore', start: at(3, 10, 0), durationMin: 90, status: 'scheduled', createdAt: made },
+  ];
+}
+
 function emptyDB(): DB {
   return {
     v: VERSION,
     customers: [], vehicles: [], mechanics: [], workOrders: [], estimates: [], invoices: [],
     items: [], presets: [],
-    voiceNotes: [], plateScans: [], messages: [], appointments: [],
+    voiceNotes: [], plateScans: [], messages: [], appointments: seedAppointments(),
     notifications: [], activity: [],
     settings: {
       vatRatePct: 22, labourRateMinor: 6500, currency: 'EUR',

@@ -41,8 +41,8 @@ function custWorkOrders(open: boolean): any[] {
 
 function portalCard(w: any): any {
   const labels: Record<string, string> = {
-    draft: 'Received', open: 'Scheduled', in_progress: 'In progress',
-    ready: 'Ready for collection', invoiced: 'Invoiced', closed: 'Completed', cancelled: 'Cancelled',
+    draft: 'Prejeto', open: 'Načrtovano', in_progress: 'V delu',
+    ready: 'Pripravljeno za prevzem', invoiced: 'Zaračunano', closed: 'Zaključeno', cancelled: 'Preklicano',
   };
   const progress: Record<string, number> = { draft: 10, open: 25, in_progress: 60, ready: 90, invoiced: 100, closed: 100, cancelled: 0 };
   const veh = Object.values(demoVehicles).flat().find((v: any) => v.id === w.assetId);

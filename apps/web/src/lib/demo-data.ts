@@ -20,18 +20,21 @@ export const demoCustomers = [
     vatId: 'SI58962317', vatIdValidated: true, vatIdValidationSource: 'vies',
     vatLiable: true, currency: 'EUR', paymentTermsDays: 30,
     address: 'Industrijska cesta 12', city: 'Novo mesto', postCode: '8000',
+    phone: '041 728 339',
   },
   {
     id: 'cust-horvat', name: 'Transport Horvat d.o.o.', type: 'company', country: 'HR',
     vatId: 'HR47263849152', vatIdValidated: true, vatIdValidationSource: 'manual',
     vatLiable: true, currency: 'EUR', paymentTermsDays: 45,
     address: 'Slavonska avenija 3', city: 'Zagreb', postCode: '10000',
+    phone: '+385 91 540 2284',
   },
   {
     id: 'cust-alpe', name: 'Alpe Logistika d.o.o.', type: 'company', country: 'SI',
     vatId: 'SI11223344', vatIdValidated: false, vatIdValidationSource: null,
     vatLiable: true, currency: 'EUR', paymentTermsDays: 30,
     address: 'Tržaška cesta 88', city: 'Ljubljana', postCode: '1000',
+    phone: '040 233 901',
   },
 ];
 
@@ -50,6 +53,8 @@ export const demoVehicles: Record<string, any[]> = {
   'cust-alpe': [
     { id: 'veh-volvo', customerId: 'cust-alpe', plate: 'LJ552MK', plateCountry: 'SI',
       make: 'Volvo', model: 'FH Electric', vin: 'YV2RT40A8KB812345', type: 'tractor', powertrain: 'electric', odometer: 120400 },
+    { id: 'veh-daf', customerId: 'cust-alpe', plate: 'LJ318AK', plateCountry: 'SI',
+      make: 'DAF', model: 'XF 480', vin: 'XLRTE47MS0E812399', type: 'tractor', powertrain: 'diesel', odometer: 388900 },
   ],
 };
 
@@ -133,6 +138,25 @@ export const demoWorkOrders: Record<string, any> = {
   },
 };
 
+// Drugi 'ready' nalog za Alpe (drugo vozilo): demo zbirnega računa pokaže
+// bistvo — dva naloga, en račun, vmesni seštevki po nalogu/vozilu.
+demoWorkOrders['wo-1004'] = {
+  ...woHeader({
+    id: 'wo-1004', number: '2026-1004', status: 'ready', customerId: 'cust-alpe', assetId: 'veh-daf',
+    complaint: 'Menjava metlic brisalcev in dolivanje olja (wipers + oil top-up)', odometer: 388900,
+    net: eur(76), vat: eur(16.72), gross: eur(92.72),
+  }),
+  lines: [
+    { id: 'l4', lineNo: 1, type: 'part', description: 'Wiper blade 650mm', inventoryItemId: 'item-wiper',
+      reservedLocationId: LOCATION_MAIN, quantity: '2', unitPriceMinor: eur(14), discountPct: '0', vatRatePct: '22',
+      netMinor: eur(28), vatMinor: eur(6.16), grossMinor: eur(34.16), issued: false },
+    { id: 'l5', lineNo: 2, type: 'part', description: 'Engine oil 10W-40 (litre)', inventoryItemId: 'item-oil',
+      reservedLocationId: LOCATION_MAIN, quantity: '8', unitPriceMinor: eur(6), discountPct: '0', vatRatePct: '22',
+      netMinor: eur(48), vatMinor: eur(10.56), grossMinor: eur(58.56), issued: false },
+  ],
+  timeEntries: [],
+};
+
 // List-item projection (the board uses a flatter shape with names already joined).
 export function demoListItem(id: string): any {
   const wo = demoWorkOrders[id];
@@ -150,15 +174,54 @@ export function demoListItem(id: string): any {
   };
 }
 
-// --- Invoices (one issued, for the receivables/insight screens) ------------
+// --- Invoices --------------------------------------------------------------
+// Tri zgodbe, ki se ujemajo čez VSE zaslone (seznam, staranje terjatev, DDV
+// poročilo, AI opozorila): odprt tekoči račun (RC), zapadli račun iz februarja
+// (vir AI opozorila o izterjavi) in plačan domači račun z 22 % DDV.
 export const demoInvoices: Record<string, any> = {
   'inv-1': {
     id: 'inv-1', kind: 'invoice', number: '2026-500', status: 'issued', customerId: 'cust-horvat',
     currency: 'EUR', vatTreatment: 'reverse_charge_eu', reverseCharge: true,
-    vatNote: 'Reverse charge — VAT to be accounted for by the recipient.',
+    vatNote: 'Obrnjena davčna obveznost — DDV obračuna prejemnik (76.a člen ZDDV-1).',
     totalNetMinor: eur(467.5), totalVatMinor: eur(0), totalGrossMinor: eur(467.5), paidMinor: eur(0),
-    issueDate: '2026-05-20', dueDate: '2026-07-04', serviceDate: '2026-05-18',
-    lines: [], vatBreakdown: [{ rate_pct: '0', reverse_charge: true, net_minor: eur(467.5), vat_minor: eur(0) }],
+    issueDate: '2026-06-03', dueDate: '2026-07-18', serviceDate: '2026-06-01',
+    lines: [
+      { id: 'il1', lineNo: 1, type: 'labour', description: 'Servisna dela — vlačilec ZG7421CD', workOrderId: null,
+        quantity: '5', unitPriceMinor: eur(65), discountPct: '0', vatRatePct: '0',
+        netMinor: eur(325), vatMinor: eur(0), grossMinor: eur(325) },
+      { id: 'il2', lineNo: 2, type: 'part', description: 'Zavorne obloge in potrošni material', workOrderId: null,
+        quantity: '1', unitPriceMinor: eur(142.5), discountPct: '0', vatRatePct: '0',
+        netMinor: eur(142.5), vatMinor: eur(0), grossMinor: eur(142.5) },
+    ],
+    vatBreakdown: [{ rate_pct: '0', reverse_charge: true, net_minor: eur(467.5), vat_minor: eur(0) }],
+  },
+  'inv-44': {
+    id: 'inv-44', kind: 'invoice', number: '2026-44', status: 'overdue', customerId: 'cust-horvat',
+    currency: 'EUR', vatTreatment: 'reverse_charge_eu', reverseCharge: true,
+    vatNote: 'Obrnjena davčna obveznost — DDV obračuna prejemnik (76.a člen ZDDV-1).',
+    totalNetMinor: eur(2400), totalVatMinor: eur(0), totalGrossMinor: eur(2400), paidMinor: eur(0),
+    issueDate: '2026-02-15', dueDate: '2026-03-31', serviceDate: '2026-02-12',
+    lines: [
+      { id: 'il3', lineNo: 1, type: 'labour', description: 'Generalna obnova menjalnika', workOrderId: null,
+        quantity: '24', unitPriceMinor: eur(65), discountPct: '0', vatRatePct: '0',
+        netMinor: eur(1560), vatMinor: eur(0), grossMinor: eur(1560) },
+      { id: 'il4', lineNo: 2, type: 'part', description: 'Sklopka in drobni material', workOrderId: null,
+        quantity: '1', unitPriceMinor: eur(840), discountPct: '0', vatRatePct: '0',
+        netMinor: eur(840), vatMinor: eur(0), grossMinor: eur(840) },
+    ],
+    vatBreakdown: [{ rate_pct: '0', reverse_charge: true, net_minor: eur(2400), vat_minor: eur(0) }],
+  },
+  'inv-77': {
+    id: 'inv-77', kind: 'invoice', number: '2026-77', status: 'paid', customerId: 'cust-kralj',
+    currency: 'EUR', vatTreatment: 'domestic', reverseCharge: false, vatNote: null,
+    totalNetMinor: eur(120), totalVatMinor: eur(26.4), totalGrossMinor: eur(146.4), paidMinor: eur(146.4),
+    issueDate: '2026-06-10', dueDate: '2026-07-10', serviceDate: '2026-06-10',
+    lines: [
+      { id: 'il5', lineNo: 1, type: 'labour', description: 'Menjava metlic in hitri pregled', workOrderId: null,
+        quantity: '1', unitPriceMinor: eur(120), discountPct: '0', vatRatePct: '22',
+        netMinor: eur(120), vatMinor: eur(26.4), grossMinor: eur(146.4) },
+    ],
+    vatBreakdown: [{ rate_pct: '22', reverse_charge: false, net_minor: eur(120), vat_minor: eur(26.4) }],
   },
 };
 
@@ -170,6 +233,6 @@ export const demoInsight = {
     efficiency: 0.84,
     profitability: { labourRevenueMinor: eur(227.5), labourCostMinor: eur(125), marginMinor: eur(102.5) },
     flags: [],
-    narrative: 'This job was clocked at 4.17h against 3.5 book hours (84% efficiency). Labour billed at €227.50 against an internal cost of €125.00 leaves a €102.50 margin. No anomalies.',
+    narrative: 'Na nalogu je vpisanih 4,17 h ob normativu 3,5 h (84 % učinkovitost). Zaračunano delo €227,50 ob interni ceni €125,00 pušča €102,50 marže. Brez posebnosti.',
   } as any,
 };
