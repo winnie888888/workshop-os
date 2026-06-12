@@ -47,8 +47,81 @@ export default function InvoicesAndAr() {
         </Card>
       )}
 
+      <InvoicesList />
+
       <RecordPayment onRecorded={() => mutate()} />
     </div>
+  );
+}
+
+/* Tabela računov (QA B1): brez nje je podrobnost računa — e-SLOG, UPN QR,
+   Minimax sled — iz vmesnika nedosegljiva. Imena strank pridejo iz istega
+   SWR ključa 'customers' kot spodnji obrazec, zato ni dodatnega klica. */
+const INV_STATUS: Record<string, { label: string; cls: string }> = {
+  issued: { label: 'Izdan', cls: 'bg-surface2 text-ink' },
+  sent: { label: 'Poslan', cls: 'bg-surface2 text-ink' },
+  partly_paid: { label: 'Delno plačan', cls: 'bg-hold/15 text-hold' },
+  paid: { label: 'Plačan', cls: 'bg-go/15 text-go' },
+  overdue: { label: 'Zapadel', cls: 'bg-stop/15 text-stop' },
+  credit_note: { label: 'Dobropis', cls: 'bg-surface2 text-muted' },
+  cancelled: { label: 'Storniran', cls: 'bg-surface2 text-muted' },
+};
+
+function InvoicesList() {
+  const { data: invoices, error } = useSWR('advisor-invoices', () => api.invoices.list());
+  const { data: customers } = useSWR('customers', () => api.customers.list().catch(() => []));
+  const nameOf = (id?: string) => ((customers ?? []) as any[]).find((c) => c.id === id)?.name ?? '—';
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div className="flex items-center justify-between border-b border-line px-5 py-3">
+        <h2 className="text-base font-bold text-ink">
+          Računi {Array.isArray(invoices) && <span className="num text-muted2">({invoices.length})</span>}
+        </h2>
+      </div>
+      {error && <div className="px-5 py-4"><ProblemBanner message="Računov ni bilo mogoče naložiti." /></div>}
+      {!invoices && !error && <div className="flex justify-center py-10"><Spinner className="text-brand" /></div>}
+      {Array.isArray(invoices) && invoices.length === 0 && (
+        <p className="px-5 py-8 text-center text-sm text-muted">Še ni izdanih računov.</p>
+      )}
+      {Array.isArray(invoices) && invoices.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted2">
+                <th className="px-5 py-2.5 font-bold">Številka</th>
+                <th className="px-4 py-2.5 font-bold">Stranka</th>
+                <th className="px-4 py-2.5 font-bold">Status</th>
+                <th className="px-4 py-2.5 font-bold">Izdan</th>
+                <th className="px-4 py-2.5 font-bold">Zapade</th>
+                <th className="px-5 py-2.5 text-right font-bold">Znesek</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(invoices as any[]).map((inv) => {
+                const st = INV_STATUS[inv.status] ?? { label: inv.status, cls: 'bg-surface2 text-ink' };
+                return (
+                  <tr key={inv.id} className="border-b border-line/60 transition hover:bg-surface2/60">
+                    <td className="px-5 py-3">
+                      <Link href={`/advisor/invoices/${inv.id}`} className="num font-bold text-brand hover:underline">
+                        {inv.number ?? inv.id}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-ink">{nameOf(inv.customerId)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${st.cls}`}>{st.label}</span>
+                    </td>
+                    <td className="num px-4 py-3 text-muted">{inv.issueDate ?? '—'}</td>
+                    <td className="num px-4 py-3 text-muted">{inv.dueDate ?? '—'}</td>
+                    <td className="num px-5 py-3 text-right font-bold text-ink">{formatMoneyMinor(inv.totalGrossMinor)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 

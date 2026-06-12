@@ -89,6 +89,17 @@ export class InvoicesRepository {
     return res.rowCount > 0 ? toHeader(res.rows[0]) : null;
   }
 
+  /** Vsi računi najemnika (RLS omeji na tenant), najnovejši najprej — za pregledno tabelo. */
+  async listAll(tx: TxClient, limit = 200): Promise<InvoiceHeader[]> {
+    const res = await tx.query<any>(
+      `SELECT * FROM app.invoices
+        ORDER BY issue_date DESC NULLS LAST, id DESC
+        LIMIT $1`,
+      [limit],
+    );
+    return res.rows.map(toHeader);
+  }
+
   async listByCustomer(tx: TxClient, customerId: string, limit = 100): Promise<InvoiceHeader[]> {
     const res = await tx.query<any>(
       `SELECT * FROM app.invoices
