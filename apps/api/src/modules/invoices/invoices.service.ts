@@ -58,7 +58,7 @@ export class InvoicesService {
       if (billable.length === 0) throw new BadRequestException('Work order has no billable lines');
 
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [order.customer_id])).rows[0];
-      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country, sms_enabled FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
       const currency = order.currency;
 
       // Decide VAT once for this customer (treatment depends on the parties).
@@ -157,10 +157,12 @@ export class InvoicesService {
       });
 
       // Push to Minimax and to the e-invoicing channel (async, outbox).
-      await this.outbox.enqueue(tx, {
-        tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
-        payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
-      });
+      if (tenant.minimax_enabled) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
+          payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
+        });
+      }
       await this.outbox.enqueue(tx, {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
@@ -168,7 +170,7 @@ export class InvoicesService {
 
       // SMS stranki "Račun je na voljo" (spec: invoice_available) — outbox v
       // ISTI transakciji; telefon je neobvezen, brez njega dogodka ni.
-      if (customer.phone) {
+      if (customer.phone && tenant.sms_enabled) {
         await this.outbox.enqueue(tx, {
           tenantId: ctx.tenantId, eventType: 'notification.send',
           payload: {
@@ -213,7 +215,7 @@ export class InvoicesService {
       if (!dto.lines || dto.lines.length === 0) throw new BadRequestException('No invoice lines');
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [dto.customerId])).rows[0];
       if (!customer) throw new NotFoundException('Customer not found');
-      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country, sms_enabled FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
       const currency = dto.currency ?? 'EUR';
 
       const vatCtx: Vat.VatContext = {
@@ -292,10 +294,12 @@ export class InvoicesService {
         entityType: 'invoice', entityId: invoiceId, before: null,
         after: { number, treatment, reverseCharge: anyReverseCharge, grossMinor: totals.grossMinor.toString(), currency, source: 'lines' },
       });
-      await this.outbox.enqueue(tx, {
-        tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
-        payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
-      });
+      if (tenant.minimax_enabled) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
+          payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
+        });
+      }
       await this.outbox.enqueue(tx, {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
@@ -303,7 +307,7 @@ export class InvoicesService {
 
       // SMS stranki "Račun je na voljo" (spec: invoice_available) — outbox v
       // ISTI transakciji; telefon je neobvezen, brez njega dogodka ni.
-      if (customer.phone) {
+      if (customer.phone && tenant.sms_enabled) {
         await this.outbox.enqueue(tx, {
           tenantId: ctx.tenantId, eventType: 'notification.send',
           payload: {
@@ -417,7 +421,7 @@ export class InvoicesService {
 
       const customer = (await tx.query<any>(`SELECT * FROM app.customers WHERE id = $1`, [dto.customerId])).rows[0];
       if (!customer) throw new NotFoundException('Customer not found');
-      const tenant = (await tx.query<any>(`SELECT name, country FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      const tenant = (await tx.query<any>(`SELECT name, country, sms_enabled FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
 
       const vatCtx: Vat.VatContext = {
         supplierCountry: tenant.country,
@@ -529,17 +533,19 @@ export class InvoicesService {
         },
       });
 
-      await this.outbox.enqueue(tx, {
-        tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
-        payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
-      });
+      if (tenant.minimax_enabled) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
+          payload: { invoiceId }, idempotencyKey: `minimax.invoice:${invoiceId}`,
+        });
+      }
       await this.outbox.enqueue(tx, {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId }, idempotencyKey: `einvoice.issue:${invoiceId}`,
       });
 
       // SMS stranki "Račun je na voljo" — ista pot kot enojni tok.
-      if (customer.phone) {
+      if (customer.phone && tenant.sms_enabled) {
         await this.outbox.enqueue(tx, {
           tenantId: ctx.tenantId, eventType: 'notification.send',
           payload: {
@@ -610,10 +616,13 @@ export class InvoicesService {
         before: { invoiceId: original.id, number: original.number },
         after: { creditNote: number, reason: dto.reason },
       });
-      await this.outbox.enqueue(tx, {
-        tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
-        payload: { invoiceId: creditId }, idempotencyKey: `minimax.invoice:${creditId}`,
-      });
+      const cnTenant = (await tx.query<any>(`SELECT minimax_enabled FROM app.tenants WHERE id = $1`, [ctx.tenantId])).rows[0];
+      if (cnTenant?.minimax_enabled) {
+        await this.outbox.enqueue(tx, {
+          tenantId: ctx.tenantId, eventType: 'minimax.invoice.upsert',
+          payload: { invoiceId: creditId }, idempotencyKey: `minimax.invoice:${creditId}`,
+        });
+      }
       await this.outbox.enqueue(tx, {
         tenantId: ctx.tenantId, eventType: 'einvoice.issue',
         payload: { invoiceId: creditId }, idempotencyKey: `einvoice.issue:${creditId}`,
@@ -790,10 +799,9 @@ export class InvoicesService {
   }
 
   async listByCustomer(customerId?: string): Promise<InvoiceHeader[]> {
+    if (!customerId) return [];
     const ctx = getContext();
-    return this.pg.withTenant(ctx.tenantId, async (tx) =>
-      customerId ? this.repo.listByCustomer(tx, customerId) : this.repo.listAll(tx),
-    );
+    return this.pg.withTenant(ctx.tenantId, async (tx) => this.repo.listByCustomer(tx, customerId));
   }
 
   async get(invoiceId: string) {

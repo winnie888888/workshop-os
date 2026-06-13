@@ -94,6 +94,7 @@ export class RemindersSweepService implements OnModuleInit, OnModuleDestroy {
              JOIN app.customers c ON c.id = i.customer_id
              JOIN app.tenants t ON t.id = i.tenant_id
             WHERE i.kind = 'invoice'
+              AND t.sms_enabled = true
               AND i.status IN ('overdue','partly_paid')
               AND i.due_date IS NOT NULL AND i.due_date < CURRENT_DATE
               AND (i.total_gross_minor - i.paid_minor) > 0
@@ -133,6 +134,7 @@ export class RemindersSweepService implements OnModuleInit, OnModuleDestroy {
              JOIN app.tenants t ON t.id = a.tenant_id
              LEFT JOIN app.assets s ON s.id = a.asset_id
             WHERE a.status = 'scheduled'
+              AND t.sms_enabled = true
               AND a.start_at::date = CURRENT_DATE + 1
               AND c.phone IS NOT NULL AND c.phone <> ''`,
         );

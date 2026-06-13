@@ -242,7 +242,7 @@ export class WorkOrdersService {
       // nalog (ponovni 'ready' po zadržanju NE pošlje drugič).
       if (to === 'ready') {
         const info = (await tx.query<any>(
-          `SELECT c.phone, t.name AS tenant_name, a.plate
+          `SELECT c.phone, t.name AS tenant_name, t.sms_enabled, a.plate
              FROM app.work_orders w
              JOIN app.customers c ON c.id = w.customer_id
              JOIN app.tenants t ON t.id = w.tenant_id
@@ -250,7 +250,7 @@ export class WorkOrdersService {
             WHERE w.id = $1`,
           [workOrderId],
         )).rows[0];
-        if (info?.phone) {
+        if (info?.phone && info.sms_enabled) {
           await this.outbox.enqueue(tx, {
             tenantId: ctx.tenantId, eventType: 'notification.send',
             payload: {
