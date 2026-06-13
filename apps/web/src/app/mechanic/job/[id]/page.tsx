@@ -27,15 +27,18 @@ export default function JobScreen() {
 
   const { data: wo, isLoading, mutate } = useSWR(['wo', id], () => api.workOrders.get(id));
 
-  // Reconcile the local timer from the server's open entry for this mechanic.
+  // Uskladi lokalni timer s strežniškim odprtim vnosom za tega mehanika IN
+  // takoj nastavi 'running' v ISTEM prehodu. Prej sta bila dva ločena effecta;
+  // ker clockStartedAt bere localStorage (ni reaktiven), je lahko effect za
+  // 'running' tekel PRED uskladitvijo in timer je obstal na 00:00:00, čeprav je
+  // nalog v delu z odprtim vnosom (QA U9). Z združitvijo je vrstni red zanesljiv.
+  const [running, setRunning] = useState<boolean>(() => !!clockStartedAt(id));
   useEffect(() => {
     if (!wo) return;
     const mine = wo.timeEntries.find((t) => t.mechanicId === mechanicId && t.endedAt === null);
     reconcileFromServer(id, mine ? mine.startedAt : null);
+    setRunning(!!mine);
   }, [wo, id, mechanicId]);
-
-  const [running, setRunning] = useState<boolean>(() => !!clockStartedAt(id));
-  useEffect(() => { setRunning(!!clockStartedAt(id)); }, [wo, id]);
 
   const [sheet, setSheet] = useState<null | 'photo' | 'note' | 'part'>(null);
   const [attachments, setAttachments] = useState(0);

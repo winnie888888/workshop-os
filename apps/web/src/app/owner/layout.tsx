@@ -27,7 +27,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
     <div className="grid min-h-screen grid-cols-1 bg-floor lg:grid-cols-[15.5rem_1fr]">
       <Rail open={navOpen} onClose={() => setNavOpen(false)} />
       {navOpen && <div onClick={() => setNavOpen(false)} aria-hidden className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
-      <div className="flex min-w-0 flex-col pb-[4.25rem] lg:pb-0">
+      <div className="flex min-w-0 flex-col pb-[6.5rem] lg:pb-0">
         <TopBar onMenu={() => setNavOpen((o) => !o)} />
         <main className="min-w-0 flex-1 p-4 sm:p-6"><BillingBanner />{children}</main>
         <footer className="px-6 pb-6 pt-2 text-center text-xs text-muted2">
