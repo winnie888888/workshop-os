@@ -34,7 +34,10 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Nastavitve</h1>
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">Nastavitve</h1>
+          <p className="mt-1 text-sm text-muted">Plačilni podatki spodaj so skupni za vso delavnico. Ostale nastavitve na tej strani veljajo za to napravo/brskalnik.</p>
+        </div>
         <div className="flex items-center gap-3">
           <button onClick={() => setS(DEFAULT_SETTINGS)} className="text-sm font-semibold text-muted2 hover:text-stop">Ponastavi</button>
           <Button tone="go" onClick={save} disabled={busy}>{busy ? <Spinner /> : 'Shrani nastavitve'}</Button>
@@ -45,7 +48,7 @@ export default function SettingsPage() {
 
       <PaymentProfileCard />
 
-      <Section title="Podjetje">
+      <Section title="Podjetje (videz izpisov na tej napravi)">
         <TextField label="Naziv" value={s.company.name} onChange={(v) => set('company', { name: v })} />
         <TextField label="Naslov" value={s.company.address} onChange={(v) => set('company', { address: v })} placeholder="Ulica, pošta, kraj" />
         <div className="grid gap-4 sm:grid-cols-2">
@@ -64,15 +67,19 @@ export default function SettingsPage() {
       </Section>
 
       <Section title="Integracije">
+        <div className="rounded-lg border border-hold/40 bg-hold/10 px-3 py-2 text-xs text-hold">
+          V pripravi — povezave se vklopijo s priklopom poverilnic na strežniku (Minimax org., SMS pošiljatelj).
+          Trenutno te možnosti opisujejo načrtovano vedenje in ne vklapljajo/izklapljajo pošiljanja.
+        </div>
         <CheckboxField label="Minimax (računovodstvo / e-računi)" checked={s.integrations.minimaxEnabled}
           onChange={(v) => set('integrations', { minimaxEnabled: v })}
-          hint="Ob izstavitvi računa se ta pošlje v Minimax." />
+          hint="Načrtovano: ob izstavitvi računa se ta pošlje v Minimax." />
         {s.integrations.minimaxEnabled && (
           <TextField label="Minimax OrgId" value={s.integrations.minimaxOrgId} onChange={(v) => set('integrations', { minimaxOrgId: v })} placeholder="npr. 123456" mono />
         )}
         <CheckboxField label="SMS obveščanje stranke" checked={s.integrations.smsEnabled}
           onChange={(v) => set('integrations', { smsEnabled: v })}
-          hint="Obvestila o statusu naloga, odobritvah in pripravljenosti vozila." />
+          hint="Načrtovano: obvestila o statusu naloga, odobritvah in pripravljenosti vozila." />
         {s.integrations.smsEnabled && (
           <TextField label="Pošiljatelj SMS" value={s.integrations.smsSender} onChange={(v) => set('integrations', { smsSender: v })} />
         )}

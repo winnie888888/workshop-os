@@ -59,11 +59,19 @@ export async function mockRecognize(): Promise<{ plate: string; confidence: numb
   return { plate, confidence };
 }
 
+export interface PlateRecentWorkOrder {
+  id: string;
+  number: string | null;
+  status: string;
+  complaint: string | null;
+}
+
 export interface PlateMatch {
   matchedAssetId?: string;
   matchedCustomerId?: string;
   vehicleLabel?: string;
   customerLabel?: string;
+  recentWorkOrders?: PlateRecentWorkOrder[];
 }
 
 /*
@@ -74,17 +82,27 @@ export interface PlateMatch {
 export async function matchPlate(
   search: (q: string) => Promise<{ hits: Array<{ type: string; id: string; label: string; sublabel?: string }> }>,
   plate: string,
+  recentByPlate?: (plateNormalized: string) => Promise<PlateRecentWorkOrder[]>,
 ): Promise<PlateMatch> {
   try {
-    const res = await search(normalizePlate(plate));
+    const norm = normalizePlate(plate);
+    const res = await search(norm);
     const hits = res?.hits ?? [];
     const asset = hits.find((h) => h.type === 'asset' || h.type === 'vehicle');
     const customer = hits.find((h) => h.type === 'customer');
+    // Zadnji nalogi tega vozila so del ujemanja (prej se nikoli niso brali —
+    // polje je bilo zato vedno prazno). Pridobivanje je best-effort: napaka
+    // ali manjkajoč vir ne sme blokirati prepoznave.
+    let recentWorkOrders: PlateRecentWorkOrder[] | undefined;
+    if (asset && recentByPlate) {
+      try { recentWorkOrders = await recentByPlate(norm); } catch { recentWorkOrders = undefined; }
+    }
     return {
       matchedAssetId: asset?.id,
       vehicleLabel: asset?.label,
       matchedCustomerId: customer?.id,
       customerLabel: customer?.label ?? asset?.sublabel,
+      recentWorkOrders,
     };
   } catch {
     return {};

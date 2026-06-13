@@ -6,8 +6,15 @@ import { api } from '@/lib/api';
 import { displayPlate } from '@/lib/format';
 import { Button, Card, SoftChip, Spinner, ProblemBanner } from '@/components/ui';
 import { TextField } from '@/components/form';
+
+const WO_STATUS_SL: Record<string, string> = {
+  draft: 'osnutek', open: 'odprt', in_progress: 'v delu', awaiting_approval: 'čaka odobritev',
+  awaiting_parts: 'čaka dele', on_hold: 'zadržan', ready: 'pripravljen', invoiced: 'zaračunan',
+  closed: 'zaključen', cancelled: 'preklican',
+};
 import {
   plateStore, mockRecognize, normalizePlate, guessCountry, matchPlate, makePlateScan,
+  type PlateRecentWorkOrder,
   PLATE_DEMO_SET, type PlateScan, type PlateSource, type PlateMatch,
 } from '@/lib/plate-scan';
 
@@ -51,9 +58,22 @@ export default function PlateScanPage() {
   }, []);
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  // Statusi nalogov v slovenščini za kompakten prikaz ob skenu.
+  // (Polni format je v /lib/format; tu zadošča kratka preslikava.)
+
   async function recognizeInto(plateRaw: string, confidence: number, source: PlateSource, imagePreview?: string) {
     setStatus('ocr'); setError(null);
-    const match = await matchPlate((q) => api.search(q), plateRaw);
+    const match = await matchPlate(
+      (q) => api.search(q),
+      plateRaw,
+      async (norm) => {
+        const list = await api.workOrders.list({ limit: 50 });
+        return (list ?? [])
+          .filter((w) => (w.plate ? normalizePlate(w.plate) === norm : false))
+          .slice(0, 5)
+          .map((w) => ({ id: w.id, number: w.number, status: w.status, complaint: w.complaint }));
+      },
+    );
     setResult({ plateRaw, confidence, source, imagePreview, match });
     setEditPlate(normalizePlate(plateRaw));
     setStatus('review');
@@ -260,7 +280,24 @@ export default function PlateScanPage() {
 
               <div className="rounded-card border border-line bg-surface2 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted2">Zadnji delovni nalogi</p>
-                <p className="mt-0.5 text-sm text-muted">{matched ? 'Ni nedavnih nalogov za to vozilo.' : 'Za novo vozilo ni zgodovine.'}</p>
+                {result?.match.recentWorkOrders && result.match.recentWorkOrders.length > 0 ? (
+                  <ul className="mt-1 flex flex-col gap-1">
+                    {result.match.recentWorkOrders.map((w: PlateRecentWorkOrder) => (
+                      <li key={w.id}>
+                        <button
+                          onClick={() => router.push(`/advisor/work-orders/${w.id}`)}
+                          className="flex w-full items-center justify-between rounded-tool px-2 py-1 text-left text-sm transition hover:bg-surface"
+                        >
+                          <span className="num font-semibold text-brand">{w.number ?? w.id}</span>
+                          <span className="truncate px-2 text-muted">{w.complaint ?? ''}</span>
+                          <span className="shrink-0 text-xs text-muted2">{WO_STATUS_SL[w.status] ?? w.status}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-0.5 text-sm text-muted">{matched ? 'Ni nedavnih nalogov za to vozilo.' : 'Za novo vozilo ni zgodovine.'}</p>
+                )}
               </div>
 
               <p className="rounded-tool bg-brandweak p-2 text-xs font-semibold text-brand">
