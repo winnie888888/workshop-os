@@ -196,6 +196,7 @@ export interface TenantProfile {
   phone: string | null; fax: string | null; email: string | null; website: string | null;
   bic: string | null; iban2: string | null; bic2: string | null;
   registrationNote: string | null;
+  smsEnabled: boolean; minimaxEnabled: boolean;
 }
 
 export const api = {
@@ -652,7 +653,7 @@ export const api = {
   tenant: {
     profile: () =>
       request<TenantProfile>(`/tenant/profile`),
-    updateProfile: (dto: { iban?: string; bankName?: string; address?: string; postCode?: string; city?: string; phone?: string; fax?: string; email?: string; website?: string; bic?: string; iban2?: string; bic2?: string; registrationNote?: string }) =>
+    updateProfile: (dto: { iban?: string; bankName?: string; address?: string; postCode?: string; city?: string; phone?: string; fax?: string; email?: string; website?: string; bic?: string; iban2?: string; bic2?: string; registrationNote?: string; smsEnabled?: boolean; minimaxEnabled?: boolean }) =>
       request<any>(`/tenant/profile`, { method: 'PATCH', body: dto }),
   },
 

@@ -67,22 +67,14 @@ export default function SettingsPage() {
       </Section>
 
       <Section title="Integracije">
-        <div className="rounded-lg border border-hold/40 bg-hold/10 px-3 py-2 text-xs text-hold">
-          V pripravi — povezave se vklopijo s priklopom poverilnic na strežniku (Minimax org., SMS pošiljatelj).
-          Trenutno te možnosti opisujejo načrtovano vedenje in ne vklapljajo/izklapljajo pošiljanja.
-        </div>
-        <CheckboxField label="Minimax (računovodstvo / e-računi)" checked={s.integrations.minimaxEnabled}
-          onChange={(v) => set('integrations', { minimaxEnabled: v })}
-          hint="Načrtovano: ob izstavitvi računa se ta pošlje v Minimax." />
-        {s.integrations.minimaxEnabled && (
-          <TextField label="Minimax OrgId" value={s.integrations.minimaxOrgId} onChange={(v) => set('integrations', { minimaxOrgId: v })} placeholder="npr. 123456" mono />
-        )}
-        <CheckboxField label="SMS obveščanje stranke" checked={s.integrations.smsEnabled}
-          onChange={(v) => set('integrations', { smsEnabled: v })}
-          hint="Načrtovano: obvestila o statusu naloga, odobritvah in pripravljenosti vozila." />
-        {s.integrations.smsEnabled && (
-          <TextField label="Pošiljatelj SMS" value={s.integrations.smsSender} onChange={(v) => set('integrations', { smsSender: v })} />
-        )}
+        <p className="text-sm text-muted">
+          Stikali za <strong>SMS obveščanje</strong> in <strong>sinhronizacijo v Minimax</strong> sta zdaj v sklopu
+          »Podatki za plačila« zgoraj — shranjeni sta na strežniku in veljata za vso delavnico (resnično krmilita pošiljanje).
+        </p>
+        <p className="text-xs text-muted2">
+          Tehnične poverilnice (Minimax org. ključ, SMS pošiljatelj) se nastavijo na strežniku;
+          ko niso priklopljene, SMS pristane v dnevniku namesto na telefonu.
+        </p>
       </Section>
 
       <Section title="AI pomočniki">
@@ -115,7 +107,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  */
 function PaymentProfileCard() {
   const { data, mutate } = useSWR(DEMO_MODE ? null : 'tenant-profile', () => api.tenant.profile());
-  const [form, setForm] = useState<{ iban: string; bankName: string; address: string; postCode: string; city: string; phone: string; fax: string; email: string; website: string; bic: string; iban2: string; bic2: string; registrationNote: string } | null>(null);
+  const [form, setForm] = useState<{ iban: string; bankName: string; address: string; postCode: string; city: string; phone: string; fax: string; email: string; website: string; bic: string; iban2: string; bic2: string; registrationNote: string; smsEnabled: boolean; minimaxEnabled: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ tone: 'go' | 'stop'; msg: string } | null>(null);
 
@@ -127,6 +119,7 @@ function PaymentProfileCard() {
         phone: data.phone ?? '', fax: data.fax ?? '', email: data.email ?? '', website: data.website ?? '',
         bic: data.bic ?? '', iban2: data.iban2 ?? '', bic2: data.bic2 ?? '',
         registrationNote: data.registrationNote ?? '',
+        smsEnabled: data.smsEnabled ?? true, minimaxEnabled: data.minimaxEnabled ?? true,
       });
     }
   }, [data, form]);
@@ -160,7 +153,7 @@ function PaymentProfileCard() {
     try {
       await api.tenant.updateProfile(form);
       await mutate();
-      setNote({ tone: 'go', msg: 'Plačilni podatki shranjeni — QR na računih jih uporablja takoj.' });
+      setNote({ tone: 'go', msg: 'Nastavitve shranjene — veljajo za vso delavnico takoj.' });
     } catch (e: any) {
       const denied = String(e?.message ?? '').includes('403');
       setNote({
@@ -203,6 +196,24 @@ function PaymentProfileCard() {
       <TextAreaField label="Registracijska noga računa" value={form.registrationNote} onChange={(v) => setF({ registrationNote: v })} rows={2}
         placeholder="Družba je registrirana dne … pri Okrožnem sodišču v … pod št. … Osnovni kapital znaša … EUR. Matična številka: …" />
       <p className="text-xs text-muted2">Vsi ti podatki se izpišejo v glavi oz. nogi vsakega računa — enako kot na obstoječih Minimax računih.</p>
+
+      <div className="mt-2 flex flex-col gap-3 rounded-card border border-line bg-surface2 p-4">
+        <h3 className="text-sm font-bold text-ink">Obveščanje in računovodstvo</h3>
+        <p className="text-xs text-muted">Te nastavitve veljajo za vso delavnico in resnično krmilijo, kaj sistem pošlje.</p>
+        <CheckboxField
+          label="Pošiljaj SMS obvestila strankam"
+          checked={form.smsEnabled}
+          onChange={(v) => setF({ smsEnabled: v })}
+          hint="Obvestila o pripravljenosti vozila, izdanem računu in opomnikih. Ko je izklopljeno, sistem teh SMS ne pošlje."
+        />
+        <CheckboxField
+          label="Sinhroniziraj račune v Minimax"
+          checked={form.minimaxEnabled}
+          onChange={(v) => setF({ minimaxEnabled: v })}
+          hint="Ob izdaji računa se ta pošlje v Minimax. Izklop zadrži sinhronizacijo (e-račun po zakonu teče naprej)."
+        />
+      </div>
+
       {note && <ProblemBanner tone={note.tone} message={note.msg} />}
       <div>
         <Button tone="go" onClick={savePayment} disabled={busy}>{busy ? <Spinner /> : 'Shrani podatke podjetja'}</Button>

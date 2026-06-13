@@ -1,7 +1,7 @@
 import {
   Body, Controller, Get, Injectable, Module, Patch, UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
 import { getContext, Permission } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
@@ -33,6 +33,8 @@ class TenantProfilePatchDto {
   @IsOptional() @IsString() @Length(0, 64) iban2?: string;
   @IsOptional() @IsString() @Length(0, 16) bic2?: string;
   @IsOptional() @IsString() @Length(0, 600) registrationNote?: string;
+  @IsOptional() @IsBoolean() smsEnabled?: boolean;
+  @IsOptional() @IsBoolean() minimaxEnabled?: boolean;
 }
 
 function mapProfile(r: any) {
@@ -54,6 +56,8 @@ function mapProfile(r: any) {
     iban2: r.iban2 ?? null,
     bic2: r.bic2 ?? null,
     registrationNote: r.registration_note ?? null,
+    smsEnabled: r.sms_enabled ?? true,
+    minimaxEnabled: r.minimax_enabled ?? true,
   };
 }
 
@@ -65,7 +69,7 @@ export class TenantService {
     const ctx = getContext();
     return this.pg.withAdmin(async (tx) => {
       const r = await tx.query<any>(
-        `SELECT id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note
+        `SELECT id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note, sms_enabled, minimax_enabled
            FROM app.tenants WHERE id = $1`,
         [ctx.tenantId],
       );
@@ -90,7 +94,7 @@ export class TenantService {
     if (iban2 && !/^[A-Z]{2}[0-9A-Z]{11,32}$/.test(iban2))
       throw Object.assign(new Error('Drugi IBAN ni veljaven.'), { status: 400 });
 
-    const cols: Array<[string, string | null | undefined]> = [
+    const cols: Array<[string, string | boolean | null | undefined]> = [
       ['iban', iban],
       ['iban2', iban2],
       ['phone', norm(dto.phone)],
@@ -104,9 +108,11 @@ export class TenantService {
       ['address', norm(dto.address)],
       ['post_code', norm(dto.postCode)],
       ['city', norm(dto.city)],
+      ['sms_enabled', dto.smsEnabled === undefined ? undefined : !!dto.smsEnabled],
+      ['minimax_enabled', dto.minimaxEnabled === undefined ? undefined : !!dto.minimaxEnabled],
     ];
     const sets: string[] = [];
-    const vals: Array<string | null> = [];
+    const vals: Array<string | boolean | null> = [];
     for (const [col, val] of cols) {
       if (val === undefined) continue;
       vals.push(val);
@@ -115,7 +121,7 @@ export class TenantService {
 
     return this.pg.withAdmin(async (tx) => {
       const beforeRow = (await tx.query<any>(
-        `SELECT id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note
+        `SELECT id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note, sms_enabled, minimax_enabled
            FROM app.tenants WHERE id = $1`,
         [ctx.tenantId],
       )).rows[0];
@@ -126,7 +132,7 @@ export class TenantService {
       const r = await tx.query<any>(
         `UPDATE app.tenants SET ${sets.join(', ')}, updated_at = now()
           WHERE id = $${vals.length}
-          RETURNING id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note`,
+          RETURNING id, name, country, vat_id, iban, bank_name, address, post_code, city, phone, fax, email, website, bic, iban2, bic2, registration_note, sms_enabled, minimax_enabled`,
         vals,
       );
       const row = r.rows[0];
@@ -136,10 +142,12 @@ export class TenantService {
         before: {
           iban: beforeRow.iban, bankName: beforeRow.bank_name, address: beforeRow.address,
           postCode: beforeRow.post_code, city: beforeRow.city,
+          smsEnabled: beforeRow.sms_enabled, minimaxEnabled: beforeRow.minimax_enabled,
         },
         after: {
           iban: row.iban, bankName: row.bank_name, address: row.address,
           postCode: row.post_code, city: row.city,
+          smsEnabled: row.sms_enabled, minimaxEnabled: row.minimax_enabled,
         },
       });
       return mapProfile(row);
