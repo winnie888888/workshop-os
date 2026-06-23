@@ -55,6 +55,16 @@ export class CustomersController {
     return this.customers.lookupCompany({ vat, regNo, country });
   }
 
+  /**
+   * Branje ene stranke je NAMERNO dostopno vsakemu prijavljenemu članu delavnice
+   * (brez @RequirePermissions). Varnostna meja med delavnicami je Postgres RLS:
+   * findById vrne vrstico samo iz člankovega tenanta — stranke tuje delavnice
+   * RLS ne pokaže. Znotraj ene (majhne, zaupanja vredne) delavnice pa mora
+   * stranko videti vsakdo, ki dela na njenem nalogu (mehanik, skladiščnik), ne
+   * le service advisor s CustomerManage. Ločena CustomerView pravica bi bila
+   * smiselna šele pri večjih ekipah z oddelki; do takrat je to zavestna izbira,
+   * ne pozabljen gate. Pisanje (Post/Patch) je seveda omejeno s CustomerManage.
+   */
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.customers.findById(id);
