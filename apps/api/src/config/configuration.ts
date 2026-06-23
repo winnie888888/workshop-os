@@ -12,6 +12,27 @@ function required(name: string): string {
 function optional(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
+/**
+ * Secret, ki je OBVEZEN v produkciji, a ima dev-fallback drugje. Reši tiho
+ * uporabo znanega dev-secreta v produkciji (npr. ponaredljiva portal seja):
+ *  - NODE_ENV=production: vrednost MORA biti nastavljena in dolga >= 32 znakov,
+ *    sicer aplikacija ob zagonu pade (fail-fast namesto tihe šibkosti).
+ *  - sicer: uporabi devFallback, da lokalni razvoj in demo tečeta brez nastavljanja.
+ */
+function requiredInProd(name: string, devFallback: string): string {
+  const isProd = (process.env.NODE_ENV ?? 'development') === 'production';
+  const v = process.env[name];
+  if (isProd) {
+    if (!v || v.trim() === '') {
+      throw new Error(`Missing required env var in production: ${name} (must be a long random secret, >= 32 chars)`);
+    }
+    if (v.trim().length < 32) {
+      throw new Error(`Env var ${name} is too weak in production: needs >= 32 chars (got ${v.trim().length}).`);
+    }
+    return v;
+  }
+  return v ?? devFallback;
+}
 
 @Injectable()
 export class AppConfig {
@@ -115,11 +136,11 @@ export class AppConfig {
 
   // Local dev driver.
   readonly localStorageDir = optional('LOCAL_STORAGE_DIR', '.storage');
-  readonly localStorageSigningSecret = optional('LOCAL_STORAGE_SIGNING_SECRET', 'dev-only-secret-change-me');
+  readonly localStorageSigningSecret = requiredInProd('LOCAL_STORAGE_SIGNING_SECRET', 'dev-only-secret-change-me');
 
   // Customer-portal magic-link / session signing secret. MUST be set to a long
   // random value in production; the default is for local development only.
-  readonly portalTokenSecret = optional('PORTAL_TOKEN_SECRET', 'dev-only-portal-secret-change-me-please');
+  readonly portalTokenSecret = requiredInProd('PORTAL_TOKEN_SECRET', 'dev-only-portal-secret-change-me-please');
   // Where the portal lives, for building deep links sent by SMS/email.
   readonly portalBaseUrl = optional('PORTAL_BASE_URL', 'http://localhost:3001/portal');
 }
