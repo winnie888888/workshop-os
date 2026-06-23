@@ -16,6 +16,12 @@ export interface Customer {
   address: string | null;
   postCode: string | null;
   city: string | null;
+  /**
+   * Mobilna številka za SMS obvestila (Customer Portal / SMS). 0030.
+   * Opcijsko, da ne zlomi obstoječih konstruktorjev, ki je (še) ne nastavljajo;
+   * API in UI ga uporabljata, kjer obstaja.
+   */
+  phone?: string | null;
   vatLiable: boolean;
   vatId: string | null; // e.g. SI12345678
   /** VAT-id validation state (Phase 4C). Gates EU reverse charge. */
