@@ -316,13 +316,14 @@ export const api = {
   // Pravice uporabnikov (P2): API ključi (polni ključ je vrnjen SAMO ob create).
   apiKeys: {
     list: () => request<Array<{
-      id: string; name: string; prefix: string; roles: string[];
+      id: string; name: string; prefix: string; roles: string[]; permissions: string[];
       createdAt: string; createdByName: string | null;
       lastUsedAt: string | null; revokedAt: string | null;
     }>>(`/api-keys`),
-    create: (name: string, roles: string[]) =>
-      request<{ id: string; name: string; prefix: string; roles: string[]; key: string }>(
-        `/api-keys`, { method: 'POST', body: { name, roles } }),
+    // permissions je neobvezen: ključ lahko nosi vloge, konkretne pravice, ali oboje.
+    create: (name: string, roles: string[], permissions: string[] = []) =>
+      request<{ id: string; name: string; prefix: string; roles: string[]; permissions: string[]; key: string }>(
+        `/api-keys`, { method: 'POST', body: { name, roles, permissions } }),
     revoke: (id: string) =>
       request<{ ok: boolean; id: string }>(`/api-keys/${id}/revoke`, { method: 'POST' }),
   },

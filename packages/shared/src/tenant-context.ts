@@ -26,6 +26,14 @@ export interface RequestContext {
    * so a customer is isolated within a tenant as well as across tenants (RLS).
    */
   customerId?: string | null;
+  /**
+   * Konkretne pravice API ključa, set IZKLJUČNO ko je zahtevek avtenticiran z
+   * API ključem, ki nosi permissions[] (per-permission scoping). Človeški
+   * zahtevki in ključi samo z vlogami pustijo to neopredeljeno. Ko je
+   * opredeljeno, guard dovoli pravico, če je v tem naboru ALI izhaja iz vlog —
+   * tako ostane nazaj-združljivo (ključ samo z vlogami se obnaša kot prej).
+   */
+  keyPermissions?: string[];
 }
 
 const als = new AsyncLocalStorage<RequestContext>();

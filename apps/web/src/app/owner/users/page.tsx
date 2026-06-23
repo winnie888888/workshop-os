@@ -281,6 +281,10 @@ function ApiKeysTab() {
   const { data: keys, error, mutate } = useSWR('api-keys', () => api.apiKeys.list());
   const [name, setName] = useState('');
   const [roles, setRoles] = useState<Set<string>>(new Set(['read_only']));
+  // Način dodeljevanja: 'roles' = cele vloge (privzeto, kot doslej), 'permissions'
+  // = ozke konkretne pravice (princip najmanjših privilegijev za integracije).
+  const [mode, setMode] = useState<'roles' | 'permissions'>('roles');
+  const [perms, setPerms] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [created, setCreated] = useState<{ name: string; key: string } | null>(null);
@@ -294,12 +298,23 @@ function ApiKeysTab() {
     });
   }
 
+  function togglePerm(p: string) {
+    setPerms((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p); else next.add(p);
+      return next;
+    });
+  }
+
   async function create() {
     setBusy(true); setErr(null); setCreated(null); setCopied(false);
     try {
-      const res = await api.apiKeys.create(name, [...roles]);
+      const res = mode === 'permissions'
+        ? await api.apiKeys.create(name, [], [...perms])
+        : await api.apiKeys.create(name, [...roles], []);
       setCreated({ name: res.name, key: res.key });
       setName('');
+      setPerms(new Set());
       void mutate();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Ključa ni bilo mogoče ustvariti.');
@@ -344,17 +359,60 @@ function ApiKeysTab() {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="npr. Zapier integracija"
             className="h-11 w-full rounded-tool border border-line bg-surface2 px-3 text-sm transition focus:border-brandring focus:bg-surface focus:outline-none focus:ring-4 focus:ring-brandweak" />
         </label>
-        <span className="mb-1 mt-4 block text-xs font-bold uppercase tracking-wide text-muted2">Vloge ključa</span>
-        <div className="flex flex-col gap-1.5">
-          {KEY_ROLES.map((r) => (
-            <label key={r} className="flex min-h-tap cursor-pointer items-center gap-3 rounded-tool border border-line bg-surface px-3 py-2 transition hover:bg-floor">
-              <input type="checkbox" checked={roles.has(r)} onChange={() => toggleRole(r)} className="h-4 w-4 accent-[#1A6BEF]" />
-              <span className="text-sm font-semibold text-ink">{ROLE_LABEL[r] ?? r}</span>
-            </label>
-          ))}
+        {/* Preklop med celimi vlogami in ozkimi pravicami. */}
+        <div className="mb-1 mt-4 flex items-center gap-1 rounded-tool border border-line bg-surface2 p-1">
+          <button type="button" onClick={() => setMode('roles')}
+            className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition ${mode === 'roles' ? 'bg-surface text-ink shadow-sm' : 'text-muted2 hover:text-ink'}`}>
+            Po vlogah
+          </button>
+          <button type="button" onClick={() => setMode('permissions')}
+            className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition ${mode === 'permissions' ? 'bg-surface text-ink shadow-sm' : 'text-muted2 hover:text-ink'}`}>
+            Po pravicah
+          </button>
         </div>
-        <p className="mt-2 text-xs text-muted">Vlog lastnika in administratorja ključ ne more dobiti — ključ nikoli ne upravlja delavnice ali pravic.</p>
-        <Button tone="info" full className="mt-4" onClick={create} disabled={busy || !name.trim() || roles.size === 0}>
+
+        {mode === 'roles' ? (
+          <>
+            <span className="mb-1 mt-3 block text-xs font-bold uppercase tracking-wide text-muted2">Vloge ključa</span>
+            <div className="flex flex-col gap-1.5">
+              {KEY_ROLES.map((r) => (
+                <label key={r} className="flex min-h-tap cursor-pointer items-center gap-3 rounded-tool border border-line bg-surface px-3 py-2 transition hover:bg-floor">
+                  <input type="checkbox" checked={roles.has(r)} onChange={() => toggleRole(r)} className="h-4 w-4 accent-[#1A6BEF]" />
+                  <span className="text-sm font-semibold text-ink">{ROLE_LABEL[r] ?? r}</span>
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">Vlog lastnika in administratorja ključ ne more dobiti — ključ nikoli ne upravlja delavnice ali pravic.</p>
+          </>
+        ) : (
+          <>
+            <span className="mb-1 mt-3 block text-xs font-bold uppercase tracking-wide text-muted2">Konkretne pravice ključa</span>
+            <div className="flex max-h-80 flex-col gap-3 overflow-y-auto rounded-tool border border-line bg-surface2 p-3">
+              {Object.entries(
+                Object.entries(PERMISSION_META).reduce((acc, [perm, meta]) => {
+                  (acc[meta.group] ??= []).push([perm, meta.label]);
+                  return acc;
+                }, {} as Record<string, [string, string][]>),
+              ).map(([group, items]) => (
+                <div key={group}>
+                  <span className="mb-1 block text-[0.7rem] font-bold uppercase tracking-wide text-muted2">{group}</span>
+                  <div className="flex flex-col gap-1">
+                    {items.map(([perm, label]) => (
+                      <label key={perm} className="flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 transition hover:bg-floor">
+                        <input type="checkbox" checked={perms.has(perm)} onChange={() => togglePerm(perm)} className="h-4 w-4 accent-[#1A6BEF]" />
+                        <span className="text-sm text-ink">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted">Ključ dobi natanko izbrane pravice — nič več. Primerno za integracije po načelu najmanjših privilegijev.</p>
+          </>
+        )}
+
+        <Button tone="info" full className="mt-4" onClick={create}
+          disabled={busy || !name.trim() || (mode === 'roles' ? roles.size === 0 : perms.size === 0)}>
           {busy ? <Spinner /> : 'Ustvari ključ'}
         </Button>
 
@@ -389,6 +447,12 @@ function ApiKeysTab() {
                   </span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
                     {k.roles.map((r) => <SoftChip key={r} tone="info">{ROLE_LABEL[r] ?? r}</SoftChip>)}
+                    {(k.permissions ?? []).map((p) => (
+                      <SoftChip key={p} tone="neutral">{PERMISSION_META[p]?.label ?? p}</SoftChip>
+                    ))}
+                    {k.roles.length === 0 && (k.permissions ?? []).length === 0 && (
+                      <SoftChip tone="neutral">brez pravic</SoftChip>
+                    )}
                   </span>
                   <span className="num mt-0.5 block text-xs text-muted2">
                     Ustvarjen {new Date(k.createdAt).toLocaleDateString('sl-SI')}{k.createdByName ? ` · ${k.createdByName}` : ''}

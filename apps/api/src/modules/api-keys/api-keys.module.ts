@@ -41,7 +41,7 @@ export class ApiKeysService {
     const ctx = getContext();
     return this.pg.withTenant(ctx.tenantId, async (tx) => {
       const r = await tx.query<any>(
-        `SELECT k.id, k.name, k.prefix, k.roles, k.created_at, k.last_used_at,
+        `SELECT k.id, k.name, k.prefix, k.roles, k.permissions, k.created_at, k.last_used_at,
                 k.revoked_at, u.name AS created_by_name
            FROM app.api_keys k
            LEFT JOIN app.users u ON u.id = k.created_by
@@ -54,6 +54,7 @@ export class ApiKeysService {
         name: k.name,
         prefix: k.prefix,
         roles: (k.roles ?? []) as Role[],
+        permissions: (k.permissions ?? []) as Permission[],
         createdAt: iso(k.created_at),
         createdByName: k.created_by_name ?? null,
         lastUsedAt: iso(k.last_used_at),
@@ -63,21 +64,31 @@ export class ApiKeysService {
   }
 
   /** Ustvari ključ. POLNI ključ je v odgovoru in se NIKOLI več ne prikaže. */
-  async create(name: string, roles: string[]) {
+  async create(name: string, roles: string[], permissions: string[] = []) {
     const ctx = getContext();
     const cleanName = (name ?? '').trim();
     if (!cleanName) throw new BadRequestException('Ime ključa je obvezno.');
     if (cleanName.length > 80) throw new BadRequestException('Ime ključa je predolgo.');
-    if (!Array.isArray(roles) || roles.length === 0) {
-      throw new BadRequestException('Ključ rabi vsaj eno vlogo.');
+
+    const rolesArr = Array.isArray(roles) ? roles : [];
+    const permsArr = Array.isArray(permissions) ? permissions : [];
+    // Ključ rabi VSAJ vlogo ALI vsaj pravico (per-permission scoping): lahko
+    // nosi cele vloge, ozke konkretne pravice, ali oboje.
+    if (rolesArr.length === 0 && permsArr.length === 0) {
+      throw new BadRequestException('Ključ rabi vsaj eno vlogo ali pravico.');
     }
-    for (const r of roles) {
+    for (const r of rolesArr) {
       if (!isValidRole(r)) throw new BadRequestException(`Neznana vloga: ${r}`);
       if (FORBIDDEN_KEY_ROLES.has(r)) {
         throw new BadRequestException(`Vloge ${r} ni mogoče dodeliti API ključu.`);
       }
     }
-    const uniqueRoles = [...new Set(roles)];
+    const validPermissions = new Set<string>(Object.values(Permission));
+    for (const p of permsArr) {
+      if (!validPermissions.has(p)) throw new BadRequestException(`Neznana pravica: ${p}`);
+    }
+    const uniqueRoles = [...new Set(rolesArr)];
+    const uniquePerms = [...new Set(permsArr)];
 
     const fullKey = `wos_${randomBytes(20).toString('hex')}`;
     const prefix = fullKey.slice(0, 12);
@@ -86,9 +97,9 @@ export class ApiKeysService {
 
     await this.pg.withTenant(ctx.tenantId, async (tx) => {
       await tx.query(
-        `INSERT INTO app.api_keys (id, tenant_id, name, prefix, key_hash, roles, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [id, ctx.tenantId, cleanName, prefix, keyHash, uniqueRoles, ctx.userId],
+        `INSERT INTO app.api_keys (id, tenant_id, name, prefix, key_hash, roles, permissions, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [id, ctx.tenantId, cleanName, prefix, keyHash, uniqueRoles, uniquePerms, ctx.userId],
       );
       await this.audit.append(tx, {
         tenantId: ctx.tenantId,
@@ -97,11 +108,11 @@ export class ApiKeysService {
         entityType: 'api_key',
         entityId: id,
         before: null,
-        after: { name: cleanName, prefix, roles: uniqueRoles },
+        after: { name: cleanName, prefix, roles: uniqueRoles, permissions: uniquePerms },
       });
     });
 
-    return { id, name: cleanName, prefix, roles: uniqueRoles, key: fullKey };
+    return { id, name: cleanName, prefix, roles: uniqueRoles, permissions: uniquePerms, key: fullKey };
   }
 
   /** Preklic je takojšen in dokončen; zapis ostane zaradi revizijske sledi. */
@@ -141,8 +152,8 @@ export class ApiKeysController {
   }
 
   @Post()
-  create(@Body() body: { name?: string; roles?: string[] }) {
-    return this.keys.create(body?.name ?? '', body?.roles ?? []);
+  create(@Body() body: { name?: string; roles?: string[]; permissions?: string[] }) {
+    return this.keys.create(body?.name ?? '', body?.roles ?? [], body?.permissions ?? []);
   }
 
   @Post(':id/revoke')

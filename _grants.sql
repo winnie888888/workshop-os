@@ -1,0 +1,28 @@
+﻿GRANT USAGE ON SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA app TO workshop_app;  -- change_feed.cursor
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA app TO workshop_app;
+GRANT DELETE ON app.appointments TO workshop_app;
+REVOKE ALL ON app.user_credentials FROM workshop_app;
+REVOKE ALL ON app.signup_tokens    FROM workshop_app;
+GRANT SELECT, INSERT, UPDATE ON app.notifications TO workshop_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON app.presets TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON app.bank_imports        TO workshop_app;
+GRANT SELECT, INSERT, UPDATE ON app.bank_import_entries TO workshop_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON app.member_permission_overrides TO workshop_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON app.api_keys TO workshop_app;
+GRANT SELECT, INSERT ON app.login_events TO workshop_app;
+GRANT SELECT, INSERT, DELETE ON app.invoice_work_orders TO workshop_app;

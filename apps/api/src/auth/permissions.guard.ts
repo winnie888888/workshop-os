@@ -61,7 +61,16 @@ export class PermissionsGuard implements CanActivate {
     const roles = ctx.roles as Role[];
     // Brez vezanega uporabnika (sistemske poti) izjem ni — veljajo samo vloge.
     const overrides = ctx.userId ? await this.loadOverrides(ctx.tenantId, ctx.userId) : [];
-    const ok = required.every((p) => hasEffectivePermission(roles, overrides, p));
+
+    // Per-permission scoping za API ključe: ko je zahtevek avtenticiran s
+    // ključem, ki nosi konkretne pravice (keyPermissions), je pravica dovoljena,
+    // če je v TEM naboru ALI izhaja iz vlog/izjem. Ključi samo z vlogami pustijo
+    // keyPermissions neopredeljeno → presoja teče izključno po vlogah (kot prej).
+    const keyPerms = ctx.keyPermissions;
+    const ok = required.every((p) =>
+      (keyPerms !== undefined && keyPerms.includes(p)) ||
+      hasEffectivePermission(roles, overrides, p),
+    );
     if (!ok) throw new ForbiddenException('Insufficient permissions');
     return true;
   }

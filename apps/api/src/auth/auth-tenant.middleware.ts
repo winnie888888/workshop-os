@@ -38,8 +38,8 @@ export class AuthTenantMiddleware implements NestMiddleware {
       const fullKey = rawAuth.slice(7);
       const keyHash = hashApiKey(fullKey);
       const key = await this.pg.withAdmin(async (tx) => {
-        const r = await tx.query<{ id: string; tenant_id: string; roles: string[]; revoked_at: Date | null }>(
-          `SELECT id, tenant_id, roles, revoked_at FROM app.api_keys WHERE key_hash = $1`,
+        const r = await tx.query<{ id: string; tenant_id: string; roles: string[]; permissions: string[]; revoked_at: Date | null }>(
+          `SELECT id, tenant_id, roles, permissions, revoked_at FROM app.api_keys WHERE key_hash = $1`,
           [keyHash],
         );
         return r.rows[0] ?? null;
@@ -82,11 +82,15 @@ export class AuthTenantMiddleware implements NestMiddleware {
         }
       }).catch(() => { /* ignore */ });
 
+      const keyPerms = key.permissions ?? [];
       const keyCtx: RequestContext = {
         tenantId: key.tenant_id,
         userId: null,
         roles: key.roles ?? [],
         requestId: req.header('x-request-id') ?? newId(),
+        // Vežemo le, če ključ dejansko nosi pravice; prazno pustimo neopredeljeno,
+        // da guard presoja izključno po vlogah (nazaj-združljivo s starimi ključi).
+        ...(keyPerms.length > 0 ? { keyPermissions: keyPerms } : {}),
       };
       runWithContext(keyCtx, () => next());
       return;
