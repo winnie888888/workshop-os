@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 import { AppConfig } from '../../config/configuration';
 
@@ -15,9 +15,21 @@ export interface TxClient {
 @Injectable()
 export class PgService implements OnModuleDestroy {
   private readonly pool: Pool;
+  private readonly log = new Logger('PgService');
 
   constructor(private readonly config: AppConfig) {
-    this.pool = new Pool({ connectionString: config.databaseUrl, max: 20 });
+    this.pool = new Pool({
+      connectionString: config.databaseUrl,
+      max: config.dbPoolMax,
+      connectionTimeoutMillis: config.dbPoolConnTimeoutMs,
+      idleTimeoutMillis: config.dbPoolIdleTimeoutMs,
+    });
+    // Brez tega bi nepričakovana napaka na nedejavni povezavi (npr. DB restart,
+    // mrežni izpad) sesula proces. Zabeležimo in pustimo pool, da povezavo
+    // nadomesti ob naslednji uporabi (resilienca pri skaliranju/deployih).
+    this.pool.on('error', (err) => {
+      this.log.error(`idle pool client error: ${err.message}`);
+    });
   }
 
   /**

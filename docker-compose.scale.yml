@@ -1,0 +1,68 @@
+# ============================================================================
+# Produkcijski scaling vzorec za AI Workshop OS (A-SPRINT GARAGE).
+#
+# Ključno načelo: API je STATELESS in se skalira vodoravno (več replik za
+# load-balancerjem), WORKER pa teče kot LOČENA storitev. Outbox že uporablja
+# FOR UPDATE SKIP LOCKED, zato bi bilo več worker-replik varnih (noben dogodek
+# se ne podvoji), a en namenski worker je čistejši in ne podvaja urnih sweepov.
+#
+# Zagon:   docker compose -f docker-compose.scale.yml up -d --scale api=3
+# Migracije: docker compose -f docker-compose.scale.yml run --rm api pnpm migrate
+# ============================================================================
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: workshop
+      # Pri >5 app-replikah raje postavi PgBouncer pred to bazo.
+    command: ["postgres", "-c", "max_connections=200"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # API: vodoravno skalabilen (--scale api=N). Worker IZKLOPLJEN tu
+  # (OUTBOX_POLL_MS=0, REMINDERS_SWEEP_MS=0), da urni sweepi tečejo le v
+  # 'worker' storitvi. Brez objavljenega porta navzven — pred njim je LB/proxy.
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://workshop:${POSTGRES_PASSWORD:?}@db:5432/workshop
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}        # N_replik × to < max_connections (200)
+      OUTBOX_POLL_MS: "0"                     # API ne poganja outbox drain-a
+      REMINDERS_SWEEP_MS: "0"                 # niti urnih sweepov
+      PORTAL_TOKEN_SECRET: ${PORTAL_TOKEN_SECRET:?>=32 znakov}
+      LOCAL_STORAGE_SIGNING_SECRET: ${LOCAL_STORAGE_SIGNING_SECRET:?>=32 znakov}
+      # Pri multi-replica aktiviraj deljeni rate-limit store (glej SCALING.md):
+      # REDIS_URL: redis://redis:6379
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+    # Za produkcijo dodaj LB/ingress (Traefik, Caddy, nginx) pred 'api'.
+
+  # WORKER: točno ena instanca. Edini poganja outbox drain + urne opomnike.
+  worker:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://workshop:${POSTGRES_PASSWORD:?}@db:5432/workshop
+      DB_POOL_MAX: ${WORKER_POOL_MAX:-10}     # worker rabi manj povezav kot API
+      OUTBOX_POLL_MS: ${OUTBOX_POLL_MS:-1000} # drain vsako sekundo
+      REMINDERS_SWEEP_MS: ${REMINDERS_SWEEP_MS:-3600000} # urni sweep
+      PORTAL_TOKEN_SECRET: ${PORTAL_TOKEN_SECRET:?}
+      LOCAL_STORAGE_SIGNING_SECRET: ${LOCAL_STORAGE_SIGNING_SECRET:?}
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+    # NE skaliraj te storitve nad 1 (sweepi bi tekli večkrat; SKIP LOCKED jih
+    # naredi varne, a ne učinkovite).
+
+volumes:
+  pgdata:

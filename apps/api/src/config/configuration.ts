@@ -50,6 +50,19 @@ export class AppConfig {
   // Database
   readonly databaseUrl = required('DATABASE_URL');
   readonly dbAppRole = optional('DB_APP_ROLE', 'workshop_app');
+  /**
+   * Connection pool (skaliranje). Vsaka instanca/replika odpre SVOJ pool, zato
+   * mora veljati: (število replik) × DB_POOL_MAX < Postgres max_connections.
+   * Pri 100 max_connections in 3 replikah je varno npr. 20–25. Ob večanju
+   * replik preko ~5 raje postavi PgBouncer (transaction pooling) pred Postgres
+   * in usmeri DATABASE_URL nanj — tako stotine app-povezav delijo peščico
+   * dejanskih DB-povezav.
+   */
+  readonly dbPoolMax = parseInt(optional('DB_POOL_MAX', '20'), 10);
+  /** Koliko ms čakamo na prosto povezavo, preden vržemo (preprečuje tihi zastoj). */
+  readonly dbPoolConnTimeoutMs = parseInt(optional('DB_POOL_CONN_TIMEOUT_MS', '5000'), 10);
+  /** Koliko ms je povezava lahko nedejavna, preden jo pool zapre (sprosti DB sloty). */
+  readonly dbPoolIdleTimeoutMs = parseInt(optional('DB_POOL_IDLE_TIMEOUT_MS', '30000'), 10);
 
   // Auth (OIDC). JWKS is fetched from the IdP; tokens verified by `jose`.
   // In DEV_AUTH mode these are not required (the verifier is never invoked).
