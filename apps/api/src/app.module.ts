@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { CommonModule } from './common/common.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { FleetsModule } from './modules/fleets/fleets.module';
@@ -52,6 +53,20 @@ import { HealthController } from './common/health.controller';
 @Module({
   imports: [
     CommonModule,
+    /**
+     * Globalna zaščita pred zlorabo (rate limiting). Privzetek velja za VSE
+     * poti: 120 zahtev / 60 s na IP — radodarno za normalno rabo delavnice,
+     * a ustavi scraping (npr. iteracijo čez 1000+ strank) in bot poplave.
+     * Strožji per-route limiti so na dragih AI poteh prek @Throttle.
+     *
+     * SKALIRANJE: privzeti store je in-memory (na proces). Pri večinstančni
+     * postavitvi (več replik za Vodja-blueprint §scaling) zamenjaj store z
+     * Redis-om, da je limit deljen med replikami:
+     *   import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+     *   ThrottlerModule.forRoot({ throttlers: [...], storage: new ThrottlerStorageRedisService(REDIS_URL) })
+     * Brez tega vsaka replika šteje svoj kvotni delež (limit × število replik).
+     */
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     StorageModule,      // global STORAGE_PORT, used by AttachmentsModule
     AuthModule,         // login-time endpoints (config, me, profile, sessions)
     CustomersModule,
@@ -97,6 +112,8 @@ import { HealthController } from './common/health.controller';
   controllers: [HealthController],
   providers: [
     { provide: APP_FILTER, useClass: ProblemExceptionFilter },
+    // Rate-limit PRED avtorizacijo: zavrni poplavo, preden sploh preverjamo pravice.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     // Mehki paywall (Faza B): mutacije ob poteklem trialu/zamrznjeni naročnini → 402.
     { provide: APP_GUARD, useClass: PlanGuard },

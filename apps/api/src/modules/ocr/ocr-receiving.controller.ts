@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 import { Permission } from '@workshop/shared';
 import { PermissionsGuard, RequirePermissions } from '../../auth/permissions.guard';
@@ -32,6 +33,8 @@ export class OcrReceivingController {
    * fields flagged for human review. Never posts; never moves stock.
    */
   @Post('draft')
+  // AI ekstrakcija dokumenta je draga; strog limit proti zlorabi generacije.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @RequirePermissions(Permission.StockReceive)
   async draft(@Body() dto: OcrDraftDto) {
     return this.ocr.draftFromDocument({

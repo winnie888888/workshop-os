@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IsArray, IsIn, IsInt, IsOptional, IsString, Length, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Permission } from '@workshop/shared';
@@ -42,6 +43,8 @@ export class VoiceWorkOrderController {
   constructor(private readonly voice: VoiceWorkOrderService) {}
 
   @Post('draft')
+  // AI transkripcija + ekstrakcija je draga; strog limit proti zlorabi generacije.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @RequirePermissions(Permission.WorkOrderCreate)
   async draft(@Body() dto: DraftDto) {
     return this.voice.draft({ attachmentId: dto.attachmentId, languageHint: dto.languageHint ?? null });
