@@ -261,6 +261,35 @@ export class WorkOrdersService {
           });
         }
       }
+
+      // SMS stranki ob prehodu v 'Čaka odobritev' (spec: additional_work_approval).
+      // Mehanik med delom odkrije dodatno potrebno delo in nalog postavi v ta
+      // status; stranka prejme poziv k odobritvi (telefonski klic / e-ponudba).
+      // Namenoma BREZ zneska v SMS — končni obseg in cena se uskladita ob
+      // odobritvi (ponudba/pogovor), SMS je sprožilec stika. Isti vzorec kot
+      // vehicle_ready: outbox v isti tx, telefon neobvezen, idempotentno na
+      // nalog (ponovni vstop v ta status NE pošlje drugič).
+      if (to === 'awaiting_approval') {
+        const info = (await tx.query<any>(
+          `SELECT c.phone, t.name AS tenant_name, t.sms_enabled, a.plate
+             FROM app.work_orders w
+             JOIN app.customers c ON c.id = w.customer_id
+             JOIN app.tenants t ON t.id = w.tenant_id
+             LEFT JOIN app.assets a ON a.id = w.asset_id
+            WHERE w.id = $1`,
+          [workOrderId],
+        )).rows[0];
+        if (info?.phone && info.sms_enabled) {
+          await this.outbox.enqueue(tx, {
+            tenantId: ctx.tenantId, eventType: 'notification.send',
+            payload: {
+              channel: 'sms', to: normalizeSiPhone(info.phone), kind: 'additional_work_approval',
+              body: `Pri pregledu vozila${info.plate ? ` ${info.plate}` : ''} smo odkrili dodatno potrebno delo. Prosimo, pokličite nas za uskladitev in odobritev. — ${info.tenant_name}`,
+            },
+            idempotencyKey: `notify.additional_work_approval:${workOrderId}`,
+          });
+        }
+      }
       return updated;
     });
   }
