@@ -1,0 +1,47 @@
+# Build kontekst higiena + VARNOST: nič od spodaj ne sme v sliko.
+# Najpomembneje: .env (skrivnosti) se NIKOLI ne zapeče v Docker sliko —
+# skrivnosti pridejo izključno prek okolja ob zagonu (compose/orchestrator).
+
+# Odvisnosti (build jih namesti znova, deterministično iz lockfila)
+node_modules
+**/node_modules
+
+# Skrivnosti / okolje — NIKOLI v sliko
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+
+# Build artefakti (build jih ustvari znotraj slike)
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+
+# VCS / IDE / OS
+.git
+.gitignore
+.vscode
+.idea
+**/.DS_Store
+
+# Test / coverage / logi
+coverage
+**/coverage
+*.log
+npm-debug.log*
+
+# Lokalna shramba / podatki (ne v sliko)
+.storage
+**/.storage
+pgdata
+
+# Spremljevalne datoteke, ki niso del runtime
+*.md
+!SCALING.md
+docker-compose*.yml
+**/*.test.ts
+**/*.spec.ts
