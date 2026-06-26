@@ -89,6 +89,11 @@ export class AppConfig {
   // so dev/demo environments work end-to-end without sending anything.
   readonly resendApiKey = optional('RESEND_API_KEY', '');
   readonly emailFrom = optional('EMAIL_FROM', 'A-SPRINT GARAGE <obvestila@asprint-garage.si>');
+  // Infobip SMS (enako kot Resend: prazno = kanal ni nastavljen → routing pošlje
+  // na logging stub, nič se ne pretvarja, da je poslano). Sender je registriran ID.
+  readonly infobipBaseUrl = optional('INFOBIP_BASE_URL', '');
+  readonly infobipApiKey = optional('INFOBIP_API_KEY', '');
+  readonly infobipSender = optional('INFOBIP_SENDER', 'ASPRINT');
 
   // Stripe Billing (Faza B, blok 2). Prazen secret => /billing/checkout in
   // webhook odgovorita 503 s poštenim pojasnilom; PlanGuard in trial tečeta

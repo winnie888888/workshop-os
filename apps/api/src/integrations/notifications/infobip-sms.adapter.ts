@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { AppConfig } from '../../config/configuration';
 import type { NotificationKind } from './notification.port';
 
 /**
@@ -10,24 +11,25 @@ import type { NotificationKind } from './notification.port';
  * INFOBIP_BASE_URL in INFOBIP_API_KEY nastavljena; sicer routing pošlje na
  * logging stub in nič se ne pretvarja, da je bilo poslano.
  *
- * Konfiguracija namerno bere process.env neposredno: configuration.ts ni del
- * tega paketa sprememb; selitev v AppConfig ob naslednjem dotiku te datoteke
- * (zaveden backlog). Env: INFOBIP_BASE_URL (npr. https://xyz.api.infobip.com),
- * INFOBIP_API_KEY, INFOBIP_SENDER (privzeto 'ASPRINT' — registriran sender ID).
+ * Konfiguracija prek AppConfig (poenoteno z Resend). Env: INFOBIP_BASE_URL
+ * (npr. https://xyz.api.infobip.com), INFOBIP_API_KEY, INFOBIP_SENDER (privzeto
+ * 'ASPRINT' — registriran sender ID).
  */
 @Injectable()
 export class InfobipSmsAdapter {
   private readonly log = new Logger('InfobipSms');
 
+  constructor(private readonly config: AppConfig) {}
+
   get configured(): boolean {
-    return (process.env.INFOBIP_BASE_URL ?? '').trim() !== ''
-      && (process.env.INFOBIP_API_KEY ?? '').trim() !== '';
+    return this.config.infobipBaseUrl.trim() !== ''
+      && this.config.infobipApiKey.trim() !== '';
   }
 
   async send(to: string, kind: NotificationKind, body: string, link?: string): Promise<{ id: string | null; accepted: boolean }> {
-    const baseUrl = (process.env.INFOBIP_BASE_URL ?? '').trim().replace(/\/+$/, '');
-    const apiKey = (process.env.INFOBIP_API_KEY ?? '').trim();
-    const sender = (process.env.INFOBIP_SENDER ?? 'ASPRINT').trim();
+    const baseUrl = this.config.infobipBaseUrl.trim().replace(/\/+$/, '');
+    const apiKey = this.config.infobipApiKey.trim();
+    const sender = this.config.infobipSender.trim();
     const text = link ? `${body}\n${link}` : body;
 
     const res = await fetch(`${baseUrl}/sms/2/text/advanced`, {
