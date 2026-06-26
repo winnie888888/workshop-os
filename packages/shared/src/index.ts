@@ -11,6 +11,7 @@ export * from "./roles";
 export * from "./tenant-context";
 export * from "./domain/enums";
 export * from "./domain/customer";
+export * from "./domain/zddv1-compliance";
 export * from "./domain/supplier";
 export * as PurchaseOrders from "./domain/purchase-order";
 export * as WorkOrderState from "./domain/workorder-state";

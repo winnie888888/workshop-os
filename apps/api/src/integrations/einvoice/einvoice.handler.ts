@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { isEuCountry } from '@workshop/shared';
+import { isEuCountry, checkZddv1Compliance } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { InvoicesRepository } from '../../modules/invoices/invoices.repository';
 import type { OutboxEvent, OutboxHandler } from '../../common/events/outbox-handler.interface';
@@ -75,6 +75,33 @@ export class EInvoiceIssueHandler implements OutboxHandler {
         netMinor: String(g.net_minor), vatMinor: String(g.vat_minor),
       })),
     };
+
+    // ZDDV-1 vsebinska preverba PRED gradnjo/oddajo: če računu manjka obvezen
+    // podatek (82. člen) ali se vsote ne ujemajo, ne pošiljamo neveljavnega
+    // dokumenta — zapišemo napako, da jo advisor vidi in popravi. To je zakonsko
+    // utemeljena pred-preveba (velja danes); e-SLOG/EN 16931 XSD opravi AP ob prenosu.
+    const compliance = checkZddv1Compliance({
+      number: invoice.number,
+      issueDate: invoice.issueDate,
+      currency: invoice.currency,
+      reverseCharge: invoice.reverseCharge,
+      vatNote: invoice.vatNote,
+      supplier: { name: invoice.supplier.name, vatId: invoice.supplier.vatId },
+      customer: { name: invoice.customer.name, address: invoice.customer.address, vatId: invoice.customer.vatId },
+      netMinor: invoice.netMinor, vatMinor: invoice.vatMinor, grossMinor: invoice.grossMinor,
+      lines: invoice.lines.map((l) => ({ description: l.description, quantity: l.quantity })),
+      vatBreakdown: invoice.vatBreakdown,
+    });
+    if (!compliance.ok) {
+      const reason = compliance.findings
+        .filter((x) => x.severity === 'error')
+        .map((x) => x.message)
+        .join(' | ');
+      await this.upsertDoc(event.tenantId, invoiceId, channelId, 'n/a', 'failed', null,
+        `ZDDV-1 neskladje: ${reason}`);
+      // Permanentno (ne retry): napaka je v podatkih računa, ne prehodna.
+      throw new Error(`Invoice ${invoiceId} fails ZDDV-1 compliance: ${reason}`);
+    }
 
     const doc = await channel.build(invoice);
     await this.upsertDoc(event.tenantId, invoiceId, channelId, doc.format, 'built', doc.payload, null);
