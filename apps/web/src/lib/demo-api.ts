@@ -15,7 +15,6 @@ import {
   demoWorkOrders, demoListItem, demoInvoices, demoInsight, LOCATION_MAIN,
 } from './demo-data';
 import { demoStore, demoEmit } from './demo-store';
-import { checkZddv1Compliance } from '@workshop/shared';
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }
 
@@ -468,32 +467,19 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     }));
     return ok(rows as any);
   }
-  // ZDDV-1 skladnost računa (demo): poženi pravo preverbo na demo računu.
+  // ZDDV-1 skladnost računa (demo): lahka inline preverba nekaj očitnih polj.
+  // Demo le prikaže panel; PRAVA ZDDV-1 validacija (checkZddv1Compliance, 82. člen)
+  // teče na backendu ob izdaji e-računa — ne v tem client demo routerju.
   if (seg[0] === 'invoices' && seg[1] && seg[2] === 'compliance' && method === 'GET') {
     const inv: any = demoInvoices[seg[1]] ?? demoInvoices['inv-1'];
     const cust: any = demoCustomers.find((c: any) => c.id === inv.customerId) ?? {};
-    const result = checkZddv1Compliance({
-      number: inv.number ?? null,
-      issueDate: inv.issueDate ?? null,
-      currency: inv.currency ?? 'EUR',
-      reverseCharge: !!inv.reverseCharge,
-      vatNote: inv.vatNote ?? null,
-      supplier: { name: 'A-SPRINT d.o.o.', vatId: 'SI12345678' },
-      customer: { name: cust.name ?? null, address: cust.address ?? null, vatId: cust.vatId ?? null },
-      netMinor: String(inv.totalNetMinor ?? '0'),
-      vatMinor: String(inv.totalVatMinor ?? '0'),
-      grossMinor: String(inv.totalGrossMinor ?? '0'),
-      lines: (inv.lines ?? []).map((l: any) => ({
-        description: l.description ?? null,
-        quantity: String(l.quantity ?? l.qty ?? '1'),
-      })),
-      vatBreakdown: (inv.vatBreakdown ?? []).map((g: any) => ({
-        ratePct: String(g.rate_pct ?? g.ratePct ?? '22'),
-        reverseCharge: !!(g.reverse_charge ?? g.reverseCharge),
-        netMinor: String(g.net_minor ?? g.netMinor ?? '0'),
-        vatMinor: String(g.vat_minor ?? g.vatMinor ?? '0'),
-      })),
-    });
+    const findings: Array<{ code: string; severity: 'error' | 'warning'; message: string; article: string }> = [];
+    const A82 = '82. člen ZDDV-1';
+    if (!inv.number) findings.push({ code: 'missing_invoice_number', severity: 'error', message: 'Manjka zaporedna številka računa (82. člen, 2. točka).', article: A82 });
+    if (!inv.issueDate) findings.push({ code: 'missing_issue_date', severity: 'error', message: 'Manjka datum izdaje računa (82. člen, 1. točka).', article: A82 });
+    if (!cust.address) findings.push({ code: 'missing_customer_address', severity: 'warning', message: 'Manjka naslov kupca (82. člen, 5. točka).', article: A82 });
+    if (inv.reverseCharge && !cust.vatId) findings.push({ code: 'missing_customer_vat_id_rc', severity: 'error', message: 'Pri obrnjeni davčni obveznosti je obvezna ID za DDV kupca (82. člen, 4. točka).', article: A82 });
+    const result = { ok: !findings.some((f) => f.severity === 'error'), findings };
     return ok(result as any);
   }
   if (seg[0] === 'invoices' && seg[1] && method === 'GET') return ok((demoInvoices[seg[1]] ?? demoInvoices['inv-1']) as any);
