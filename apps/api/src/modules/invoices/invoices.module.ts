@@ -48,6 +48,13 @@ export class InvoicesController {
     return this.invoices.listByCustomer(customerId);
   }
 
+  // Nadzorna plošča e-računov — vsi računi + e-račun/sync stanje (failed na vrhu).
+  @Get('einvoice-overview')
+  @RequirePermissions(Permission.AnalyticsFinancialView)
+  einvoiceOverview() {
+    return this.invoices.einvoiceOverview();
+  }
+
   @Get(':id/sync')
   @RequirePermissions(Permission.AnalyticsFinancialView)
   syncStatus(@Param('id') id: string) {

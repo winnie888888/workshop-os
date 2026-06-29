@@ -75,6 +75,7 @@ const NAV: NavItem[] = [
   { href: '/advisor/work-orders', label: 'Delovni nalogi', icon: 'workorders' },
   { href: '/advisor/quotes', label: 'Predračuni', icon: 'quotes' },
   { href: '/advisor/invoices', label: 'Računi', icon: 'invoices' },
+  { href: '/advisor/einvoices', label: 'E-računi', icon: 'invoices' },
   { href: '/advisor/calendar', label: 'Koledar', icon: 'calendar' },
   { href: '/advisor/messages', label: 'Sporočila', icon: 'messages' },
   { href: '/advisor/bank-import', label: 'Plačila (banka)', icon: 'receivables' },

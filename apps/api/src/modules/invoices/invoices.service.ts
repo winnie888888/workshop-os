@@ -919,6 +919,58 @@ export class InvoicesService {
       return { ok: true, requeued: r.rowCount };
     });
   }
+
+  /**
+   * Pregled e-računov za nadzorno ploščo: vsak račun z najnovejšim stanjem
+   * e-računa (einvoice_documents) + sync stanjem (outbox). Sortirano tako, da so
+   * težave (failed/dead) na vrhu — advisor takoj vidi, kaj rabi pozornost.
+   * Bere obstoječi tabeli, nič novega ne računa.
+   */
+  einvoiceOverview() {
+    const ctx = getContext();
+    return this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const r = await tx.query<any>(
+        `SELECT
+            i.id, i.number, i.kind, i.status AS invoice_status, i.currency,
+            i.total_gross_minor, i.issue_date,
+            ed.channel, ed.status AS einvoice_status, ed.last_error AS einvoice_error,
+            ed.authority_ref, ed.attempts AS einvoice_attempts, ed.updated_at AS einvoice_updated,
+            ob.dead_count
+           FROM app.invoices i
+           LEFT JOIN app.einvoice_documents ed ON ed.invoice_id = i.id
+           LEFT JOIN (
+             SELECT (payload->>'invoiceId') AS inv_id, count(*) FILTER (WHERE status = 'dead') AS dead_count
+               FROM app.outbox
+              WHERE event_type LIKE 'einvoice.%' OR event_type LIKE 'minimax.%'
+              GROUP BY (payload->>'invoiceId')
+           ) ob ON ob.inv_id = i.id::text
+          WHERE i.kind = 'invoice'
+          ORDER BY
+            CASE WHEN ed.status = 'failed' THEN 0
+                 WHEN COALESCE(ob.dead_count, 0) > 0 THEN 1
+                 WHEN ed.status IS NULL THEN 2
+                 WHEN ed.status IN ('built','transmitted') THEN 3
+                 ELSE 4 END,
+            i.issue_date DESC NULLS LAST
+          LIMIT 200`,
+      );
+      return r.rows.map((o: any) => ({
+        id: o.id,
+        number: o.number ?? null,
+        invoiceStatus: o.invoice_status,
+        currency: o.currency,
+        totalGrossMinor: String(o.total_gross_minor),
+        issueDate: o.issue_date ?? null,
+        channel: o.channel ?? null,
+        einvoiceStatus: o.einvoice_status ?? null, // null = e-račun še ni bil sprožen
+        einvoiceError: o.einvoice_error ?? null,
+        authorityRef: o.authority_ref ?? null,
+        einvoiceAttempts: o.einvoice_attempts ?? 0,
+        einvoiceUpdated: o.einvoice_updated ?? null,
+        deadCount: Number(o.dead_count ?? 0),
+      }));
+    });
+  }
 }
 
 /** Prikaz zneska v SMS: minor (bigint) -> "123,45 €" (sl decimalna vejica). */

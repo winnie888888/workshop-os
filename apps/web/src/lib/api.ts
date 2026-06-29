@@ -397,6 +397,13 @@ export const api = {
     compliance: (id: string) =>
       request<{ ok: boolean; findings: Array<{ code: string; severity: 'error' | 'warning'; message: string; article: string }> }>(
         `/invoices/${id}/compliance`),
+    einvoiceOverview: () =>
+      request<Array<{
+        id: string; number: string | null; invoiceStatus: string; currency: string;
+        totalGrossMinor: string; issueDate: string | null; channel: string | null;
+        einvoiceStatus: string | null; einvoiceError: string | null; authorityRef: string | null;
+        einvoiceAttempts: number; einvoiceUpdated: string | null; deadCount: number;
+      }>>(`/invoices/einvoice-overview`),
     sync: (id: string) =>
       request<Array<{ id: string; eventType: string; status: 'pending' | 'processing' | 'done' | 'dead'; attempts: number; lastError?: string; nextAttemptAt: string; updatedAt: string }>>(`/invoices/${id}/sync`),
     retrySync: (id: string) => request<{ ok: boolean; requeued: number }>(`/invoices/${id}/sync/retry`, { method: 'POST' }),
