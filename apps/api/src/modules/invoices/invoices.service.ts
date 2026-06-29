@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   newId, getContext, Money, Vat, Invoicing, Receivables, Sequence,
+  checkZddv1Compliance,
 } from '@workshop/shared';
 import { PgService } from '../../common/db/pg.service';
 import { AuditService } from '../../common/audit/audit.service';
@@ -826,6 +827,52 @@ export class InvoicesService {
     });
     if (!result) throw new NotFoundException('Invoice not found');
     return result;
+  }
+
+  /**
+   * ZDDV-1 skladnost računa (predogled za advisorja). Sestavi isto kanonično
+   * obliko kot e-invoice handler in zažene isti checkZddv1Compliance — tako
+   * advisor na detajlu računa vidi NATANKO iste najdbe, ki bi (ali so) blokirale
+   * oddajo e-računa. Bere obstoječi račun, zato ne podvaja VAT-engine logike.
+   */
+  async complianceFor(invoiceId: string) {
+    const ctx = getContext();
+    const result = await this.pg.withTenant(ctx.tenantId, async (tx) => {
+      const header = await this.repo.findHeader(tx, invoiceId);
+      if (!header) return null;
+      const lines = await this.repo.listLines(tx, invoiceId);
+      const breakdown = await this.repo.listVatBreakdown(tx, invoiceId);
+      const customer = (await tx.query<any>(
+        `SELECT name, address, vat_id FROM app.customers WHERE id = $1`, [header.customerId],
+      )).rows[0];
+      const tenant = (await tx.query<any>(
+        `SELECT name, vat_id FROM app.tenants WHERE id = $1`, [ctx.tenantId],
+      )).rows[0];
+      return { header, lines, breakdown, customer, tenant };
+    });
+    if (!result) throw new NotFoundException('Invoice not found');
+
+    return checkZddv1Compliance({
+      number: result.header.number,
+      issueDate: result.header.issueDate,
+      currency: result.header.currency,
+      reverseCharge: result.header.reverseCharge,
+      vatNote: result.header.vatNote,
+      supplier: { name: result.tenant?.name ?? null, vatId: result.tenant?.vat_id ?? null },
+      customer: {
+        name: result.customer?.name ?? null,
+        address: result.customer?.address ?? null,
+        vatId: result.customer?.vat_id ?? null,
+      },
+      netMinor: result.header.totalNetMinor,
+      vatMinor: result.header.totalVatMinor,
+      grossMinor: result.header.totalGrossMinor,
+      lines: result.lines.map((l: any) => ({ description: l.description, quantity: String(l.quantity) })),
+      vatBreakdown: result.breakdown.map((g: any) => ({
+        ratePct: String(g.rate_pct), reverseCharge: g.reverse_charge,
+        netMinor: String(g.net_minor), vatMinor: String(g.vat_minor),
+      })),
+    });
   }
 
   /** Outbox sinhronizacijski vnosi za en račun (Minimax + e-Račun) — resnica, ne animacija. */

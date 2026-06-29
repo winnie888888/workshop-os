@@ -60,6 +60,12 @@ export class InvoicesController {
     return this.invoices.retrySync(id);
   }
 
+  @Get(':id/compliance')
+  @RequirePermissions(Permission.AnalyticsFinancialView)
+  compliance(@Param('id') id: string) {
+    return this.invoices.complianceFor(id);
+  }
+
   @Get(':id')
   @RequirePermissions(Permission.AnalyticsFinancialView)
   get(@Param('id') id: string) {

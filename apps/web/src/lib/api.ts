@@ -394,6 +394,9 @@ export const api = {
 
   invoices: {
     get: (id: string) => request<InvoiceDetail>(`/invoices/${id}`),
+    compliance: (id: string) =>
+      request<{ ok: boolean; findings: Array<{ code: string; severity: 'error' | 'warning'; message: string; article: string }> }>(
+        `/invoices/${id}/compliance`),
     sync: (id: string) =>
       request<Array<{ id: string; eventType: string; status: 'pending' | 'processing' | 'done' | 'dead'; attempts: number; lastError?: string; nextAttemptAt: string; updatedAt: string }>>(`/invoices/${id}/sync`),
     retrySync: (id: string) => request<{ ok: boolean; requeued: number }>(`/invoices/${id}/sync/retry`, { method: 'POST' }),

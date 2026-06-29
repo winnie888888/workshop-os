@@ -31,6 +31,8 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { data: inv, isLoading } = useSWR(['invoice', id], () => api.invoices.get(id));
+  // ZDDV-1 skladnost (strežniška, avtoritativna — ista preverba, ki blokira oddajo e-računa).
+  const { data: compliance } = useSWR(['invoice-compliance', id], () => api.invoices.compliance(id).catch(() => null));
   // Plačnik za UPN QR (polja 6–8) — neobvezno; banka ga ob skenu lahko prepiše.
   const { data: payCust } = useSWR(
     inv?.customerId ? ['inv-cust', inv.customerId] : null,
@@ -71,6 +73,37 @@ export default function InvoiceDetail() {
           <StatusChip tone={tone}>{invStatus(inv.status)}</StatusChip>
         </div>
       </div>
+
+      {compliance && compliance.findings.length > 0 && (
+        <Card className={`p-4 text-sm ${compliance.ok ? 'border-amber-300 bg-amber-50' : 'border-red-300 bg-red-50'}`}>
+          <div className="mb-2 flex items-center gap-2 font-bold">
+            <span className={compliance.ok ? 'text-amber-700' : 'text-red-700'}>
+              {compliance.ok ? '⚠ ZDDV-1 opozorila' : '✕ ZDDV-1 neskladje'}
+            </span>
+            <span className="text-xs font-normal text-muted">
+              {compliance.ok
+                ? 'Račun je veljaven, a preveri spodnje.'
+                : 'Račun ne izpolnjuje obveznih podatkov — e-račun bi bil zavrnjen.'}
+            </span>
+          </div>
+          <ul className="flex flex-col gap-1.5">
+            {compliance.findings.map((f, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className={`mt-0.5 text-xs font-bold ${f.severity === 'error' ? 'text-red-600' : 'text-amber-600'}`}>
+                  {f.severity === 'error' ? 'NAPAKA' : 'opozorilo'}
+                </span>
+                <span className="text-ink">{f.message}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {compliance && compliance.ok && compliance.findings.length === 0 && (
+        <div className="flex items-center gap-2 rounded-tool border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+          <span className="font-bold">✓ ZDDV-1 skladno</span>
+          <span className="text-xs text-emerald-600">Vsi obvezni podatki (82. člen) prisotni.</span>
+        </div>
+      )}
 
       {company && (
         <Card className="p-5 text-sm">
