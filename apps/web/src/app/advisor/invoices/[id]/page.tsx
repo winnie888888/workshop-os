@@ -32,7 +32,12 @@ export default function InvoiceDetail() {
   const router = useRouter();
   const { data: inv, isLoading } = useSWR(['invoice', id], () => api.invoices.get(id));
   // ZDDV-1 skladnost (strežniška, avtoritativna — ista preverba, ki blokira oddajo e-računa).
-  const { data: compliance } = useSWR(['invoice-compliance', id], () => api.invoices.compliance(id).catch(() => null));
+  const { data: complianceRaw } = useSWR(['invoice-compliance', id], () => api.invoices.compliance(id).catch(() => null));
+  // Sprejmi le veljaven oblika rezultata (findings je array); sicer obravnavaj kot 'ni podatka',
+  // da nepričakovan odgovor (npr. demo objekt) ne sesuje strani.
+  const compliance = complianceRaw && Array.isArray((complianceRaw as any).findings)
+    ? complianceRaw
+    : null;
   // Plačnik za UPN QR (polja 6–8) — neobvezno; banka ga ob skenu lahko prepiše.
   const { data: payCust } = useSWR(
     inv?.customerId ? ['inv-cust', inv.customerId] : null,

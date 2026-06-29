@@ -44,7 +44,9 @@ export default function EInvoicesDashboard() {
 
   if (isLoading) return <div className="flex justify-center py-16"><Spinner className="text-brand" /></div>;
 
-  const rows = data ?? [];
+  // Robustno: SWR lahko (ob napaki ozadja / nepričakovanem odgovoru) vrne ne-array;
+  // .filter na ne-arrayu bi sesul stran (npr. demo router, ki vrne objekt). Vedno array.
+  const rows = Array.isArray(data) ? data : [];
   const problems = rows.filter((r) => r.einvoiceStatus === 'failed' || r.deadCount > 0);
   const pending = rows.filter((r) => r.einvoiceStatus === null || r.einvoiceStatus === 'built');
   const done = rows.length - problems.length - pending.length;

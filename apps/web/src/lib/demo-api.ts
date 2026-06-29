@@ -15,6 +15,7 @@ import {
   demoWorkOrders, demoListItem, demoInvoices, demoInsight, LOCATION_MAIN,
 } from './demo-data';
 import { demoStore, demoEmit } from './demo-store';
+import { checkZddv1Compliance } from '@workshop/shared';
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v)); }
 
@@ -443,6 +444,57 @@ export async function demoRequest<T>(call: Call): Promise<T> {
     };
     for (const w of wos) w.status = 'invoiced';
     return ok({ id, number: demoInvoices[id].number } as any);
+  }
+  // E-računi nadzorna plošča (demo): iz demoInvoices sestavi pregled s smiselnimi
+  // e-račun statusi. Vrne ARRAY (stran kliče .filter), zato mora biti pred generičnim :id.
+  if (path === '/invoices/einvoice-overview' && method === 'GET') {
+    const statuses = ['transmitted', 'built', 'failed', 'acknowledged'];
+    const rows = Object.values(demoInvoices).map((inv: any, i: number) => ({
+      id: inv.id,
+      number: inv.number ?? null,
+      invoiceStatus: inv.status ?? 'issued',
+      currency: inv.currency ?? 'EUR',
+      totalGrossMinor: String(inv.totalGrossMinor ?? '0'),
+      issueDate: inv.issueDate ?? null,
+      channel: 'si-eslog-peppol',
+      einvoiceStatus: statuses[i % statuses.length],
+      einvoiceError: statuses[i % statuses.length] === 'failed'
+        ? 'Manjka identifikacijska številka za DDV kupca (82. člen, 4. točka).'
+        : null,
+      authorityRef: statuses[i % statuses.length] === 'acknowledged' ? `UJP-${2026000 + i}` : null,
+      einvoiceAttempts: statuses[i % statuses.length] === 'failed' ? 2 : 1,
+      einvoiceUpdated: new Date().toISOString(),
+      deadCount: 0,
+    }));
+    return ok(rows as any);
+  }
+  // ZDDV-1 skladnost računa (demo): poženi pravo preverbo na demo računu.
+  if (seg[0] === 'invoices' && seg[1] && seg[2] === 'compliance' && method === 'GET') {
+    const inv: any = demoInvoices[seg[1]] ?? demoInvoices['inv-1'];
+    const cust: any = demoCustomers.find((c: any) => c.id === inv.customerId) ?? {};
+    const result = checkZddv1Compliance({
+      number: inv.number ?? null,
+      issueDate: inv.issueDate ?? null,
+      currency: inv.currency ?? 'EUR',
+      reverseCharge: !!inv.reverseCharge,
+      vatNote: inv.vatNote ?? null,
+      supplier: { name: 'A-SPRINT d.o.o.', vatId: 'SI12345678' },
+      customer: { name: cust.name ?? null, address: cust.address ?? null, vatId: cust.vatId ?? null },
+      netMinor: String(inv.totalNetMinor ?? '0'),
+      vatMinor: String(inv.totalVatMinor ?? '0'),
+      grossMinor: String(inv.totalGrossMinor ?? '0'),
+      lines: (inv.lines ?? []).map((l: any) => ({
+        description: l.description ?? null,
+        quantity: String(l.quantity ?? l.qty ?? '1'),
+      })),
+      vatBreakdown: (inv.vatBreakdown ?? []).map((g: any) => ({
+        ratePct: String(g.rate_pct ?? g.ratePct ?? '22'),
+        reverseCharge: !!(g.reverse_charge ?? g.reverseCharge),
+        netMinor: String(g.net_minor ?? g.netMinor ?? '0'),
+        vatMinor: String(g.vat_minor ?? g.vatMinor ?? '0'),
+      })),
+    });
+    return ok(result as any);
   }
   if (seg[0] === 'invoices' && seg[1] && method === 'GET') return ok((demoInvoices[seg[1]] ?? demoInvoices['inv-1']) as any);
 
