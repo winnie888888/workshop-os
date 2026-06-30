@@ -1,4 +1,5 @@
 import { Body, Controller, Headers, Ip, Module, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { IsEmail, IsOptional, IsString, Length } from 'class-validator';
 import { NotificationsModule } from '../../integrations/notifications/notifications.module';
 import { SignupService } from './signup.service';
@@ -31,16 +32,23 @@ class LoginDto {
 export class SignupController {
   constructor(private readonly signup: SignupService) {}
 
+  // Anti-spam: 5 registracij na 10 minut na IP (override globalnih 120).
+  @Throttle({ default: { ttl: 600_000, limit: 5 } })
   @Post('signup')
   request(@Body() dto: SignupDto, @Ip() ip: string) {
     return this.signup.requestSignup(dto, ip || 'unknown');
   }
 
+  // Omeji poskuse uveljavljanja žetona: 10 na minuto na IP.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @Post('verify')
   verify(@Body() dto: VerifyDto) {
     return this.signup.verify(dto.token);
   }
 
+  // Brute-force zaščita: 5 poskusov gesla na minuto na IP (override globalnih 120).
+  // Lockout na račun (5 napak → 15 min) je dodatna plast v servisu.
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @Post('login')
   login(@Body() dto: LoginDto, @Ip() ip: string, @Headers('user-agent') userAgent?: string) {
     return this.signup.login(dto, ip || 'unknown', userAgent ?? null);
