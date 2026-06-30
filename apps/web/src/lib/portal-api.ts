@@ -89,7 +89,11 @@ export const portalApi = {
   invoices: () => pRequest<any[]>('/portal/invoices'),
   invoice: (id: string) => pRequest<any>(`/portal/invoices/${id}`),
   // The PDF is a direct link the browser downloads; we expose the URL builder.
-  invoicePdfUrl: (id: string) => `${BASE}/portal/invoices/${id}/pdf`,
+  // V demo načinu pravega PDF streženja ni (in BASE bi kazal na lokalni API),
+  // zato vrnemo relativno pot do prikaza računa, ki v demu obstaja. V produkciji
+  // (DEMO_MODE=false) je to pravi PDF endpoint na API-ju.
+  invoicePdfUrl: (id: string) =>
+    DEMO_MODE ? `/portal/invoices/${id}` : `${BASE}/portal/invoices/${id}/pdf`,
   documents: () => pRequest<any[]>('/portal/documents'),
   approvals: (pendingOnly?: boolean) => pRequest<any[]>(`/portal/approvals${pendingOnly ? '?pending=1' : ''}`),
   respond: (id: string, decision: 'approved' | 'declined', note?: string) =>
